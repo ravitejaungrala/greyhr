@@ -37,7 +37,8 @@ class S3Database:
 
     def save_image(self, key: str, image_bytes: bytes, content_type: str = 'image/jpeg'):
         if self.mock_mode:
-            print(f"Mock Mode: Pretending to save image to S3 at {key}")
+            print(f"Mock Mode: Saving image to local storage at {key}")
+            self.local_storage[key] = image_bytes
             return True
             
         try:
@@ -52,8 +53,9 @@ class S3Database:
             print(f"Error saving image to S3: {e}")
             return False
 
-    def get_data(self, key: str):
+    def get_image(self, key: str):
         if self.mock_mode:
+            print(f"Mock Mode: Retrieving image from local storage at {key}")
             return self.local_storage.get(key, None)
             
         try:
@@ -61,9 +63,9 @@ class S3Database:
                 Bucket=self.bucket_name,
                 Key=key
             )
-            return json.loads(response['Body'].read().decode('utf-8'))
+            return response['Body'].read()
         except ClientError as e:
-            print(f"Error reading from S3: {e}")
+            print(f"Error reading image from S3: {e}")
             return None
 
 s3_db = S3Database()

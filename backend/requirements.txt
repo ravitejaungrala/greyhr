@@ -6,3 +6,6 @@ python-multipart
 python-dotenv
 chromadb
 pymongo
+google-generativeai
+opencv-python-headless
+mediapipe

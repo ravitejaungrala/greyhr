@@ -62,7 +62,7 @@ const AICopilot = () => {
                                 padding: '1rem',
                                 borderRadius: '12px',
                                 border: msg.role === 'agent' ? '1px solid var(--border-color)' : 'none',
-                                color: 'white'
+                                color: msg.role === 'user' ? 'white' : 'var(--text-light)'
                             }}>
                                 <p style={{ fontSize: '0.9rem', lineHeight: 1.6 }}>{msg.text}</p>
                             </div>
@@ -93,7 +93,7 @@ const AICopilot = () => {
                                 borderRadius: '8px',
                                 border: '1px solid var(--border-color)',
                                 backgroundColor: 'var(--bg-color)',
-                                color: 'white',
+                                color: 'var(--text-light)',
                                 fontSize: '1rem'
                             }}
                         />

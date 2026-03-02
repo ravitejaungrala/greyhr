@@ -1,18 +1,20 @@
 :root {
-  --primary: #4F46E5;
-  --primary-hover: #4338CA;
+  --primary: #ff4500;
+  --primary-hover: #e63e00;
   --secondary: #10B981;
-  --bg-color: #0F172A;
-  --surface-color: #1E293B;
-  --text-light: #F8FAFC;
-  --text-muted: #94A3B8;
-  --border-color: #334155;
-  
+  --secondary-light: #D1FAE5;
+  --bg-color: #FFFFFF;
+  --surface-color: #F9FAFB;
+  --text-light: #1a1a1a;
+  --text-muted: #4B5563;
+  --border-color: #E5E7EB;
+  --accent-orange: #FFF7ED;
+
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --glass-bg: rgba(30, 41, 59, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(0, 0, 0, 0.1);
 }
 
 * {
@@ -73,8 +75,9 @@ body {
   cursor: pointer;
 }
 
-.nav-item:hover, .nav-item.active {
-  background-color: rgba(79, 70, 229, 0.1);
+.nav-item:hover,
+.nav-item.active {
+  background-color: var(--accent-orange);
   color: var(--primary);
   border-right: 3px solid var(--primary);
 }
@@ -180,7 +183,7 @@ body {
 }
 
 .btn-secondary:hover {
-  background-color: rgba(255,255,255,0.05);
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 .glass-panel {
