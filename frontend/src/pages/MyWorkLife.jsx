@@ -70,6 +70,24 @@ const MyWorkLife = ({ userId }) => {
                 </div>
             </div>
 
+            {profile?.offer_letter_status === 'final' && (
+                <div className="card glass-panel" style={{ marginTop: '2rem', border: '1px solid var(--secondary)', background: 'rgba(16, 185, 129, 0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <h2 className="card-title" style={{ margin: 0 }}>📄 Official Offer Letter</h2>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Your official internship appointment letter is available for download.</p>
+                        </div>
+                        <button
+                            className="btn btn-primary"
+                            style={{ backgroundColor: 'var(--secondary)' }}
+                            onClick={() => window.open(`${apiUrl}/employee/offer-letter?employee_id=${userId}`, '_blank')}
+                        >
+                            ⬇️ Download PDF
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className="card" style={{ marginTop: '2rem' }}>
                 <h2 className="card-title">📈 Growth Journey</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>

@@ -4,6 +4,8 @@ from typing import Optional
 from database.s3_client import s3_db
 from database.vector_client import vector_db
 from database.mongo_client import mongo_db
+from dotenv import load_dotenv
+load_dotenv(override=True)
 import datetime
 import base64
 import uuid
@@ -13,8 +15,14 @@ import cv2
 import numpy as np
 from fpdf import FPDF
 from io import BytesIO
+import jinja2
+from xhtml2pdf import pisa
+from pypdf import PdfReader
 
 router = APIRouter()
+
+# Configure Gemini
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # --- Auth & Registration ---
 
@@ -26,7 +34,7 @@ class EmployeeRegistrationRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
-    role: str # 'employee' or 'admin'
+    role: Optional[str] = None # Optional now
 
 class HolidayRequest(BaseModel):
     name: str
@@ -93,21 +101,18 @@ def login(request: LoginRequest):
     if mongo_db.users is None:
         return {"error": "Database error"}
     
-    # Admin mock login
-    if request.role == 'admin':
-        if request.email == 'admin@dhanadurga.com' and request.password == 'Dhanadurga@2003':
-            return {"role": "admin", "name": "Admin", "email": request.email}
-        else:
-            return {"error": "Invalid admin credentials"}
-
-    # Employee login
+    # 1. Check for Admin credentials first
+    if request.email == 'admin@dhanadurga.com' and request.password == 'Dhanadurga@2003':
+        return {"role": "admin", "name": "Admin", "email": request.email}
+    
+    # 2. Check for Employee credentials
     user = mongo_db.users.find_one({"email": request.email, "password": request.password})
     if not user:
         return {"error": "Invalid email or password"}
     
-    # Return user details for frontend
+    # Return user details with their stored role
     return {
-        "role": "employee",
+        "role": user.get("role", "employee"),
         "name": user["name"],
         "email": user["email"],
         "employee_id": user["employee_id"],
@@ -281,6 +286,28 @@ class AnnouncementRequest(BaseModel):
 class PayslipTemplateRequest(BaseModel):
     image_base64: str # Image of the PDF format
 
+class OfferLetterRequest(BaseModel):
+    employee_id: str
+    employment_type: str # 'Intern' or 'Full-Time'
+    date: str
+    role: str
+    role_description: str
+    # Intern specific
+    stipend: Optional[str] = None
+    duration: Optional[str] = None
+    # Full-Time specific
+    annual_ctc: Optional[float] = None
+    notice_period: Optional[str] = None
+    has_pf: bool = False
+    pf_amount: float = 0
+    in_hand_salary: float = 0
+    annexure_details: Optional[str] = None
+
+class TemplateUploadRequest(BaseModel):
+    employment_type: str
+    content_base64: str
+    file_type: str  # 'html' or 'pdf'
+
 @router.post("/leaves/apply")
 def apply_leave(request: LeaveRequest):
     record = request.dict()
@@ -288,7 +315,7 @@ def apply_leave(request: LeaveRequest):
     record["applied_on"] = datetime.datetime.utcnow().isoformat()
     record["id"] = uuid.uuid4().hex[:8]
     if mongo_db.db is not None:
-        mongo_db.db.leaves.insert_one(record)
+        mongo_db.leaves.insert_one(record)
     if "_id" in record: del record["_id"]
     return {"message": "Leave submitted pending approval", "record": record}
 
@@ -296,7 +323,7 @@ def apply_leave(request: LeaveRequest):
 def get_all_leaves():
     if mongo_db.db is None:
         return {"leaves": []}
-    leaves = list(mongo_db.db.leaves.find({}, {"_id": 0}))
+    leaves = list(mongo_db.leaves.find({}, {"_id": 0}))
     return {"leaves": leaves}
 
 class LeaveStatusUpdate(BaseModel):
@@ -305,7 +332,7 @@ class LeaveStatusUpdate(BaseModel):
 @router.put("/admin/leaves/{leave_id}/status")
 def update_leave(leave_id: str, update: LeaveStatusUpdate):
     if mongo_db.db is not None:
-        mongo_db.db.leaves.update_one({"id": leave_id}, {"$set": {"status": update.status}})
+        mongo_db.leaves.update_one({"id": leave_id}, {"$set": {"status": update.status}})
     return {"message": f"Leave {leave_id} updated to {update.status}"}
 
 # --- Holidays ---
@@ -320,7 +347,7 @@ def add_holiday(request: HolidayRequest):
         "type": request.type,
         "id": uuid.uuid4().hex[:8]
     }
-    mongo_db.db.holidays.insert_one(record)
+    mongo_db.holidays.insert_one(record)
     if "_id" in record: del record["_id"]
     return {"message": "Holiday added", "record": record}
 
@@ -328,7 +355,7 @@ def add_holiday(request: HolidayRequest):
 def get_holidays():
     if mongo_db.db is None:
         return {"holidays": []}
-    holidays = list(mongo_db.db.holidays.find({}, {"_id": 0}))
+    holidays = list(mongo_db.holidays.find({}, {"_id": 0}))
     # Default holidays if empty
     if not holidays:
         holidays = [
@@ -370,7 +397,7 @@ def get_reports_summary():
     on_leave = 0
     if mongo_db.db is not None:
         # Check for approved leaves where today is between start and end date
-        on_leave = mongo_db.db.leaves.count_documents({
+        on_leave = mongo_db.leaves.count_documents({
             "status": {"$regex": "Approved"},
             "start_date": {"$lte": today_str},
             "end_date": {"$gte": today_str}
@@ -587,7 +614,7 @@ def get_attendance_calendar(employee_id: str):
         # Fetch leaves to check for admin-approved half day
         has_half_day_leave = False
         if mongo_db.db is not None:
-            leave = mongo_db.db.leaves.find_one({
+            leave = mongo_db.leaves.find_one({
                 "employee_id": employee_id,
                 "status": "Approved",
                 "start_date": {"$lte": day},
@@ -642,7 +669,7 @@ def update_holiday(old_date: str, request: HolidayRequest):
     if mongo_db.db is None:
         return {"error": "Database error"}
         
-    mongo_db.db.holidays.update_one(
+    mongo_db.holidays.update_one(
         {"date": old_date},
         {"$set": {
             "date": request.date,
@@ -657,7 +684,7 @@ def delete_holiday(date: str):
     if mongo_db.db is None:
         return {"error": "Database error"}
         
-    mongo_db.db.holidays.delete_one({"date": date})
+    mongo_db.holidays.delete_one({"date": date})
     return {"message": "Holiday deleted successfully."}
 
 @router.get("/employee/dashboard-insights")
@@ -685,7 +712,7 @@ def get_employee_insights(employee_id: str):
     upcoming_holidays = []
     if mongo_db.db is not None:
         # Sort by date and limit to 2 upcoming holidays
-        all_holidays = list(mongo_db.db.holidays.find({}, {"_id": 0}))
+        all_holidays = list(mongo_db.holidays.find({}, {"_id": 0}))
         # Filter for future dates in-memory or improve query if possible
         upcoming_holidays = [h for h in all_holidays if h['date'] >= today_str]
         upcoming_holidays = sorted(upcoming_holidays, key=lambda x: x['date'])[:2]
@@ -720,7 +747,7 @@ def get_employee_insights(employee_id: str):
 def get_employee_leaves(employee_id: str):
     if mongo_db.db is None:
         return {"leaves": []}
-    leaves = list(mongo_db.db.leaves.find({"employee_id": employee_id}, {"_id": 0}))
+    leaves = list(mongo_db.leaves.find({"employee_id": employee_id}, {"_id": 0}))
     return {"leaves": leaves}
 
 @router.get("/employee/profile")
@@ -784,7 +811,7 @@ def get_leave_balance(employee_id: str):
     used_cl = 0
     
     if mongo_db.db is not None:
-        approved_leaves = list(mongo_db.db.leaves.find({
+        approved_leaves = list(mongo_db.leaves.find({
             "employee_id": employee_id,
             "status": "Approved"
         }))
@@ -838,7 +865,7 @@ def get_employee_salary(employee_id: str):
     if mongo_db.db is not None:
         # All leaves for interns count as LOP
         if employment_type == "Intern":
-            lop_days = mongo_db.db.leaves.count_documents({
+            lop_days = mongo_db.leaves.count_documents({
                 "employee_id": employee_id,
                 "status": "Approved by Admin"
             })
@@ -847,7 +874,7 @@ def get_employee_salary(employee_id: str):
             # In this logic, let's say "Rejected" means LOP if they took it anyway, 
             # or we check for a specific "LOP" flag if we had one.
             # User said: "without prior approval also for leave for each from salary cut 500 per day"
-            lop_days = mongo_db.db.leaves.count_documents({
+            lop_days = mongo_db.leaves.count_documents({
                 "employee_id": employee_id,
                 "status": "Rejected"
             })
@@ -1005,7 +1032,7 @@ def get_employee_payslips(employee_id: str):
     # Check released months
     released_months = []
     if mongo_db.db is not None:
-        releases = list(mongo_db.db.payslip_releases.find({"released": True}))
+        releases = list(mongo_db.payslip_releases.find({"released": True}))
         released_months = [r["month_year"] for r in releases]
 
     payslips = []
@@ -1049,7 +1076,7 @@ def release_payslip(request: PayslipReleaseRequest):
     if mongo_db.db is None:
         return {"error": "Database error"}
     
-    mongo_db.db.payslip_releases.update_one(
+    mongo_db.payslip_releases.update_one(
         {"month_year": request.month_year},
         {"$set": {"released": request.release, "updated_at": datetime.datetime.utcnow().isoformat()}},
         upsert=True
@@ -1060,7 +1087,7 @@ def release_payslip(request: PayslipReleaseRequest):
 def get_payslip_release_status():
     if mongo_db.db is None:
         return {"releases": []}
-    releases = list(mongo_db.db.payslip_releases.find({}, {"_id": 0}))
+    releases = list(mongo_db.payslip_releases.find({}, {"_id": 0}))
     return {"releases": releases}
 
 @router.get("/employee/team-availability")
@@ -1088,7 +1115,7 @@ def get_team_availability():
         # Check leave for today
         on_leave = False
         if mongo_db.db is not None:
-            leave = mongo_db.db.leaves.find_one({
+            leave = mongo_db.leaves.find_one({
                 "employee_id": emp_id,
                 "status": {"$regex": "Approved"},
                 "start_date": {"$lte": today_str},
@@ -1120,14 +1147,14 @@ def give_kudos(request: KudosRequest):
     record["timestamp"] = datetime.datetime.utcnow().isoformat()
     if mongo_db.db is not None:
         # Create kudos collection if it doesn't exist
-        mongo_db.db.kudos.insert_one(record)
+        mongo_db.kudos.insert_one(record)
     return {"message": "Kudos shared!", "record": record}
 
 @router.get("/employee/kudos")
 def get_all_kudos():
     if mongo_db.db is None:
         return {"kudos": []}
-    kudos = list(mongo_db.db.kudos.find({}, {"_id": 0}).sort("timestamp", -1).limit(10))
+    kudos = list(mongo_db.kudos.find({}, {"_id": 0}).sort("timestamp", -1).limit(10))
     # Default kudos if empty
     if not kudos:
         kudos = [
@@ -1227,3 +1254,388 @@ def serve_s3_photo(key: str):
     if image_bytes:
         return Response(content=image_bytes, media_type="image/jpeg")
     return {"error": "Photo not found"}
+
+# --- Offer Letters ---
+
+def generate_offer_letter_pdf(data):
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # --- Header ---
+    # Top bar
+    pdf.set_fill_color(255, 69, 0) # Orange Red (#ff4500)
+    pdf.rect(0, 0, 210, 25, 'F')
+    
+    # Logo / Company Name
+    pdf.set_font("Arial", 'B', 24)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_xy(15, 7)
+    pdf.cell(0, 10, "NeuzenAI", ln=False)
+    
+    pdf.set_font("Arial", '', 12)
+    pdf.set_xy(160, 7)
+    pdf.cell(35, 10, "IT SOLUTIONS", align='R', ln=True)
+    
+    # --- Content ---
+    pdf.set_text_color(26, 26, 26) # #1a1a1a (Dark Black)
+    pdf.ln(25)
+    
+    # Normalize employment type
+    emp_type = str(data.get('employment_type', 'Intern')).strip().lower()
+    is_intern = 'intern' in emp_type
+    title = "INTERNSHIP OFFER LETTER" if is_intern else "FULL TIME EMPLOYMENT OFFER LETTER"
+    
+    # Letter Head Info
+    pdf.set_font("Arial", 'B', 16)
+    pdf.set_x(15)
+    pdf.cell(0, 15, title, align='C', ln=True)
+    
+    pdf.ln(5)
+    pdf.set_font("Arial", '', 10)
+    pdf.set_x(15)
+    pdf.cell(0, 10, f"Date: {data['date']}", ln=True)
+    pdf.cell(0, 5, f"Ref: NZ/{'INT' if is_intern else 'FT'}/{data['employee_id'][-4:].upper()}/2026", ln=True)
+    
+    pdf.ln(10)
+    pdf.set_font("Arial", 'B', 12)
+    pdf.set_x(15)
+    pdf.cell(0, 10, f"Dear {data['name']},", ln=True)
+    
+    pdf.ln(5)
+    pdf.set_font("Arial", '', 11)
+    pdf.set_x(15)
+    
+    if is_intern:
+        body_text = f"Following our recent discussions, we are delighted to offer you an internship at NeuzenAI IT Solutions. We were impressed with your skills and believe you will be a valuable addition to our team."
+    else:
+        body_text = f"Following our recent discussions and interview process, we are pleased to offer you employment with NeuzenAI IT Solutions. We believe your background and experience will be a tremendous asset to our organization."
+        
+    pdf.multi_cell(180, 7, txt=body_text)
+    
+    pdf.ln(5)
+    pdf.set_x(15)
+    if is_intern:
+        role_text = f"You are being offered the position of {data['role']}. During your internship, you will be primarily focused on: {data['role_description']}"
+    else:
+        role_text = f"You are being offered the position of {data['role']}. Your responsibilities will include: {data['role_description']}"
+    pdf.multi_cell(180, 7, txt=role_text)
+    
+    # Terms Table-like structure
+    pdf.ln(10)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.set_x(15)
+    pdf.cell(0, 10, "Terms and Conditions:", ln=True)
+    
+    pdf.set_font("Arial", '', 10)
+    if is_intern:
+        details = [
+            ("Position", data['role']),
+            ("Duration", data.get('duration', '3 Months')),
+            ("Stipend", data.get('stipend', 'Unpaid')),
+            ("Start Date", data['date']),
+            ("Working Hours", "11:00 AM to 8:00 PM (Mon-Sat)")
+        ]
+    else:
+        details = [
+            ("Position", data['role']),
+            ("Employment Type", "Full-Time (Probationary)"),
+            ("Fixed CTC", f"₹{data.get('annual_ctc', 0)} LPA"),
+            ("Start Date", data['date']),
+            ("Notice Period", data.get('notice_period', '30 Days')),
+            ("Working Hours", "11:00 AM to 8:00 PM (Mon-Sat)")
+        ]
+    
+    for label, val in details:
+        pdf.set_x(25)
+        pdf.set_font("Arial", 'B', 10)
+        pdf.cell(45, 8, f"{label}:", ln=False)
+        pdf.set_font("Arial", '', 10)
+        pdf.cell(0, 8, f"{val}", ln=True)
+        
+    pdf.ln(10)
+    pdf.set_font("Arial", '', 11)
+    pdf.set_x(15)
+    if is_intern:
+        closing = "Please review the terms mentioned above. If they are acceptable to you, kindly sign the duplicate copy of this letter and return it to us as a token of your acceptance.\n\nWe look forward to a mutually beneficial relationship."
+    else:
+        closing = "This offer is subject to the successful completion of background verification and professional references. Please return a signed copy of this letter to signify your acceptance of our offer.\n\nWe look forward to having you on our team!"
+    pdf.multi_cell(180, 7, txt=closing)
+    
+    # --- Signatures ---
+    pdf.ln(25)
+    pdf.set_x(15)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(90, 8, "For NeuzenAI IT Solutions,", ln=False)
+    pdf.cell(0, 8, "Accepted By,", align='R', ln=True)
+    
+    pdf.ln(10)
+    pdf.set_x(15)
+    pdf.cell(90, 8, "________________________", ln=False)
+    pdf.cell(0, 8, "________________________", align='R', ln=True)
+    pdf.set_x(15)
+    pdf.set_font("Arial", '', 9)
+    pdf.cell(90, 8, "Authorized Signatory", ln=False)
+    pdf.cell(0, 8, "Candidate Signature", align='R', ln=True)
+
+    if not is_intern:
+        # --- Annexure-A Page ---
+        pdf.add_page()
+        # Header (reuse color theme)
+        pdf.set_fill_color(255, 69, 0)
+        pdf.rect(0, 0, 210, 25, 'F')
+        pdf.set_font("Arial", 'B', 24)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_xy(15, 7)
+        pdf.cell(0, 10, "NeuzenAI", ln=False)
+        
+        pdf.set_text_color(26, 26, 26)
+        pdf.ln(35)
+        pdf.set_font("Arial", 'B', 14)
+        pdf.set_x(15)
+        pdf.cell(180, 10, "ANNEXURE - A: SALARY BREAKUP", align='C', ln=True)
+        pdf.ln(5)
+        
+        # Table Header
+        pdf.set_fill_color(240, 240, 240)
+        pdf.set_font("Arial", 'B', 10)
+        pdf.set_x(15)
+        pdf.cell(120, 10, "Component", border=1, fill=True)
+        pdf.cell(60, 10, "Amount (Annual ₹)", border=1, fill=True, ln=True)
+        
+        # Table Rows
+        pdf.set_font("Arial", '', 10)
+        pdf.set_x(15)
+        
+        ctc = float(data.get('annual_ctc', 0))
+        has_pf = data.get('has_pf', False)
+        pf_amt = float(data.get('pf_amount', 0))
+        
+        pdf.cell(120, 10, "Basic Salary + HRA + Allowances", border=1)
+        pdf.cell(60, 10, f"₹{ctc - pf_amt if has_pf else ctc}", border=1, ln=True)
+        
+        if has_pf:
+            pdf.set_x(15)
+            pdf.cell(120, 10, "Provident Fund (Employer Contribution)", border=1)
+            pdf.cell(60, 10, f"₹{pf_amt}", border=1, ln=True)
+            
+        # Total
+        pdf.set_font("Arial", 'B', 10)
+        pdf.set_x(15)
+        pdf.set_fill_color(255, 240, 230)
+        pdf.cell(120, 10, "TOTAL FIXED CTC", border=1, fill=True)
+        pdf.cell(60, 10, f"₹{ctc}", border=1, fill=True, ln=True)
+        
+        pdf.ln(10)
+        pdf.set_font("Arial", 'B', 11)
+        pdf.set_x(15)
+        pdf.set_text_color(16, 185, 129) # Success Green
+        in_hand = float(data.get('in_hand_salary', 0))
+        pdf.cell(0, 10, f"ESTIMATED IN-HAND MONTHLY SALARY: ₹{round(in_hand/12, 2)}", ln=True)
+        pdf.set_text_color(26, 26, 26)
+        
+        pdf.ln(5)
+        pdf.set_font("Arial", '', 9)
+        pdf.set_x(15)
+        pdf.multi_cell(180, 6, txt="*Note: The in-hand amount is estimated after standard deductions as discussed. Statutory taxes (if applicable) will be deducted at source as per government regulations.")
+
+    # --- Footer ---
+    pdf.set_y(-30)
+    pdf.set_font("Arial", 'I', 8)
+    pdf.set_text_color(128, 128, 128)
+    pdf.cell(0, 10, "NeuzenAI IT Solutions | Flat No. 402, 4th Floor, Sri Sai Enclave, Hyderabad", align='C', ln=True)
+    pdf.cell(0, 5, "www.neuzenai.com | info@neuzenai.com", align='C', ln=True)
+    
+    return pdf.output()
+
+def generate_offer_letter_html_pdf(data, template_html):
+    # Use Jinja2 to render the HTML with the data
+    template = jinja2.Template(template_html)
+    rendered_html = template.render(**data)
+    
+    # Use xhtml2pdf to convert HTML to PDF
+    pdf_buffer = BytesIO()
+    pisa_status = pisa.CreatePDF(rendered_html, dest=pdf_buffer)
+    
+    if pisa_status.err:
+        raise Exception("HTML to PDF conversion failed")
+    
+    return pdf_buffer.getvalue()
+
+@router.post("/admin/interns/generate-offer-letter")
+def admin_generate_offer_letter(request: OfferLetterRequest):
+    if mongo_db.users is None:
+        return {"error": "Database error"}
+    
+    user = mongo_db.users.find_one({"employee_id": request.employee_id})
+    if not user:
+        return {"error": "Employee not found"}
+        
+    data = {
+        "name": user["name"],
+        "employee_id": request.employee_id,
+        "employment_type": request.employment_type, # Use type from request
+        "date": request.date,
+        "role": request.role,
+        "role_description": request.role_description,
+        "stipend": request.stipend,
+        "duration": request.duration,
+        "annual_ctc": request.annual_ctc,
+        "notice_period": request.notice_period,
+        "has_pf": request.has_pf,
+        "pf_amount": request.pf_amount,
+        "in_hand_salary": request.in_hand_salary,
+        "annexure_details": request.annexure_details
+    }
+    
+    try:
+        # Check for custom HTML template
+        template_record = mongo_db.offer_letter_templates.find_one({"employment_type": request.employment_type})
+        
+        if template_record and "html_content" in template_record:
+            pdf_bytes = generate_offer_letter_html_pdf(data, template_record["html_content"])
+        else:
+            pdf_bytes = generate_offer_letter_pdf(data)
+            
+        # Store draft in S3 or local tmp for preview
+        key = f"drafts/offer_letter_{request.employee_id}.pdf"
+        s3_db.save_image(key, pdf_bytes, content_type='application/pdf')
+        
+        # Update user record with draft status
+        mongo_db.users.update_one(
+            {"employee_id": request.employee_id},
+            {"$set": {"offer_letter_draft_key": key, "offer_letter_status": "draft"}}
+        )
+        
+        return {"message": "Offer letter draft generated", "draft_key": key}
+    except Exception as e:
+        return {"error": f"Failed to generate offer letter: {str(e)}"}
+
+@router.get("/admin/interns/offer-letter-preview/{employee_id}")
+def preview_offer_letter(employee_id: str):
+    user = mongo_db.users.find_one({"employee_id": employee_id})
+    if not user or "offer_letter_draft_key" not in user:
+        return Response(status_code=404)
+        
+    pdf_bytes = s3_db.get_image(user["offer_letter_draft_key"])
+    return Response(content=pdf_bytes, media_type="application/pdf")
+
+@router.post("/admin/interns/send-offer-letter/{employee_id}")
+def finalize_offer_letter(employee_id: str):
+    if mongo_db.users is None:
+        return {"error": "Database error"}
+    
+    user = mongo_db.users.find_one({"employee_id": employee_id})
+    if not user or "offer_letter_draft_key" not in user:
+        return {"error": "Draft not found"}
+        
+    # Copy from draft to final
+    final_key = f"documents/offer_letter_{employee_id}.pdf"
+    pdf_bytes = s3_db.get_image(user["offer_letter_draft_key"])
+    s3_db.save_image(final_key, pdf_bytes, content_type='application/pdf')
+    
+    mongo_db.users.update_one(
+        {"employee_id": employee_id},
+        {"$set": {"offer_letter_key": final_key, "offer_letter_status": "final"}}
+    )
+    
+    return {"message": "Offer letter sent to employee"}
+
+@router.get("/employee/offer-letter")
+def get_employee_offer_letter(employee_id: str):
+    user = mongo_db.users.find_one({"employee_id": employee_id})
+    if not user or "offer_letter_key" not in user:
+        return {"error": "No offer letter found"}
+        
+    pdf_bytes = s3_db.get_image(user["offer_letter_key"])
+    return Response(
+        content=pdf_bytes, 
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=NeuzenAI_Offer_Letter.pdf"}
+    )
+
+# --- Template Management ---
+
+def analyze_and_convert_template(content_b64: str, file_type: str):
+    try:
+        content_bytes = parse_base64(content_b64)
+        
+        raw_text = ""
+        if file_type == 'pdf':
+            reader = PdfReader(BytesIO(content_bytes))
+            for page in reader.pages:
+                raw_text += page.extract_text() + "\n"
+        else:
+            raw_text = content_bytes.decode('utf-8', errors='ignore')
+
+        # Use Gemini to:
+        # 1. Identify placeholders
+        # 2. If PDF, convert to a clean HTML template relative to the content
+        
+        model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-image-preview")
+        model = genai.GenerativeModel(model_name)
+        
+        prompt = f"""
+        You are an HR technical assistant. I have an offer letter template in {file_type} format.
+        
+        TASK:
+        1. Identify all existing placeholders like {{{{name}}}}, {{{{role}}}}, or unique markers.
+        2. Create a professional, clean HTML/CSS template version of this letter.
+        3. Ensure the HTML template uses Jinja2 style placeholders {{{{key}}}} for all dynamic data.
+        4. If the original didn't have placeholders, add them naturally for: name, employee_id, date, role, role_description, stipend, duration (if intern), annual_ctc, in_hand_salary, notice_period (if full-time).
+        
+        RETURN ONLY a JSON object with two fields:
+        "placeholders": [list of strings],
+        "html_template": "the full html source string"
+        
+        Template Raw Content/Text:
+        {raw_text[:8000]}
+        """
+        
+        response = model.generate_content(prompt)
+        # Clean response if it contains markdown code blocks
+        resp_text = response.text.replace('```json', '').replace('```', '').strip()
+        import json
+        analysis = json.loads(resp_text)
+        return analysis
+    except Exception as e:
+        print(f"Template Analysis Error: {e}")
+        return None
+
+@router.post("/admin/templates/upload")
+def upload_offer_letter_template(request: TemplateUploadRequest):
+    if mongo_db.offer_letter_templates is None:
+        return {"error": "Database error: offer_letter_templates collection missing"}
+    
+    # AI Analysis & Conversion
+    analysis = analyze_and_convert_template(request.content_base64, request.file_type)
+    
+    if not analysis:
+        return {"error": "AI Analysis failed. Please try a cleaner file."}
+
+    mongo_db.offer_letter_templates.update_one(
+        {"employment_type": request.employment_type},
+        {"$set": {
+            "html_content": analysis["html_template"],
+            "placeholders": analysis["placeholders"],
+            "original_type": request.file_type,
+            "updated_at": datetime.datetime.utcnow().isoformat()
+        }},
+        upsert=True
+    )
+    return {
+        "message": f"Template processed and updated for {request.employment_type}",
+        "placeholders": analysis["placeholders"]
+    }
+
+@router.get("/admin/templates")
+def list_offer_letter_templates():
+    if mongo_db.offer_letter_templates is None:
+        return []
+    # Return everything except the massive html_content to keep list light
+    templates = list(mongo_db.offer_letter_templates.find({}, {"_id": 0, "html_content": 0}))
+    return templates
+
+@router.delete("/admin/templates/{employment_type}")
+def delete_offer_letter_template(employment_type: str):
+    mongo_db.offer_letter_templates.delete_one({"employment_type": employment_type})
+    return {"message": f"Template deleted for {employment_type}"}

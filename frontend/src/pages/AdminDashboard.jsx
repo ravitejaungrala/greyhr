@@ -20,6 +20,25 @@ const AdminDashboard = ({ activeTab }) => {
     const [payslipTemplate, setPayslipTemplate] = useState(null);
     const [templateAnalysis, setTemplateAnalysis] = useState(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [isOfferLetterModalOpen, setIsOfferLetterModalOpen] = useState(false);
+    const [offerLetterParams, setOfferLetterParams] = useState({
+        employment_type: 'Intern',
+        date: new Date().toISOString().split('T')[0],
+        role: '',
+        role_description: '',
+        stipend: '',
+        duration: '',
+        annual_ctc: 0,
+        notice_period: '30 Days',
+        has_pf: false,
+        pf_amount: 0,
+        in_hand_salary: 0,
+        annexure_details: ''
+    });
+    const [isGeneratingOL, setIsGeneratingOL] = useState(false);
+    const [offerLetterTemplates, setOfferLetterTemplates] = useState([]);
+    const [selectedTemplateType, setSelectedTemplateType] = useState('Intern');
+    const [uploadingTemplate, setUploadingTemplate] = useState(false);
 
     // Form states
     const [newHoliday, setNewHoliday] = useState({ name: '', date: '', type: 'Public Holiday' });
@@ -76,6 +95,10 @@ const AdminDashboard = ({ activeTab }) => {
                 const res = await fetch(`${apiUrl}/announcement`);
                 const data = await res.json();
                 setAnnouncementMsg(data);
+            } else if (activeTab === 'templates') {
+                const res = await fetch(`${apiUrl}/admin/templates`);
+                const data = await res.json();
+                setOfferLetterTemplates(data || []);
             }
         } catch (err) {
             console.error(err);
@@ -169,6 +192,41 @@ const AdminDashboard = ({ activeTab }) => {
         }
     };
 
+    const handleGenerateOfferLetter = async (empId) => {
+        setIsGeneratingOL(true);
+        try {
+            const res = await fetch(`${apiUrl}/admin/interns/generate-offer-letter`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    employee_id: empId,
+                    ...offerLetterParams
+                })
+            });
+            if (res.ok) {
+                alert("Offer letter draft generated! Review it below.");
+                fetchData();
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsGeneratingOL(false);
+        }
+    };
+
+    const handleFinalizeOfferLetter = async (empId) => {
+        try {
+            const res = await fetch(`${apiUrl}/admin/interns/send-offer-letter/${empId}`, { method: 'POST' });
+            if (res.ok) {
+                alert(`Offer letter finalized and sent to ${offerLetterParams.employment_type === 'Intern' ? 'intern' : 'employee'}!`);
+                setIsOfferLetterModalOpen(false);
+                fetchData();
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const handleCopilot = async (e) => {
         if (e) e.preventDefault();
         if (!copilotQuery.trim()) return;
@@ -237,6 +295,59 @@ const AdminDashboard = ({ activeTab }) => {
     const handleEditClick = (holiday) => {
         setEditingHoliday({ ...holiday, originalDate: holiday.date });
         setNewHoliday({ name: holiday.name, date: holiday.date, type: holiday.type });
+    };
+
+    const handleTemplateUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const result = event.target.result;
+            // Extract base64 part
+            const base64Content = result.split(',')[1];
+            const fileType = file.name.endsWith('.pdf') ? 'pdf' : 'html';
+
+            setUploadingTemplate(true);
+            try {
+                const res = await fetch(`${apiUrl}/admin/templates/upload`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        employment_type: selectedTemplateType,
+                        content_base64: base64Content,
+                        file_type: fileType
+                    })
+                });
+                const data = await res.json();
+                if (data.message) {
+                    alert(data.message);
+                    fetchData();
+                } else {
+                    alert('Upload failed: ' + data.error);
+                }
+            } catch (err) {
+                console.error("Upload Error Details:", err);
+                alert(`Upload failed! Could not connect to ${apiUrl}/admin/templates/upload. Please ensure the backend server is running.`);
+            } finally {
+                setUploadingTemplate(false);
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleDeleteTemplate = async (type) => {
+        if (!window.confirm(`Delete template for ${type}?`)) return;
+        try {
+            const res = await fetch(`${apiUrl}/admin/templates/${type}`, {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            alert(data.message);
+            fetchData();
+        } catch (err) {
+            console.error(err);
+        }
     };
 
     return (
@@ -412,8 +523,39 @@ const AdminDashboard = ({ activeTab }) => {
                                             </div>
                                         </div>
 
-                                        <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+                                        <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem', flexWrap: 'wrap' }}>
                                             <button onClick={() => handleApproval(viewedEmp.employee_id, 'reject')} className="btn btn-secondary" style={{ color: '#EF4444', borderColor: '#EF4444' }}>Reject Application</button>
+
+                                            <button
+                                                onClick={() => {
+                                                    // Set defaults based on employment type
+                                                    if (empRoleSetup.employment_type === 'Intern') {
+                                                        setOfferLetterParams({
+                                                            employment_type: 'Intern',
+                                                            date: new Date().toISOString().split('T')[0],
+                                                            role: empRoleSetup.position || 'Full Stack Intern',
+                                                            role_description: 'Full stack development projects, contributing to both frontend and backend systems, and learning modern IT stacks.',
+                                                            stipend: 'Unpaid / Certificate Based',
+                                                            duration: '3 Months'
+                                                        });
+                                                    } else {
+                                                        setOfferLetterParams({
+                                                            employment_type: 'Full-Time',
+                                                            date: new Date().toISOString().split('T')[0],
+                                                            role: empRoleSetup.position || 'Software Engineer',
+                                                            role_description: 'Software development, system design, and contributing to the overall technical excellence of NeuzenAI products.',
+                                                            stipend: empRoleSetup.monthly_salary ? `₹${empRoleSetup.monthly_salary * 12} LPA (Fixed)` : 'As discussed',
+                                                            duration: '30 Days' // For notice period
+                                                        });
+                                                    }
+                                                    setIsOfferLetterModalOpen(true);
+                                                }}
+                                                className="btn btn-secondary"
+                                                style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}
+                                            >
+                                                📝 Prepare Offer Letter
+                                            </button>
+
                                             <button onClick={() => handleApproval(viewedEmp.employee_id, 'approve')} className="btn btn-primary" style={{ backgroundColor: 'var(--secondary)' }}>Approve Onboarding</button>
                                         </div>
                                     </div>
@@ -772,6 +914,128 @@ const AdminDashboard = ({ activeTab }) => {
                         </div>
                     )}
 
+                    {/* TAB: TEMPLATES */}
+                    {activeTab === 'templates' && (
+                        <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
+                            <h2 className="card-title">📄 Offer Letter HTML Templates</h2>
+                            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Upload custom HTML templates with <code>{"{{placeholder}}"}</code> for Intern and Full-Time offers.</p>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                                <div className="card" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)' }}>
+                                    <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Upload New Template</h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <div style={{ display: 'flex', gap: '1rem' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Employment Type</label>
+                                                <select
+                                                    value={selectedTemplateType}
+                                                    onChange={(e) => setSelectedTemplateType(e.target.value)}
+                                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)', marginTop: '0.5rem' }}
+                                                >
+                                                    <option value="Intern">Intern Offer Letter</option>
+                                                    <option value="Full-Time">Full-Time Offer Letter</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            style={{
+                                                padding: '2.5rem',
+                                                border: '2px dashed var(--border-color)',
+                                                borderRadius: '8px',
+                                                textAlign: 'center',
+                                                cursor: 'pointer',
+                                                background: 'var(--surface-color)',
+                                                transition: 'all 0.2s',
+                                                hover: { borderColor: 'var(--primary)', background: 'rgba(79, 70, 229, 0.05)' }
+                                            }}
+                                            onClick={() => document.getElementById('template-upload-input').click()}
+                                        >
+                                            <span style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}>📤</span>
+                                            {uploadingTemplate ? (
+                                                <div style={{ color: 'var(--primary)', fontWeight: 'bold' }}>AI is analyzing template content...</div>
+                                            ) : (
+                                                <div>
+                                                    <div style={{ fontWeight: 'bold' }}>Click to upload Offer Template</div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Supports .pdf or .html files</div>
+                                                </div>
+                                            )}
+                                            <input
+                                                id="template-upload-input"
+                                                type="file"
+                                                hidden
+                                                accept=".html,.pdf"
+                                                onChange={handleTemplateUpload}
+                                            />
+                                        </div>
+
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(7, 10, 20, 0.4)', padding: '1.25rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                            <div style={{ fontWeight: 'bold', color: 'var(--secondary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <span>ℹ️</span> AI Placeholder Detection
+                                            </div>
+                                            <p style={{ margin: '0 0 0.5rem 0' }}>Our AI will automatically scan your file for markers and inject standard placeholders if missing.</p>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem' }}>
+                                                {['name', 'role', 'date', 'annual_ctc'].map(p => (
+                                                    <code key={p} style={{ background: 'var(--surface-color)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>{`{{${p}}}`}</code>
+                                                ))}
+                                                <span>...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="card" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)' }}>
+                                    <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Active Templates</h3>
+                                    {offerLetterTemplates.length === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+                                            <div style={{ fontSize: '2.5rem', marginBottom: '1rem', opacity: 0.5 }}>📂</div>
+                                            <p>No custom templates found.<br />Using default system format.</p>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                            {offerLetterTemplates.map((tpl, i) => (
+                                                <div key={i} style={{ padding: '1.25rem', background: 'var(--surface-color)', borderRadius: '12px', border: '1px solid var(--border-color)', position: 'relative' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                        <div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
+                                                                <span style={{ background: tpl.employment_type === 'Intern' ? 'var(--secondary)' : 'var(--primary)', color: 'white', fontSize: '0.7rem', padding: '2px 8px', borderRadius: '100px', fontWeight: 'bold' }}>
+                                                                    {tpl.employment_type.toUpperCase()}
+                                                                </span>
+                                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{tpl.original_type?.toUpperCase() || 'HTML'} Format</span>
+                                                            </div>
+                                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                                                                Last updated: {new Date(tpl.updated_at).toLocaleString()}
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleDeleteTemplate(tpl.employment_type)}
+                                                            className="btn-icon"
+                                                            style={{ color: '#EF4444', background: 'rgba(239, 68, 68, 0.1)', border: 'none', borderRadius: '4px', width: '28px', height: '28px', cursor: 'pointer' }}
+                                                            title="Delete Template"
+                                                        >
+                                                            🗑️
+                                                        </button>
+                                                    </div>
+
+                                                    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '8px' }}>
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--secondary)', fontWeight: 'bold', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Detected Placeholders</div>
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                            {tpl.placeholders?.map(p => (
+                                                                <span key={p} style={{ fontSize: '0.65rem', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                                    {p}
+                                                                </span>
+                                                            )) || <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>None detected</span>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* TAB: COPILOT */}
                     {activeTab === 'copilot' && (
                         <div className="card glass-panel" style={{ gridColumn: 'span 3', minHeight: '500px', display: 'flex', flexDirection: 'column' }}>
@@ -828,6 +1092,120 @@ const AdminDashboard = ({ activeTab }) => {
                             </form>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* OFFER LETTER MODAL */}
+            {isOfferLetterModalOpen && viewedEmp && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '2rem' }}>
+                    <div className="card" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h2 className="card-title">📝 {offerLetterParams.employment_type} Offer Letter Preview</h2>
+                            <button className="btn" onClick={() => setIsOfferLetterModalOpen(false)}>✕</button>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Employment Type</label>
+                                    <select
+                                        value={offerLetterParams.employment_type}
+                                        onChange={(e) => setOfferLetterParams({ ...offerLetterParams, employment_type: e.target.value })}
+                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }}
+                                    >
+                                        <option value="Intern">Intern</option>
+                                        <option value="Full-Time">Full-Time</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Offer Date</label>
+                                    <input type="date" value={offerLetterParams.date} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{offerLetterParams.employment_type === 'Intern' ? 'Internship Role' : 'Employee Role'}</label>
+                                    <input type="text" value={offerLetterParams.role} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, role: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
+                                </div>
+
+                                {offerLetterParams.employment_type === 'Intern' ? (
+                                    <>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Stipend / Benefits</label>
+                                            <input type="text" value={offerLetterParams.stipend} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, stipend: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Duration</label>
+                                            <input type="text" value={offerLetterParams.duration} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, duration: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Annual CTC (₹)</label>
+                                            <input type="number" value={offerLetterParams.annual_ctc} onChange={(e) => {
+                                                const ctc = parseFloat(e.target.value);
+                                                setOfferLetterParams({ ...offerLetterParams, annual_ctc: ctc, in_hand_salary: ctc - offerLetterParams.pf_amount });
+                                            }} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Notice Period</label>
+                                            <input type="text" value={offerLetterParams.notice_period} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, notice_period: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                            <input type="checkbox" checked={offerLetterParams.has_pf} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, has_pf: e.target.checked })} id="pf-checkbox" />
+                                            <label htmlFor="pf-checkbox" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Company has PF?</label>
+                                        </div>
+                                        {offerLetterParams.has_pf && (
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>PF Amount (Annual ₹)</label>
+                                                <input type="number" value={offerLetterParams.pf_amount} onChange={(e) => {
+                                                    const pf = parseFloat(e.target.value);
+                                                    setOfferLetterParams({ ...offerLetterParams, pf_amount: pf, in_hand_salary: offerLetterParams.annual_ctc - pf });
+                                                }} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
+                                            </div>
+                                        )}
+                                        <div style={{ padding: '0.75rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '6px', border: '1px solid var(--secondary)', marginTop: '0.5rem' }}>
+                                            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--secondary)', fontWeight: 'bold' }}>💰 In-Hand Amount: ₹{offerLetterParams.in_hand_salary}</p>
+                                        </div>
+                                    </>
+                                )}
+
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Role Description / Annexure Details</label>
+                                    <textarea rows="3" value={offerLetterParams.role_description} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, role_description: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
+                                </div>
+                                <button className="btn btn-primary" onClick={() => handleGenerateOfferLetter(viewedEmp.employee_id)} disabled={isGeneratingOL}>
+                                    {isGeneratingOL ? 'Generating Draft...' : '🔄 Update/Generate Draft'}
+                                </button>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem', background: '#f8fafc' }}>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--primary)' }}>📄 PREVIEW AREA</div>
+                                {viewedEmp.offer_letter_status === 'draft' ? (
+                                    <iframe
+                                        src={`${apiUrl}/admin/interns/offer-letter-preview/${viewedEmp.employee_id}`}
+                                        style={{ width: '100%', height: '400px', border: 'none' }}
+                                        title="Offer Letter Preview"
+                                    />
+                                ) : (
+                                    <div style={{ height: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border-color)' }}>
+                                        Draft not generated yet.<br />Fill details and click Generate.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
+                            <button className="btn btn-secondary" onClick={() => setIsOfferLetterModalOpen(false)}>Cancel</button>
+                            <button
+                                className="btn btn-primary"
+                                style={{ backgroundColor: 'var(--secondary)' }}
+                                disabled={viewedEmp.offer_letter_status !== 'draft'}
+                                onClick={() => handleFinalizeOfferLetter(viewedEmp.employee_id)}
+                            >
+                                ✅ Approve & Send to {offerLetterParams.employment_type === 'Intern' ? 'Intern' : 'Employee'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

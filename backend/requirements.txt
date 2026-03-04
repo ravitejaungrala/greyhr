@@ -9,3 +9,6 @@ pymongo
 google-generativeai
 opencv-python-headless
 mediapipe
+pypdf
+jinja2
+xhtml2pdf

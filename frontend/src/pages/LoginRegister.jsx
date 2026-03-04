@@ -2,7 +2,6 @@ import React, { useState, useRef } from 'react';
 
 const LoginRegister = ({ onLoginSuccess }) => {
     const [mode, setMode] = useState('login'); // 'login' | 'register'
-    const [role, setRole] = useState('employee'); // 'employee' | 'admin'
     const [step, setStep] = useState(1);
 
     // Form State
@@ -118,8 +117,7 @@ const LoginRegister = ({ onLoginSuccess }) => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         email: formData.email,
-                        password: formData.password,
-                        role: role
+                        password: formData.password
                     })
                 });
                 const data = await response.json();
@@ -148,12 +146,6 @@ const LoginRegister = ({ onLoginSuccess }) => {
                     </p>
                 </div>
 
-                {mode === 'login' && (
-                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', background: 'var(--surface-color)', padding: '0.25rem', borderRadius: '8px' }}>
-                        <button className={`btn ${role === 'employee' ? 'btn-primary' : ''}`} style={{ flex: 1, border: 'none', background: role === 'employee' ? '' : 'transparent' }} onClick={() => setRole('employee')}>Employee</button>
-                        <button className={`btn ${role === 'admin' ? 'btn-primary' : ''}`} style={{ flex: 1, border: 'none', background: role === 'admin' ? '' : 'transparent' }} onClick={() => setRole('admin')}>Admin</button>
-                    </div>
-                )}
 
                 {message && (
                     <div style={{ padding: '1rem', borderRadius: '8px', marginBottom: '1rem', background: message.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', color: message.type === 'error' ? '#EF4444' : 'var(--secondary)', fontSize: '0.875rem' }}>
@@ -173,7 +165,7 @@ const LoginRegister = ({ onLoginSuccess }) => {
 
                     <div>
                         <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.25rem', color: 'var(--text-muted)' }}>Email Address</label>
-                        <input type="email" name="email" required value={formData.email} onChange={handleInputChange} placeholder={role === 'admin' ? 'admin@dhanadurga.com' : 'employee@dhanadurga.com'} style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', background: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }} />
+                        <input type="email" name="email" required value={formData.email} onChange={handleInputChange} placeholder="Email address" style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', background: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }} />
                     </div>
 
                     <div>
@@ -188,9 +180,9 @@ const LoginRegister = ({ onLoginSuccess }) => {
 
                 <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                     {mode === 'login' ? (
-                        <p>New employee? <span style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => { setMode('register'); setRole('employee'); }}>Register here</span></p>
+                        <p>New employee? <span style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setMode('register')}>Register here</span></p>
                     ) : (
-                        <p>Already have an account? <span style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => { setMode('login'); setRole('employee'); }}>Log in here</span></p>
+                        <p>Already have an account? <span style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setMode('login')}>Log in here</span></p>
                     )}
                 </div>
             </div>

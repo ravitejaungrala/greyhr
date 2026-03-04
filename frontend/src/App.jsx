@@ -111,6 +111,13 @@ function App() {
                 💰 Payslip Release
               </div>
               <div
+                className={`nav-item ${activeMenu === 'templates' ? 'active' : ''}`}
+                onClick={() => setActiveMenu('templates')}
+                style={{ paddingLeft: '2rem', fontSize: '0.9rem' }}
+              >
+                📄 Offer Letter Templates
+              </div>
+              <div
                 className={`nav-item ${activeMenu === 'copilot' ? 'active' : ''}`}
                 onClick={() => setActiveMenu('copilot')}
                 style={{ paddingLeft: '2rem', fontSize: '0.9rem' }}
