@@ -1167,7 +1167,7 @@ def get_all_kudos():
 @router.get("/announcement")
 def get_announcement():
     if mongo_db.db is None:
-        return {"title": "Welcome", "content": "Welcome to AI Workforce OS!"}
+        return {"title": "Welcome", "content": "Welcome to DurgDhana HRMS!"}
     
     announcement = mongo_db.db.announcements.find_one({}, {"_id": 0}, sort=[("updated_at", -1)])
     if not announcement:

@@ -39,6 +39,7 @@ const AdminDashboard = ({ activeTab }) => {
     const [offerLetterTemplates, setOfferLetterTemplates] = useState([]);
     const [selectedTemplateType, setSelectedTemplateType] = useState('Intern');
     const [uploadingTemplate, setUploadingTemplate] = useState(false);
+    const [previewTimestamp, setPreviewTimestamp] = useState(Date.now());
 
     // Form states
     const [newHoliday, setNewHoliday] = useState({ name: '', date: '', type: 'Public Holiday' });
@@ -61,7 +62,8 @@ const AdminDashboard = ({ activeTab }) => {
                 const res = await fetch(`${apiUrl}/auth/admin/pending`);
                 const data = await res.json();
                 setPendingEmployees(data.employees || []);
-                setViewedEmp(null);
+                // Only unset viewedEmp if they are no longer in the pending list
+                setViewedEmp(prev => prev && data.employees?.some(e => e.employee_id === prev.employee_id) ? data.employees.find(e => e.employee_id === prev.employee_id) : null);
             } else if (activeTab === 'employees') {
                 const res = await fetch(`${apiUrl}/auth/admin/employees`);
                 const data = await res.json();
@@ -205,6 +207,7 @@ const AdminDashboard = ({ activeTab }) => {
             });
             if (res.ok) {
                 alert("Offer letter draft generated! Review it below.");
+                setPreviewTimestamp(Date.now());
                 fetchData();
             }
         } catch (err) {
@@ -1182,7 +1185,7 @@ const AdminDashboard = ({ activeTab }) => {
                                 <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--primary)' }}>📄 PREVIEW AREA</div>
                                 {viewedEmp.offer_letter_status === 'draft' ? (
                                     <iframe
-                                        src={`${apiUrl}/admin/interns/offer-letter-preview/${viewedEmp.employee_id}`}
+                                        src={`${apiUrl}/admin/interns/offer-letter-preview/${viewedEmp.employee_id}?t=${previewTimestamp}`}
                                         style={{ width: '100%', height: '400px', border: 'none' }}
                                         title="Offer Letter Preview"
                                     />

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-
+import './LoginRegister.css';
 const LoginRegister = ({ onLoginSuccess }) => {
     const [mode, setMode] = useState('login'); // 'login' | 'register'
     const [step, setStep] = useState(1);
@@ -135,55 +135,68 @@ const LoginRegister = ({ onLoginSuccess }) => {
     };
 
     return (
-        <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: 'var(--bg-color)', overflowY: 'auto', padding: '2rem 0' }}>
-            <div className="card glass-panel" style={{ width: '100%', maxWidth: '500px', border: '1px solid var(--border-color)', margin: 'auto' }}>
-
-                <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                    <span style={{ fontSize: '3rem' }}>🌊</span>
-                    <h1 style={{ fontSize: '1.5rem', marginTop: '0.5rem' }}>AI Workforce OS</h1>
-                    <p style={{ color: 'var(--text-muted)' }}>
-                        {mode === 'login' ? 'Sign in to your account' : `Create your employee account`}
+        <div className="login-page-container">
+            <div className="login-hero">
+                <div style={{ position: 'relative', zIndex: 1, maxWidth: '600px' }}>
+                    <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🌊</div>
+                    <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '1rem', lineHeight: 1.2 }}>
+                        Welcome to<br />DurgDhana HRMS
+                    </h1>
+                    <p style={{ fontSize: '1.125rem', opacity: 0.9 }}>
+                        Empowering your workforce with modern AI-driven tools. Streamline operations, foster engagement, and unlock potential.
                     </p>
                 </div>
+            </div>
 
-
-                {message && (
-                    <div style={{ padding: '1rem', borderRadius: '8px', marginBottom: '1rem', background: message.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', color: message.type === 'error' ? '#EF4444' : 'var(--secondary)', fontSize: '0.875rem' }}>
-                        {message.text}
+            <div className="login-form-container">
+                <div className="login-card">
+                    <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+                        <div style={{ fontSize: '2.5rem', display: 'inline-block', marginBottom: '0.5rem' }}>🌊</div>
+                        <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-light)', marginBottom: '0.5rem' }}>DurgDhana HRMS</h2>
+                        <p style={{ color: 'var(--text-muted)' }}>
+                            {mode === 'login' ? 'Sign in to your account' : 'Create your employee account'}
+                        </p>
                     </div>
-                )}
 
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-
-                    {/* Form fields */}
-                    {mode === 'register' && (
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.25rem', color: 'var(--text-muted)' }}>Full Name</label>
-                            <input type="text" name="name" required value={formData.name} onChange={handleInputChange} placeholder="John Doe" style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', background: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }} />
+                    {message && (
+                        <div style={{ padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', background: message.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', color: message.type === 'error' ? '#EF4444' : 'var(--secondary)', fontSize: '0.875rem', fontWeight: 500, border: `1px solid ${message.type === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}` }}>
+                            {message.text}
                         </div>
                     )}
 
-                    <div>
-                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.25rem', color: 'var(--text-muted)' }}>Email Address</label>
-                        <input type="email" name="email" required value={formData.email} onChange={handleInputChange} placeholder="Email address" style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', background: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }} />
+                    <form onSubmit={handleSubmit}>
+                        {mode === 'register' && (
+                            <div className="input-group">
+                                <label className="input-label">Full Name</label>
+                                <input type="text" name="name" className="input-field" required value={formData.name} onChange={handleInputChange} placeholder="John Doe" />
+                            </div>
+                        )}
+
+                        <div className="input-group">
+                            <label className="input-label">Email Address</label>
+                            <input type="email" name="email" className="input-field" required value={formData.email} onChange={handleInputChange} placeholder="name@company.com" />
+                        </div>
+
+                        <div className="input-group" style={{ marginBottom: '2rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                <label className="input-label" style={{ marginBottom: 0 }}>Password</label>
+                                {mode === 'login' && <a href="#" style={{ fontSize: '0.875rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: 500 }}>Forgot password?</a>}
+                            </div>
+                            <input type="password" name="password" className="input-field" required value={formData.password} onChange={handleInputChange} placeholder="••••••••" />
+                        </div>
+
+                        <button type="submit" className="btn-login" disabled={loading}>
+                            {loading ? 'Processing...' : (mode === 'login' ? 'Sign In' : 'Create Account')}
+                        </button>
+                    </form>
+
+                    <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                        {mode === 'login' ? (
+                            <p>New employee? <span style={{ color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }} onClick={() => setMode('register')}>Register here</span></p>
+                        ) : (
+                            <p>Already have an account? <span style={{ color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }} onClick={() => setMode('login')}>Log in here</span></p>
+                        )}
                     </div>
-
-                    <div>
-                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.25rem', color: 'var(--text-muted)' }}>Password</label>
-                        <input type="password" name="password" required value={formData.password} onChange={handleInputChange} placeholder="••••••••" style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', background: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }} />
-                    </div>
-
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.75rem', marginTop: '1rem' }} disabled={loading}>
-                        {loading ? 'Processing...' : (mode === 'login' ? 'Sign In' : 'Create Account')}
-                    </button>
-                </form>
-
-                <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                    {mode === 'login' ? (
-                        <p>New employee? <span style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setMode('register')}>Register here</span></p>
-                    ) : (
-                        <p>Already have an account? <span style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setMode('login')}>Log in here</span></p>
-                    )}
                 </div>
             </div>
         </div>

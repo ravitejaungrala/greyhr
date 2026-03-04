@@ -7,7 +7,7 @@ load_dotenv()  # Load variables from .env
 
 from api.router import router
 
-app = FastAPI(title="AI Workforce OS API")
+app = FastAPI(title="DurgDhana HRMS API")
 
 # Configure CORS for frontend access
 app.add_middleware(
@@ -27,4 +27,4 @@ if __name__ == "__main__":
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to AI Workforce OS API"}
+    return {"message": "Welcome to DurgDhana HRMS API"}

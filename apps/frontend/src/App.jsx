@@ -39,7 +39,7 @@ function App() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <span style={{ fontSize: '1.5rem' }}>🌊</span>
-          <span>AI Workforce OS</span>
+          <span>DurgDhana HRMS</span>
         </div>
         <nav className="nav-menu">
           {user.role === 'admin' ? (
