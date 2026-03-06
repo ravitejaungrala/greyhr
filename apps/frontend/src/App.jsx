@@ -62,6 +62,13 @@ function App() {
                 👥 Employee Directory
               </div>
               <div
+                className={`nav-item ${activeMenu === 'copilot' ? 'active' : ''}`}
+                onClick={() => setActiveMenu('copilot')}
+                style={{ paddingLeft: '2rem', fontSize: '0.9rem' }}
+              >
+                🤖 HR AI Copilot
+              </div>
+              <div
                 className={`nav-item ${activeMenu === 'leaves' ? 'active' : ''}`}
                 onClick={() => setActiveMenu('leaves')}
                 style={{ paddingLeft: '2rem', fontSize: '0.9rem' }}
@@ -116,13 +123,6 @@ function App() {
                 style={{ paddingLeft: '2rem', fontSize: '0.9rem' }}
               >
                 📄 Offer Letter Templates
-              </div>
-              <div
-                className={`nav-item ${activeMenu === 'copilot' ? 'active' : ''}`}
-                onClick={() => setActiveMenu('copilot')}
-                style={{ paddingLeft: '2rem', fontSize: '0.9rem' }}
-              >
-                🤖 HR AI Copilot
               </div>
             </>
           ) : (

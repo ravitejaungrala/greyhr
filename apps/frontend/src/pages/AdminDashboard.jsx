@@ -40,6 +40,24 @@ const AdminDashboard = ({ activeTab }) => {
     const [selectedTemplateType, setSelectedTemplateType] = useState('Intern');
     const [uploadingTemplate, setUploadingTemplate] = useState(false);
     const [previewTimestamp, setPreviewTimestamp] = useState(Date.now());
+    const [showAnalysisConfirm, setShowAnalysisConfirm] = useState(false);
+    const [selectedPayslipType, setSelectedPayslipType] = useState('Full-Time');
+    const [showReleaseConfirm, setShowReleaseConfirm] = useState(false);
+    const [releasePreviewData, setReleasePreviewData] = useState([]);
+    const [selectedReleaseMonth, setSelectedReleaseMonth] = useState('');
+    const [isFetchingPreview, setIsFetchingPreview] = useState(false);
+    const [showOfferTemplateConfirm, setShowOfferTemplateConfirm] = useState(false);
+    const [offerTemplateAnalysis, setOfferTemplateAnalysis] = useState(null);
+    const [selectedOfferLetterTemplate, setSelectedOfferLetterTemplate] = useState('Default');
+    const [companyDetails, setCompanyDetails] = useState({
+        company_name: '',
+        company_address: '',
+        contact_email: '',
+        website_url: '',
+        linkedin_handle: '',
+        hr_signature_name: '',
+        hr_signature_image: ''
+    });
 
     // Form states
     const [newHoliday, setNewHoliday] = useState({ name: '', date: '', type: 'Public Holiday' });
@@ -93,6 +111,24 @@ const AdminDashboard = ({ activeTab }) => {
                 const res = await fetch(`${apiUrl}/admin/payslips/status`);
                 const data = await res.json();
                 setPayrollStatus(data.releases || []);
+
+                // Fetch saved payslip template to show persistence
+                try {
+                    const tplRes = await fetch(`${apiUrl}/admin/templates?document_type=Payslip`);
+                    const tplData = await tplRes.json();
+                    const matchedTpl = tplData.find(t => t.employment_type === selectedPayslipType);
+                    if (matchedTpl) {
+                        setTemplateAnalysis({
+                            html_template: matchedTpl.html_template,
+                            placeholders: matchedTpl.placeholders,
+                            roi_fields: matchedTpl.roi_fields || []
+                        });
+                    } else {
+                        setTemplateAnalysis(null);
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch payslip template UI", e);
+                }
             } else if (activeTab === 'announcements') {
                 const res = await fetch(`${apiUrl}/announcement`);
                 const data = await res.json();
@@ -101,6 +137,12 @@ const AdminDashboard = ({ activeTab }) => {
                 const res = await fetch(`${apiUrl}/admin/templates`);
                 const data = await res.json();
                 setOfferLetterTemplates(data || []);
+                if (data && data.length > 0) {
+                    const firstTpl = data[0];
+                    if (firstTpl.company_details) {
+                        setCompanyDetails(firstTpl.company_details);
+                    }
+                }
             }
         } catch (err) {
             console.error(err);
@@ -111,7 +153,7 @@ const AdminDashboard = ({ activeTab }) => {
 
     useEffect(() => {
         fetchData();
-    }, [activeTab]);
+    }, [activeTab, selectedPayslipType]);
 
     const handleApproval = async (empId, action) => {
         try {
@@ -202,6 +244,7 @@ const AdminDashboard = ({ activeTab }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     employee_id: empId,
+                    template_type: selectedOfferLetterTemplate,
                     ...offerLetterParams
                 })
             });
@@ -300,6 +343,105 @@ const AdminDashboard = ({ activeTab }) => {
         setNewHoliday({ name: holiday.name, date: holiday.date, type: holiday.type });
     };
 
+
+    const handleReleaseRequest = async (month) => {
+        setIsFetchingPreview(true);
+        setSelectedReleaseMonth(month);
+        try {
+            const res = await fetch(`${apiUrl}/admin/payslips/release-preview?month_year=${month}`);
+            const data = await res.json();
+            setReleasePreviewData(data.preview || []);
+            setShowReleaseConfirm(true);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsFetchingPreview(false);
+        }
+    };
+
+    const handleFinalRelease = async (month, currentStatus) => {
+        try {
+            const res = await fetch(`${apiUrl}/admin/payslips/release`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ month_year: month, release: !currentStatus })
+            });
+            if (res.ok) {
+                setShowReleaseConfirm(false);
+                fetchData();
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handlePayslipFormatUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const base64Content = event.target.result.split(',')[1];
+            let fileType = 'html';
+            if (file.name.endsWith('.pdf')) fileType = 'pdf';
+            else if (file.type.startsWith('image/')) fileType = 'image';
+            else if (['jpg', 'jpeg', 'png'].some(ext => file.name.toLowerCase().endsWith(ext))) fileType = 'image';
+
+            setIsAnalyzing(true);
+            try {
+                const res = await fetch(`${apiUrl}/admin/payslips/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        employment_type: selectedPayslipType,
+                        content_base64: base64Content,
+                        file_type: fileType,
+                        document_type: "Payslip"
+                    })
+                });
+                const data = await res.json();
+                if (data.analysis) {
+                    setTemplateAnalysis(data.analysis);
+                    setShowAnalysisConfirm(true);
+                } else {
+                    alert('Analysis failed: ' + data.error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Upload failed!');
+            } finally {
+                setIsAnalyzing(false);
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleSavePayslipTemplate = async () => {
+        try {
+            const res = await fetch(`${apiUrl}/admin/payslips/template/save`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    employment_type: selectedPayslipType,
+                    html_template: templateAnalysis.html_template,
+                    placeholders: templateAnalysis.placeholders,
+                    roi_fields: templateAnalysis.roi_fields,
+                    document_type: "Payslip"
+                })
+            });
+            if (res.ok) {
+                alert("Payslip template configuration saved successfully!");
+                setShowAnalysisConfirm(false);
+                setPreviewTimestamp(Date.now()); // trigger iframe reload
+            } else {
+                alert("Failed to save payslip template.");
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to save payslip template.');
+        }
+    };
+
     const handleTemplateUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -309,7 +451,10 @@ const AdminDashboard = ({ activeTab }) => {
             const result = event.target.result;
             // Extract base64 part
             const base64Content = result.split(',')[1];
-            const fileType = file.name.endsWith('.pdf') ? 'pdf' : 'html';
+            let fileType = 'html';
+            if (file.name.endsWith('.pdf')) fileType = 'pdf';
+            else if (file.type.startsWith('image/')) fileType = 'image';
+            else if (['jpg', 'jpeg', 'png'].some(ext => file.name.toLowerCase().endsWith(ext))) fileType = 'image';
 
             setUploadingTemplate(true);
             try {
@@ -323,18 +468,59 @@ const AdminDashboard = ({ activeTab }) => {
                     })
                 });
                 const data = await res.json();
-                if (data.message) {
-                    alert(data.message);
-                    fetchData();
+                if (data.placeholders) {
+                    setOfferTemplateAnalysis({
+                        employment_type: selectedTemplateType,
+                        placeholders: data.placeholders,
+                        html_template: data.html_template // This will be in the response now
+                    });
+                    setShowOfferTemplateConfirm(true);
                 } else {
                     alert('Upload failed: ' + data.error);
                 }
             } catch (err) {
                 console.error("Upload Error Details:", err);
-                alert(`Upload failed! Could not connect to ${apiUrl}/admin/templates/upload. Please ensure the backend server is running.`);
+                alert(`Upload failed! Could not connect to the backend.`);
             } finally {
                 setUploadingTemplate(false);
             }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleSaveOfferTemplate = async () => {
+        try {
+            const res = await fetch(`${apiUrl}/admin/templates/save`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    employment_type: offerTemplateAnalysis.employment_type,
+                    html_template: offerTemplateAnalysis.html_template,
+                    placeholders: offerTemplateAnalysis.placeholders,
+                    company_details: companyDetails
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.message);
+                setShowOfferTemplateConfirm(false);
+                setOfferTemplateAnalysis(null);
+                fetchData();
+            } else {
+                alert('Save failed: ' + data.error);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to save template');
+        }
+    };
+
+    const handleSignatureUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            setCompanyDetails({ ...companyDetails, hr_signature_image: event.target.result });
         };
         reader.readAsDataURL(file);
     };
@@ -864,22 +1050,116 @@ const AdminDashboard = ({ activeTab }) => {
                                 <h2 className="card-title">📄 Payslip Template Configuration</h2>
                                 <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Upload a sample payslip image to train the AI on your specific company format.</p>
 
+                                <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                    <label style={{ fontSize: '0.875rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>Target Employment Type:</label>
+                                    <select
+                                        value={selectedPayslipType}
+                                        onChange={(e) => setSelectedPayslipType(e.target.value)}
+                                        style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)', cursor: 'pointer' }}
+                                    >
+                                        <option value="Full-Time">Full-Time Employee</option>
+                                        <option value="Intern">Intern</option>
+                                    </select>
+                                </div>
+
                                 <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ padding: '2rem', border: '2px dashed var(--border-color)', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', background: 'var(--surface-color)' }} onClick={() => document.getElementById('template-upload').click()}>
+                                        <div style={{ padding: '2rem', border: '2px dashed var(--border-color)', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', background: 'var(--surface-color)', position: 'relative', overflow: 'hidden' }} onClick={() => !isAnalyzing && document.getElementById('template-upload').click()}>
+                                            {isAnalyzing && (
+                                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(79, 70, 229, 0.1)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
+                                                    <div className="pulse-loader" style={{ width: '50px', height: '50px', background: 'var(--primary)', borderRadius: '50%', marginBottom: '1rem', animation: 'pulse 1.5s infinite ease-in-out' }}></div>
+                                                    <div style={{ fontWeight: 'bold', color: 'var(--primary)', letterSpacing: '1px' }}>AI SCANNING DOCUMENT...</div>
+                                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Extracting layout & Investment fields</p>
+                                                </div>
+                                            )}
                                             <span style={{ fontSize: '2rem' }}>📁</span>
-                                            <p style={{ marginTop: '0.5rem' }}>{isAnalyzing ? 'Analyzing format with AI...' : 'Click to upload payslip template (JPG/PNG)'}</p>
-                                            <input id="template-upload" type="file" hidden accept="image/*" onChange={handleTemplateUpload} />
+                                            <p style={{ marginTop: '0.5rem' }}>{isAnalyzing ? 'Processing...' : 'Click to upload payslip template (JPG/PNG)'}</p>
+                                            <input id="template-upload" type="file" hidden accept="image/*" onChange={handlePayslipFormatUpload} />
                                         </div>
                                     </div>
                                     {templateAnalysis && (
-                                        <div style={{ flex: 1, padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                                            <div style={{ fontWeight: 'bold', fontSize: '0.8rem', marginBottom: '0.5rem', color: 'var(--primary)' }}>✔ AI ANALYSIS COMPLETE</div>
-                                            <pre style={{ fontSize: '0.7rem', color: '#64748b', whiteSpace: 'pre-wrap', maxHeight: '150px', overflowY: 'auto' }}>{templateAnalysis}</pre>
+                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                            <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                                <div style={{ fontWeight: 'bold', fontSize: '0.8rem', marginBottom: '0.5rem', color: 'var(--primary)' }}>✔ AI ANALYSIS COMPLETE</div>
+                                                <pre style={{ fontSize: '0.7rem', color: '#64748b', whiteSpace: 'pre-wrap', maxHeight: '100px', overflowY: 'auto' }}>
+                                                    {JSON.stringify({
+                                                        placeholders: templateAnalysis.placeholders,
+                                                        roi_fields: templateAnalysis.roi_fields
+                                                    }, null, 2)}
+                                                </pre>
+                                            </div>
+                                            <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                                                <div style={{ background: 'var(--surface-color)', padding: '0.5rem 1rem', fontSize: '0.75rem', fontWeight: 'bold', borderBottom: '1px solid var(--border-color)' }}>📄 GENERATED PREVIEW</div>
+                                                <iframe
+                                                    src={`${apiUrl}/admin/payslips/preview?type=${encodeURIComponent(selectedPayslipType)}&t=${previewTimestamp}`}
+                                                    style={{ width: '100%', height: '400px', border: 'none' }}
+                                                    title="Payslip Preview"
+                                                />
+                                            </div>
                                         </div>
                                     )}
                                 </div>
                             </div>
+
+                            {/* ANALYSIS CONFIRMATION MODAL */}
+                            {showAnalysisConfirm && (
+                                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '2rem' }}>
+                                    <div className="card glass-panel" style={{ width: '100%', maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--primary)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                                            <h2 className="card-title" style={{ margin: 0, color: 'var(--primary)' }}>✨ AI Analysis Results</h2>
+                                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                                <button className="btn btn-secondary" onClick={() => { setShowAnalysisConfirm(false); setTemplateAnalysis(null); }}>Re-upload</button>
+                                                <button className="btn btn-primary" style={{ backgroundColor: 'var(--secondary)' }} onClick={handleSavePayslipTemplate}>Confirm & Save Template</button>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                                <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                                    <h3 style={{ fontSize: '1rem', color: 'var(--secondary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <span>📋</span> Basic Structure Extracted
+                                                    </h3>
+                                                    <div style={{ fontSize: '0.85rem', lineHeight: '1.6', color: 'var(--text-light)' }}>
+                                                        <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                                                            {JSON.stringify(templateAnalysis, null, 2)}
+                                                        </pre>
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ padding: '1.5rem', background: 'rgba(16, 185, 129, 0.05)', borderRadius: '12px', border: '1px solid var(--secondary)' }}>
+                                                    <h3 style={{ fontSize: '1rem', color: 'var(--secondary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <span>💰</span> ROI / Investment Fields Found
+                                                    </h3>
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                                        {['80C', '80D', 'HRA', 'NPS', 'Declaration'].map(field => (
+                                                            <span key={field} style={{ padding: '0.4rem 0.8rem', background: 'rgba(16, 185, 129, 0.2)', color: 'var(--secondary)', borderRadius: '20px', fontSize: '0.75rem', border: '1px solid var(--secondary)' }}>
+                                                                {field} detected
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1rem' }}>
+                                                        * These fields will be automatically mapped to employee investment declarations for tax calculations.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                                <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', overflow: 'hidden', height: '100%' }}>
+                                                    <div style={{ background: 'var(--surface-color)', padding: '0.75rem 1.5rem', fontSize: '0.85rem', fontWeight: 'bold', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span>📄 LIVE MAPPING PREVIEW</span>
+                                                        <span style={{ color: 'var(--secondary)' }}>AI Rendering...</span>
+                                                    </div>
+                                                    <iframe
+                                                        src={`${apiUrl}/admin/payslips/preview?t=${Date.now()}`}
+                                                        style={{ width: '100%', height: '500px', border: 'none' }}
+                                                        title="Payslip Preview"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="card">
                                 <h2 className="card-title">🚀 Payslip Release Control</h2>
@@ -894,16 +1174,16 @@ const AdminDashboard = ({ activeTab }) => {
                                                 </div>
                                                 <button
                                                     className={`btn ${isReleased ? 'btn-secondary' : 'btn-primary'}`}
-                                                    onClick={async () => {
-                                                        const res = await fetch(`${apiUrl}/admin/payslips/release`, {
-                                                            method: 'POST',
-                                                            headers: { 'Content-Type': 'application/json' },
-                                                            body: JSON.stringify({ month_year: month, release: !isReleased })
-                                                        });
-                                                        if (res.ok) fetchData();
+                                                    onClick={() => {
+                                                        if (isReleased) {
+                                                            handleFinalRelease(month, isReleased);
+                                                        } else {
+                                                            handleReleaseRequest(month);
+                                                        }
                                                     }}
+                                                    disabled={isFetchingPreview}
                                                 >
-                                                    {isReleased ? 'Hide Payslips' : 'Release Payslips'}
+                                                    {isFetchingPreview && selectedReleaseMonth === month ? '...' : (isReleased ? 'Hide Payslips' : 'Release Payslips')}
                                                 </button>
                                             </div>
                                         );
@@ -960,14 +1240,14 @@ const AdminDashboard = ({ activeTab }) => {
                                             ) : (
                                                 <div>
                                                     <div style={{ fontWeight: 'bold' }}>Click to upload Offer Template</div>
-                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Supports .pdf or .html files</div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Supports .pdf, .html or Image files (.jpg, .png)</div>
                                                 </div>
                                             )}
                                             <input
                                                 id="template-upload-input"
                                                 type="file"
                                                 hidden
-                                                accept=".html,.pdf"
+                                                accept=".html,.pdf,.jpg,.jpeg,.png"
                                                 onChange={handleTemplateUpload}
                                             />
                                         </div>
@@ -1037,176 +1317,375 @@ const AdminDashboard = ({ activeTab }) => {
                                 </div>
                             </div>
                         </div>
-                    )}
+                    )
+                    }
 
                     {/* TAB: COPILOT */}
-                    {activeTab === 'copilot' && (
-                        <div className="card glass-panel" style={{ gridColumn: 'span 3', minHeight: '500px', display: 'flex', flexDirection: 'column' }}>
-                            <h2 className="card-title">🤖 HR AI Copilot</h2>
-                            <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1rem', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
-                                {copilotAnswer ? (
-                                    <div style={{ lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{copilotAnswer}</div>
-                                ) : (
-                                    <div style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '20%' }}>Ask me anything about company policies, candidate details, or salary rules...</div>
-                                )}
-                                {isCopilotLoading && <div style={{ textAlign: 'center', marginTop: '1rem' }}>Thinking... 🧠</div>}
-                            </div>
-                            <form onSubmit={handleCopilot} style={{ display: 'flex', gap: '1rem' }}>
-                                <input
-                                    type="text"
-                                    value={copilotQuery}
-                                    onChange={(e) => setCopilotQuery(e.target.value)}
-                                    placeholder="e.g. Compare candidates for Software role..."
-                                    style={{ flex: 1, padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }}
-                                />
-                                <button type="submit" disabled={isCopilotLoading} className="btn-primary" style={{ padding: '0 2rem' }}>Ask AI</button>
-                            </form>
-                        </div>
-                    )}
-
-                    {/* TAB: ANNOUNCEMENTS */}
-                    {activeTab === 'announcements' && (
-                        <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
-                            <h2 className="card-title">📢 Manage System Announcements</h2>
-                            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>This message will be visible to all employees in their Engage module.</p>
-
-                            <form onSubmit={handleUpdateAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Announcement Title</label>
+                    {
+                        activeTab === 'copilot' && (
+                            <div className="card glass-panel" style={{ gridColumn: 'span 3', minHeight: '500px', display: 'flex', flexDirection: 'column' }}>
+                                <h2 className="card-title">🤖 HR AI Copilot</h2>
+                                <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1rem', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
+                                    {copilotAnswer ? (
+                                        <div style={{ lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{copilotAnswer}</div>
+                                    ) : (
+                                        <div style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '20%' }}>Ask me anything about company policies, candidate details, or salary rules...</div>
+                                    )}
+                                    {isCopilotLoading && <div style={{ textAlign: 'center', marginTop: '1rem' }}>Thinking... 🧠</div>}
+                                </div>
+                                <form onSubmit={handleCopilot} style={{ display: 'flex', gap: '1rem' }}>
                                     <input
                                         type="text"
-                                        value={announcementMsg.title}
-                                        onChange={(e) => setAnnouncementMsg({ ...announcementMsg, title: e.target.value })}
-                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }}
-                                        placeholder="e.g. 📌 Essential Office Guidelines"
+                                        value={copilotQuery}
+                                        onChange={(e) => setCopilotQuery(e.target.value)}
+                                        placeholder="e.g. Compare candidates for Software role..."
+                                        style={{ flex: 1, padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }}
                                     />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Content</label>
-                                    <textarea
-                                        rows="6"
-                                        value={announcementMsg.content}
-                                        onChange={(e) => setAnnouncementMsg({ ...announcementMsg, content: e.target.value })}
-                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)', lineHeight: '1.5' }}
-                                        placeholder="Type the announcement content here..."
-                                    />
-                                </div>
-                                <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', padding: '0.75rem 2rem' }}>Update Announcement</button>
-                            </form>
-                        </div>
-                    )}
-                </div>
+                                    <button type="submit" disabled={isCopilotLoading} className="btn-primary" style={{ padding: '0 2rem' }}>Ask AI</button>
+                                </form>
+                            </div>
+                        )
+                    }
+
+                    {/* TAB: ANNOUNCEMENTS */}
+                    {
+                        activeTab === 'announcements' && (
+                            <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
+                                <h2 className="card-title">📢 Manage System Announcements</h2>
+                                <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>This message will be visible to all employees in their Engage module.</p>
+
+                                <form onSubmit={handleUpdateAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Announcement Title</label>
+                                        <input
+                                            type="text"
+                                            value={announcementMsg.title}
+                                            onChange={(e) => setAnnouncementMsg({ ...announcementMsg, title: e.target.value })}
+                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }}
+                                            placeholder="e.g. 📌 Essential Office Guidelines"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Content</label>
+                                        <textarea
+                                            rows="6"
+                                            value={announcementMsg.content}
+                                            onChange={(e) => setAnnouncementMsg({ ...announcementMsg, content: e.target.value })}
+                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)', lineHeight: '1.5' }}
+                                            placeholder="Type the announcement content here..."
+                                        />
+                                    </div>
+                                    <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', padding: '0.75rem 2rem' }}>Update Announcement</button>
+                                </form>
+                            </div>
+                        )
+                    }
+                </div >
             )}
 
             {/* OFFER LETTER MODAL */}
-            {isOfferLetterModalOpen && viewedEmp && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '2rem' }}>
-                    <div className="card" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 className="card-title">📝 {offerLetterParams.employment_type} Offer Letter Preview</h2>
-                            <button className="btn" onClick={() => setIsOfferLetterModalOpen(false)}>✕</button>
-                        </div>
+            {
+                isOfferLetterModalOpen && viewedEmp && (
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '2rem' }}>
+                        <div className="card" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h2 className="card-title">📝 {offerLetterParams.employment_type} Offer Letter Preview</h2>
+                                <button className="btn" onClick={() => setIsOfferLetterModalOpen(false)}>✕</button>
+                            </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Employment Type</label>
-                                    <select
-                                        value={offerLetterParams.employment_type}
-                                        onChange={(e) => setOfferLetterParams({ ...offerLetterParams, employment_type: e.target.value })}
-                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }}
-                                    >
-                                        <option value="Intern">Intern</option>
-                                        <option value="Full-Time">Full-Time</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Offer Date</label>
-                                    <input type="date" value={offerLetterParams.date} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{offerLetterParams.employment_type === 'Intern' ? 'Internship Role' : 'Employee Role'}</label>
-                                    <input type="text" value={offerLetterParams.role} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, role: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
-                                </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Employment Type</label>
+                                        <select
+                                            value={offerLetterParams.employment_type}
+                                            onChange={(e) => setOfferLetterParams({ ...offerLetterParams, employment_type: e.target.value })}
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }}
+                                        >
+                                            <option value="Intern">Intern</option>
+                                            <option value="Full-Time">Full-Time</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Template Selection</label>
+                                        <select
+                                            value={selectedOfferLetterTemplate}
+                                            onChange={(e) => setSelectedOfferLetterTemplate(e.target.value)}
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }}
+                                        >
+                                            <option value="Default">Default System Format</option>
+                                            {offerLetterTemplates.some(t => t.employment_type === offerLetterParams.employment_type) ? (
+                                                <option value="Custom">Custom {offerLetterParams.employment_type} Template</option>
+                                            ) : (
+                                                <option disabled>No custom template for {offerLetterParams.employment_type}</option>
+                                            )}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Offer Date</label>
+                                        <input type="date" value={offerLetterParams.date} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{offerLetterParams.employment_type === 'Intern' ? 'Internship Role' : 'Employee Role'}</label>
+                                        <input type="text" value={offerLetterParams.role} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, role: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
+                                    </div>
 
-                                {offerLetterParams.employment_type === 'Intern' ? (
-                                    <>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Stipend / Benefits</label>
-                                            <input type="text" value={offerLetterParams.stipend} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, stipend: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Duration</label>
-                                            <input type="text" value={offerLetterParams.duration} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, duration: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Annual CTC (₹)</label>
-                                            <input type="number" value={offerLetterParams.annual_ctc} onChange={(e) => {
-                                                const ctc = parseFloat(e.target.value);
-                                                setOfferLetterParams({ ...offerLetterParams, annual_ctc: ctc, in_hand_salary: ctc - offerLetterParams.pf_amount });
-                                            }} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Notice Period</label>
-                                            <input type="text" value={offerLetterParams.notice_period} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, notice_period: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                            <input type="checkbox" checked={offerLetterParams.has_pf} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, has_pf: e.target.checked })} id="pf-checkbox" />
-                                            <label htmlFor="pf-checkbox" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Company has PF?</label>
-                                        </div>
-                                        {offerLetterParams.has_pf && (
+                                    {offerLetterParams.employment_type === 'Intern' ? (
+                                        <>
                                             <div>
-                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>PF Amount (Annual ₹)</label>
-                                                <input type="number" value={offerLetterParams.pf_amount} onChange={(e) => {
-                                                    const pf = parseFloat(e.target.value);
-                                                    setOfferLetterParams({ ...offerLetterParams, pf_amount: pf, in_hand_salary: offerLetterParams.annual_ctc - pf });
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Stipend / Benefits</label>
+                                                <input type="text" value={offerLetterParams.stipend} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, stipend: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Duration</label>
+                                                <input type="text" value={offerLetterParams.duration} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, duration: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Annual CTC (₹)</label>
+                                                <input type="number" value={offerLetterParams.annual_ctc} onChange={(e) => {
+                                                    const ctc = parseFloat(e.target.value);
+                                                    setOfferLetterParams({ ...offerLetterParams, annual_ctc: ctc, in_hand_salary: ctc - offerLetterParams.pf_amount });
                                                 }} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
                                             </div>
-                                        )}
-                                        <div style={{ padding: '0.75rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '6px', border: '1px solid var(--secondary)', marginTop: '0.5rem' }}>
-                                            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--secondary)', fontWeight: 'bold' }}>💰 In-Hand Amount: ₹{offerLetterParams.in_hand_salary}</p>
-                                        </div>
-                                    </>
-                                )}
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Notice Period</label>
+                                                <input type="text" value={offerLetterParams.notice_period} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, notice_period: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                                <input type="checkbox" checked={offerLetterParams.has_pf} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, has_pf: e.target.checked })} id="pf-checkbox" />
+                                                <label htmlFor="pf-checkbox" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Company has PF?</label>
+                                            </div>
+                                            {offerLetterParams.has_pf && (
+                                                <div>
+                                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>PF Amount (Annual ₹)</label>
+                                                    <input type="number" value={offerLetterParams.pf_amount} onChange={(e) => {
+                                                        const pf = parseFloat(e.target.value);
+                                                        setOfferLetterParams({ ...offerLetterParams, pf_amount: pf, in_hand_salary: offerLetterParams.annual_ctc - pf });
+                                                    }} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
+                                                </div>
+                                            )}
+                                            <div style={{ padding: '0.75rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '6px', border: '1px solid var(--secondary)', marginTop: '0.5rem' }}>
+                                                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--secondary)', fontWeight: 'bold' }}>💰 In-Hand Amount: ₹{offerLetterParams.in_hand_salary}</p>
+                                            </div>
+                                        </>
+                                    )}
 
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Role Description / Annexure Details</label>
-                                    <textarea rows="3" value={offerLetterParams.role_description} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, role_description: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Role Description / Annexure Details</label>
+                                        <textarea rows="3" value={offerLetterParams.role_description} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, role_description: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-light)' }} />
+                                    </div>
+                                    <button className="btn btn-primary" onClick={() => handleGenerateOfferLetter(viewedEmp.employee_id)} disabled={isGeneratingOL}>
+                                        {isGeneratingOL ? 'Generating Draft...' : '🔄 Update/Generate Draft'}
+                                    </button>
                                 </div>
-                                <button className="btn btn-primary" onClick={() => handleGenerateOfferLetter(viewedEmp.employee_id)} disabled={isGeneratingOL}>
-                                    {isGeneratingOL ? 'Generating Draft...' : '🔄 Update/Generate Draft'}
-                                </button>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem', background: '#f8fafc' }}>
+                                    <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--primary)' }}>📄 PREVIEW AREA</div>
+                                    {viewedEmp.offer_letter_status === 'draft' ? (
+                                        <iframe
+                                            src={`${apiUrl}/admin/interns/offer-letter-preview/${viewedEmp.employee_id}?t=${previewTimestamp}`}
+                                            style={{ width: '100%', height: '400px', border: 'none' }}
+                                            title="Offer Letter Preview"
+                                        />
+                                    ) : (
+                                        <div style={{ height: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border-color)' }}>
+                                            Draft not generated yet.<br />Fill details and click Generate.
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem', background: '#f8fafc' }}>
-                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--primary)' }}>📄 PREVIEW AREA</div>
-                                {viewedEmp.offer_letter_status === 'draft' ? (
-                                    <iframe
-                                        src={`${apiUrl}/admin/interns/offer-letter-preview/${viewedEmp.employee_id}?t=${previewTimestamp}`}
-                                        style={{ width: '100%', height: '400px', border: 'none' }}
-                                        title="Offer Letter Preview"
-                                    />
-                                ) : (
-                                    <div style={{ height: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border-color)' }}>
-                                        Draft not generated yet.<br />Fill details and click Generate.
-                                    </div>
-                                )}
+                            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
+                                <button className="btn btn-secondary" onClick={() => setIsOfferLetterModalOpen(false)}>Cancel</button>
+                                <button
+                                    className="btn btn-primary"
+                                    style={{ backgroundColor: 'var(--secondary)' }}
+                                    disabled={viewedEmp.offer_letter_status !== 'draft'}
+                                    onClick={() => handleFinalizeOfferLetter(viewedEmp.employee_id)}
+                                >
+                                    ✅ Approve & Send to {offerLetterParams.employment_type === 'Intern' ? 'Intern' : 'Employee'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* PAYSLIP RELEASE CONFIRMATION MODAL */}
+            {showReleaseConfirm && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '2rem' }}>
+                    <div className="card glass-panel" style={{ width: '100%', maxWidth: '1000px', maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--secondary)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                            <h2 className="card-title" style={{ margin: 0, color: 'var(--secondary)' }}>🚀 Confirm Payslip Release: {selectedReleaseMonth}</h2>
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                <button className="btn btn-secondary" onClick={() => setShowReleaseConfirm(false)}>Cancel</button>
+                                <button className="btn btn-primary" style={{ backgroundColor: 'var(--secondary)' }} onClick={() => handleFinalRelease(selectedReleaseMonth, false)}>
+                                    Confirm & Send to {releasePreviewData.length} Employees
+                                </button>
                             </div>
                         </div>
 
-                        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
-                            <button className="btn btn-secondary" onClick={() => setIsOfferLetterModalOpen(false)}>Cancel</button>
-                            <button
-                                className="btn btn-primary"
-                                style={{ backgroundColor: 'var(--secondary)' }}
-                                disabled={viewedEmp.offer_letter_status !== 'draft'}
-                                onClick={() => handleFinalizeOfferLetter(viewedEmp.employee_id)}
-                            >
-                                ✅ Approve & Send to {offerLetterParams.employment_type === 'Intern' ? 'Intern' : 'Employee'}
-                            </button>
+                        <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(79, 70, 229, 0.05)', borderRadius: '8px', borderLeft: '4px solid var(--primary)' }}>
+                            <p style={{ fontSize: '0.875rem', margin: 0 }}>
+                                <strong>AI Verification:</strong> Showing all eligible employees for {selectedReleaseMonth}.
+                                Interns are only included if they joined at least 3 months before this period.
+                            </p>
+                        </div>
+
+                        <div style={{ maxHeight: '500px', overflowY: 'auto', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                <thead style={{ position: 'sticky', top: 0, background: 'var(--surface-color)', zIndex: 5 }}>
+                                    <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                                        <th style={{ padding: '1rem' }}>Employee ID</th>
+                                        <th style={{ padding: '1rem' }}>Name</th>
+                                        <th style={{ padding: '1rem' }}>Type</th>
+                                        <th style={{ padding: '1rem' }}>Designation</th>
+                                        <th style={{ padding: '1rem' }}>Gross Salary</th>
+                                        <th style={{ padding: '1rem' }}>Net Payable (Preview)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {releasePreviewData.map((emp, i) => (
+                                        <tr key={i} style={{ borderBottom: '1px solid var(--border-color)', fontSize: '0.875rem' }}>
+                                            <td style={{ padding: '1rem', fontWeight: 'bold' }}>{emp.employee_id}</td>
+                                            <td style={{ padding: '1rem' }}>{emp.name}</td>
+                                            <td style={{ padding: '1rem' }}>
+                                                <span style={{ padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', background: emp.employment_type === 'Intern' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(79, 70, 229, 0.1)', color: emp.employment_type === 'Intern' ? 'var(--secondary)' : 'var(--primary)', fontWeight: 'bold' }}>
+                                                    {emp.employment_type}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{emp.designation}</td>
+                                            <td style={{ padding: '1rem' }}>₹{emp.gross_salary.toLocaleString()}</td>
+                                            <td style={{ padding: '1rem', color: 'var(--secondary)', fontWeight: 'bold' }}>₹{emp.net_salary.toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                    {releasePreviewData.length === 0 && (
+                                        <tr>
+                                            <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                                No eligible employees found for this month.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* OFFER LETTER TEMPLATE ANALYSIS CONFIRMATION */}
+            {showOfferTemplateConfirm && offerTemplateAnalysis && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '2rem' }}>
+                    <div className="card glass-panel" style={{ width: '100%', maxWidth: '1000px', maxHeight: '95vh', overflowY: 'auto', border: '1px solid var(--secondary)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                            <h2 className="card-title" style={{ margin: 0, color: 'var(--secondary)' }}>✨ Offer Letter AI Analysis Results</h2>
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                <button className="btn btn-secondary" onClick={() => { setShowOfferTemplateConfirm(false); setOfferTemplateAnalysis(null); }}>Re-upload</button>
+                                <button className="btn btn-primary" style={{ backgroundColor: 'var(--secondary)' }} onClick={handleSaveOfferTemplate}>Confirm & Save Template</button>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                    <h3 style={{ fontSize: '1rem', color: 'var(--secondary)', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span>🏢</span> Static Company Details (Saved Once)
+                                    </h3>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Company Name</label>
+                                            <input
+                                                type="text"
+                                                value={companyDetails.company_name}
+                                                onChange={(e) => setCompanyDetails({ ...companyDetails, company_name: e.target.value })}
+                                                style={{ width: '100%', padding: '0.6rem', background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'white', marginTop: '0.3rem' }}
+                                                placeholder="e.g. NeuzenAI Solutions"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>HR Signature Name</label>
+                                            <input
+                                                type="text"
+                                                value={companyDetails.hr_signature_name}
+                                                onChange={(e) => setCompanyDetails({ ...companyDetails, hr_signature_name: e.target.value })}
+                                                style={{ width: '100%', padding: '0.6rem', background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'white', marginTop: '0.3rem' }}
+                                                placeholder="e.g. Rajesh Kumar"
+                                            />
+                                        </div>
+                                        <div style={{ gridColumn: 'span 2' }}>
+                                            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Company Address</label>
+                                            <input
+                                                type="text"
+                                                value={companyDetails.company_address}
+                                                onChange={(e) => setCompanyDetails({ ...companyDetails, company_address: e.target.value })}
+                                                style={{ width: '100%', padding: '0.6rem', background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'white', marginTop: '0.3rem' }}
+                                                placeholder="e.g. 123 AI Park, Tech City"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Contact Email</label>
+                                            <input
+                                                type="email"
+                                                value={companyDetails.contact_email}
+                                                onChange={(e) => setCompanyDetails({ ...companyDetails, contact_email: e.target.value })}
+                                                style={{ width: '100%', padding: '0.6rem', background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'white', marginTop: '0.3rem' }}
+                                                placeholder="hr@neuzen.ai"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Website URL</label>
+                                            <input
+                                                type="text"
+                                                value={companyDetails.website_url}
+                                                onChange={(e) => setCompanyDetails({ ...companyDetails, website_url: e.target.value })}
+                                                style={{ width: '100%', padding: '0.6rem', background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'white', marginTop: '0.3rem' }}
+                                                placeholder="www.neuzen.ai"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>HR Signature Image</label>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.3rem' }}>
+                                                <button
+                                                    onClick={() => document.getElementById('sig-upload').click()}
+                                                    style={{ padding: '0.5rem 1rem', background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'white', cursor: 'pointer', fontSize: '0.7rem' }}
+                                                >
+                                                    {companyDetails.hr_signature_image ? 'Update Signature' : 'Upload Signature'}
+                                                </button>
+                                                {companyDetails.hr_signature_image && <span style={{ fontSize: '0.7rem', color: 'var(--secondary)' }}>✅ Uploaded</span>}
+                                                <input id="sig-upload" type="file" hidden accept="image/*" onChange={handleSignatureUpload} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                    <h3 style={{ fontSize: '1rem', color: 'var(--secondary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span>📋</span> Placeholders Detected ({offerTemplateAnalysis.placeholders.length})
+                                    </h3>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                        {offerTemplateAnalysis.placeholders.map(p => (
+                                            <code key={p} style={{ background: 'var(--surface-color)', padding: '4px 10px', borderRadius: '4px', border: '1px solid var(--border-color)', fontSize: '0.8rem' }}>{`{{${p}}}`}</code>
+                                        ))}
+                                    </div>
+                                    <div style={{ marginTop: '1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                        Target Role: <strong>{offerTemplateAnalysis.employment_type}</strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', overflow: 'hidden' }}>
+                                <div style={{ background: 'var(--surface-color)', padding: '0.75rem 1.5rem', fontSize: '0.85rem', fontWeight: 'bold', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between' }}>
+                                    <span>📄 HTML TEMPLATE RENDER</span>
+                                    <span style={{ color: 'var(--secondary)' }}>Previewing Structure...</span>
+                                </div>
+                                <div
+                                    style={{ width: '100%', height: '600px', border: 'none', background: 'white', overflowY: 'auto', padding: '1rem', color: 'black' }}
+                                    dangerouslySetInnerHTML={{ __html: offerTemplateAnalysis.html_template }}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>

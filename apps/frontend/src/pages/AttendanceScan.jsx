@@ -334,9 +334,17 @@ const AttendanceScan = ({ userId }) => {
                                         padding: '0.5rem 0',
                                         minWidth: 'auto',
                                         fontSize: '0.8rem',
-                                        backgroundColor: d.status ? (d.status === 'Present' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)') : 'transparent',
-                                        borderColor: d.status ? (d.status === 'Present' ? 'var(--secondary)' : 'var(--border-color)') : 'transparent',
-                                        color: d.status === 'Present' ? 'white' : 'var(--text-muted)'
+                                        backgroundColor: d.status ?
+                                            (d.status === 'Present' ? 'rgba(16, 185, 129, 0.2)' :
+                                                d.status.includes('Warning Type 2') ? 'rgba(245, 158, 11, 0.2)' :
+                                                    'rgba(255,255,255,0.05)') : 'transparent',
+                                        borderColor: d.status ?
+                                            (d.status === 'Present' ? 'var(--secondary)' :
+                                                d.status.includes('Warning Type 2') ? '#F59E0B' :
+                                                    'var(--border-color)') : 'transparent',
+                                        color: d.status === 'Present' ? 'white' :
+                                            d.status.includes('Warning Type 2') ? '#F59E0B' :
+                                                'var(--text-muted)'
                                     }}
                                     title={d.status || 'No record'}
                                 >
@@ -344,9 +352,12 @@ const AttendanceScan = ({ userId }) => {
                                 </div>
                             ))}
                         </div>
-                        <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', fontSize: '0.7rem' }}>
+                        <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.7rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--secondary)' }}></div> Present
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F59E0B' }}></div> Warning (Missing Sign-out)
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--text-muted)' }}></div> No Record

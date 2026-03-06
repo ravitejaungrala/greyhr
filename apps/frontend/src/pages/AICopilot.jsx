@@ -18,12 +18,16 @@ const AICopilot = () => {
         setLoading(true);
 
         try {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
             // Connect to FastAPI Backend via env variable
             const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
             const response = await fetch(`${apiUrl}/copilot/ask`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: newChat[newChat.length - 1].text })
+                body: JSON.stringify({
+                    query: newChat[newChat.length - 1].text,
+                    employee_id: user.employee_id
+                })
             });
             const data = await response.json();
 

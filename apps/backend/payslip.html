@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dhanadurga Payslip Template</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 40px;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            border: 1px solid #ccc;
+            padding: 30px;
+            max-width: 850px;
+            margin: auto;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: #2c3e50;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .header p {
+            margin: 5px 0;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .details-table {
+            width: 100%;
+            margin-bottom: 25px;
+            border-collapse: collapse;
+        }
+
+        .details-table td {
+            padding: 8px;
+            width: 25%;
+            font-size: 0.95em;
+        }
+
+        .label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .salary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+        }
+
+        .salary-table th,
+        .salary-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .salary-table th {
+            background-color: #f8f9fa;
+            color: #2c3e50;
+            text-transform: uppercase;
+            font-size: 0.85em;
+        }
+
+        .total-row {
+            font-weight: bold;
+            background-color: #fcfcfc;
+        }
+
+        .net-pay-box {
+            background-color: #2c3e50;
+            color: #ffffff;
+            padding: 15px;
+            text-align: center;
+            margin-top: 20px;
+            border-radius: 4px;
+        }
+
+        .net-pay-box h2 {
+            margin: 0;
+            font-size: 1.4em;
+        }
+
+        .footer {
+            margin-top: 50px;
+            font-size: 11px;
+            text-align: center;
+            color: #999;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+
+        @media print {
+            .container {
+                box-shadow: none;
+                border: 1px solid #000;
+            }
+
+            .net-pay-box {
+                background-color: #2c3e50 !important;
+                -webkit-print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>Dhanadurga</h1>
+            <p>123 Business Hub, Hyderabad, Telangana - 500001<br>
+                <strong>Payslip for the Month of: {{Month_Year}}</strong>
+            </p>
+        </div>
+
+        <table class="details-table">
+            <tr>
+                <td class="label">Employee Name:</td>
+                <td>{{Employee_Name}}</td>
+                <td class="label">Employee ID:</td>
+                <td>{{Employee_ID}}</td>
+            </tr>
+            <tr>
+                <td class="label">Designation:</td>
+                <td>{{Designation}}</td>
+                <td class="label">Bank Name:</td>
+                <td>{{Bank_Name}}</td>
+            </tr>
+            <tr>
+                <td class="label">Department:</td>
+                <td>{{Department}}</td>
+                <td class="label">Account No:</td>
+                <td>{{Account_Number}}</td>
+            </tr>
+            <tr>
+                <td class="label">PAN Number:</td>
+                <td>{{PAN_Number}}</td>
+                <td class="label">Working Days:</td>
+                <td>{{Working_Days}}</td>
+            </tr>
+        </table>
+
+        <table class="salary-table">
+            <thead>
+                <tr>
+                    <th>Earnings</th>
+                    <th>Amount (₹)</th>
+                    <th>Deductions</th>
+                    <th>Amount (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Basic Salary</td>
+                    <td>{{Basic}}</td>
+                    <td>Provident Fund (PF)</td>
+                    <td>{{PF_Deduction}}</td>
+                </tr>
+                <tr>
+                    <td>HRA</td>
+                    <td>{{HRA}}</td>
+                    <td>Professional Tax</td>
+                    <td>{{PT_Deduction}}</td>
+                </tr>
+                <tr>
+                    <td>Conveyance</td>
+                    <td>{{Conveyance}}</td>
+                    <td>Income Tax (TDS)</td>
+                    <td>{{TDS_Deduction}}</td>
+                </tr>
+                <tr>
+                    <td>Special Allowance</td>
+                    <td>{{Special_Allowance}}</td>
+                    <td>Other Deductions</td>
+                    <td>{{Other_Deductions}}</td>
+                </tr>
+                <tr class="total-row">
+                    <td>Total Gross Earnings</td>
+                    <td>{{Total_Gross}}</td>
+                    <td>Total Deductions</td>
+                    <td>{{Total_Deductions}}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="net-pay-box">
+            <h2>Net Salary Payable: ₹{{Net_Salary}}</h2>
+            <span>({{Amount_In_Words}})</span>
+        </div>
+
+        <div class="footer">
+            This is a computer-generated document for Dhanadurga and does not require a physical signature.
+        </div>
+    </div>
+
+</body>
+
+</html>
