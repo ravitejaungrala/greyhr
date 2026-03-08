@@ -43,7 +43,7 @@ const Leaves = ({ userId }) => {
 
     const submitLeave = async (e) => {
         e.preventDefault();
-        if (leaveData.is_intern) return;
+        if (leaveData.is_intern && formData.leave_type !== 'Compensatory Off') return;
 
         setStatus('processing');
 
@@ -76,7 +76,7 @@ const Leaves = ({ userId }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: 0 }}>✈️ Leave Management</h1>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                    {leaveData.types.slice(0, 2).map((type, idx) => (
+                    {leaveData.types.map((type, idx) => (
                         <div key={idx} className="glass-panel" style={{ padding: '0.5rem 1rem', borderRadius: '8px', textAlign: 'center' }}>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{type.name}</div>
                             <div style={{ fontWeight: 'bold', color: idx === 0 ? 'var(--primary)' : 'var(--secondary)' }}>
@@ -95,12 +95,12 @@ const Leaves = ({ userId }) => {
                         <h2 className="card-title" style={{ marginBottom: 0 }}>Smart Leave Application</h2>
                     </div>
 
-                    {leaveData.is_intern ? (
-                        <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: 'rgba(245, 158, 11, 0.1)', border: '1px dashed #F59E0B', borderRadius: '8px' }}>
+                    {leaveData.is_intern && leaveData.remaining <= 0 ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: 'rgba(200, 76, 255, 0.1)', border: '1px dashed var(--violet)', borderRadius: '8px' }}>
                             <span style={{ fontSize: '2rem' }}>ℹ️</span>
-                            <p style={{ color: '#F59E0B', fontWeight: 'bold', marginTop: '1rem' }}>Internship Policy Notice</p>
+                            <p style={{ color: 'var(--violet)', fontWeight: 'bold', marginTop: '1rem' }}>Internship Policy Notice</p>
                             <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                                {leaveData.message || "Interns are not eligible for paid leaves. Please contact HR for any urgent unpaid leave requests."}
+                                {leaveData.message || "Interns are not eligible for paid leaves. You can only apply for earned Compensatory Off."}
                             </p>
                         </div>
                     ) : (
@@ -109,7 +109,9 @@ const Leaves = ({ userId }) => {
                                 <div style={{ flex: 1 }}>
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Leave Type</label>
                                     <select value={formData.leave_type} onChange={e => setFormData({ ...formData, leave_type: e.target.value })} style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }}>
-                                        {leaveData.types.map(t => <option key={t.name}>{t.name}</option>)}
+                                        {leaveData.types.filter(t => !leaveData.is_intern || t.name === 'Compensatory Off' || t.remaining > 0).map(t => (
+                                            <option key={t.name}>{t.name}</option>
+                                        ))}
                                         <option>Unpaid Leave</option>
                                     </select>
                                 </div>
@@ -134,7 +136,7 @@ const Leaves = ({ userId }) => {
                     )}
 
                     {status === 'submitted' && (
-                        <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--secondary)', borderRadius: '8px' }}>
+                        <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: 'rgba(10, 102, 194, 0.1)', border: '1px solid var(--secondary)', borderRadius: '8px' }}>
                             <p style={{ color: 'var(--secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>✓ Submitted Pending Admin Approval</p>
                             <p style={{ fontSize: '0.875rem', color: 'var(--text-light)' }}>The AI Smart Leave Agent has reviewed your request and forwarded it to the Administrator Space.</p>
                         </div>

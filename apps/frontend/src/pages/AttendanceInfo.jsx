@@ -78,17 +78,17 @@ const AttendanceInfo = ({ userId }) => {
                 statusChar = 'R';
                 statusText = 'Rest Day';
                 dayTypeIcon = '☕';
-                bgColor = 'rgba(245, 158, 11, 0.05)';
-                statusColor = '#F59E0B';
+                bgColor = 'rgba(200, 76, 255, 0.05)';
+                statusColor = 'var(--violet)';
             } else if (record) {
                 statusChar = record.status_char;
                 statusText = record.status;
                 statusColor = record.color;
 
-                bgColor = record.color === 'var(--secondary)' ? 'rgba(16, 185, 129, 0.1)' :
+                bgColor = record.color === 'var(--secondary)' ? 'rgba(10, 102, 194, 0.1)' :
                     record.color === '#A855F7' ? 'rgba(168, 85, 247, 0.1)' :
                         record.color === '#EF4444' ? 'rgba(239, 68, 68, 0.1)' :
-                            record.color === '#F59E0B' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(255,255,255,0.1)';
+                            record.color === 'var(--violet)' ? 'rgba(200, 76, 255, 0.1)' : 'rgba(255,255,255,0.1)';
             } else if (dateObj < today) {
                 statusChar = 'A';
                 statusText = 'Absent';
@@ -207,12 +207,12 @@ const AttendanceInfo = ({ userId }) => {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
                             <LegendItem char="P" label="Present" color="var(--secondary)" />
                             <LegendItem char="HL" label="Half Leave" color="#A855F7" />
-                            <LegendItem char="AD" label="Alert (Deduct)" color="#F59E0B" />
+                            <LegendItem char="AD" label="Alert (Deduct)" color="var(--violet)" />
                             <LegendItem char="HA" label="Half Absent" color="#EF4444" />
                             <LegendItem char="A" label="Absent" color="#EF4444" />
                             <LegendItem char="O" label="Off Day" color="#3B82F6" />
-                            <LegendItem char="R" label="Rest Day" color="#F59E0B" />
-                            <LegendItem char="H" label="Holiday" color="#10B981" />
+                            <LegendItem char="R" label="Rest Day" color="var(--violet)" />
+                            <LegendItem char="H" label="Holiday" color="var(--secondary)" />
                         </div>
 
                         <h3 style={{ fontSize: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', margin: '1.5rem 0 1rem' }}>Day Type</h3>

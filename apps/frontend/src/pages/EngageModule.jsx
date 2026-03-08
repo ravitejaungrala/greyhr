@@ -18,8 +18,8 @@ const EngageModule = () => {
                 <div className="card glass-panel">
                     <h2 className="card-title">📣 Announcements</h2>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div style={{ padding: '1rem', background: 'rgba(255,182,0,0.05)', borderRadius: '8px', borderLeft: '4px solid #ff4500' }}>
-                            <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#ff4500' }}>{announcement.title}</div>
+                        <div style={{ padding: '1rem', background: 'rgba(255, 122, 0,0.05)', borderRadius: '8px', borderLeft: '4px solid var(--primary)' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--primary)' }}>{announcement.title}</div>
                             <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', margin: '0.5rem 0', lineHeight: '1.5', whiteSpace: 'pre-line' }}>
                                 {announcement.content}
                             </p>

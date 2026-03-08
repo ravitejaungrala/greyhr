@@ -10,9 +10,10 @@ from api.router import router
 app = FastAPI(title="DurgDhana HRMS API")
 
 # Configure CORS for frontend access
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, restrict this
+    allow_origins=[frontend_url, "http://localhost:5173", "http://127.0.0.1:5173"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

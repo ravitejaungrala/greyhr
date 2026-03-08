@@ -44,7 +44,7 @@ const MyWorkLife = ({ userId }) => {
                     <span style={{ background: 'rgba(79, 70, 229, 0.2)', color: 'var(--primary)', padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>
                         {profile?.position || 'Staff'}
                     </span>
-                    <span style={{ background: profile?.employment_type === 'Intern' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(16, 185, 129, 0.2)', color: profile?.employment_type === 'Intern' ? '#F59E0B' : 'var(--secondary)', padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                    <span style={{ background: profile?.employment_type === 'Intern' ? 'rgba(200, 76, 255, 0.2)' : 'rgba(10, 102, 194, 0.2)', color: profile?.employment_type === 'Intern' ? 'var(--violet)' : 'var(--secondary)', padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>
                         {profile?.employment_type || 'Full-Time'}
                     </span>
                 </div>
@@ -71,7 +71,7 @@ const MyWorkLife = ({ userId }) => {
             </div>
 
             {profile?.offer_letter_status === 'final' && (
-                <div className="card glass-panel" style={{ marginTop: '2rem', border: '1px solid var(--secondary)', background: 'rgba(16, 185, 129, 0.05)' }}>
+                <div className="card glass-panel" style={{ marginTop: '2rem', border: '1px solid var(--secondary)', background: 'rgba(10, 102, 194, 0.05)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                             <h2 className="card-title" style={{ margin: 0 }}>📄 Official Offer Letter</h2>

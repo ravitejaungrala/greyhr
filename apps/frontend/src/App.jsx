@@ -6,13 +6,13 @@ import HomeDashboard from './pages/HomeDashboard';
 import AttendanceScan from './pages/AttendanceScan';
 import AttendanceInfo from './pages/AttendanceInfo';
 import Leaves from './pages/Leaves';
-import AICopilot from './pages/AICopilot';
 import LoginRegister from './pages/LoginRegister';
 import AdminDashboard from './pages/AdminDashboard';
 import EngageModule from './pages/EngageModule';
 import MyWorkLife from './pages/MyWorkLife';
 import SalaryModule from './pages/SalaryModule';
 import DocumentCenter from './pages/DocumentCenter';
+import ChatbotBubble from './components/ChatbotBubble';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -37,14 +37,20 @@ function App() {
     <div className="app-container">
       {/* Sidebar */}
       <aside className="sidebar">
-        <div className="sidebar-header">
-          <span style={{ fontSize: '1.5rem' }}>🌊</span>
-          <span>DurgDhana HRMS</span>
+        <div className="sidebar-header" style={{ borderBottom: '1px solid var(--border-color)', padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <img src="/icon (2).png" alt="Logo" style={{ width: '36px', height: '36px', objectFit: 'contain', borderRadius: '8px' }} />
+          <span style={{
+            background: 'var(--main-gradient)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            fontWeight: '900',
+            fontSize: '1.5rem'
+          }}>HRMS</span>
         </div>
         <nav className="nav-menu">
           {user.role === 'admin' ? (
             <>
-              <div className="nav-item active" style={{ backgroundColor: 'var(--primary)', color: 'white', fontWeight: 'bold' }}>
+              <div className="nav-item active" style={{ background: 'var(--main-gradient)', color: 'white', fontWeight: 'bold', borderRight: 'none', borderRadius: '0 8px 8px 0', marginRight: '1rem', marginBottom: '0.5rem' }}>
                 🛡️ Admin Workspace
               </div>
               <div
@@ -117,13 +123,6 @@ function App() {
               >
                 📄 Offer Letter Templates
               </div>
-              <div
-                className={`nav-item ${activeMenu === 'copilot' ? 'active' : ''}`}
-                onClick={() => setActiveMenu('copilot')}
-                style={{ paddingLeft: '2rem', fontSize: '0.9rem' }}
-              >
-                🤖 HR AI Copilot
-              </div>
             </>
           ) : (
             <>
@@ -176,19 +175,13 @@ function App() {
               >
                 📂 Document Center
               </div>
-              <div
-                className={`nav-item ${activeMenu === 'copilot' ? 'active' : ''}`}
-                onClick={() => setActiveMenu('copilot')}
-              >
-                🧠 AI HR Copilot
-              </div>
             </>
           )}
         </nav>
-      </aside>
+      </aside >
 
       {/* Main Content Area */}
-      <main className="main-content">
+      < main className="main-content" >
         <header className="topbar">
           <div className="user-profile">
             <div className="user-info" style={{ textAlign: 'right' }}>
@@ -208,16 +201,16 @@ function App() {
               {activeMenu === 'attendance' && <AttendanceScan userId={user.employee_id} />}
               {activeMenu === 'attendance-info' && <AttendanceInfo userId={user.employee_id} />}
               {activeMenu === 'leaves' && <Leaves userId={user.employee_id} />}
-              {activeMenu === 'copilot' && <AICopilot />}
               {activeMenu === 'engage' && <EngageModule />}
               {activeMenu === 'worklife' && <MyWorkLife userId={user.employee_id} />}
               {activeMenu === 'salary' && <SalaryModule userId={user.employee_id} />}
-              {activeMenu === 'docs' && <DocumentCenter />}
+              {activeMenu === 'docs' && <DocumentCenter user={user} />}
             </>
           )}
         </div>
-      </main>
-    </div>
+      </main >
+      <ChatbotBubble />
+    </div >
   );
 }
 

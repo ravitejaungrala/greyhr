@@ -10,6 +10,7 @@ import datetime
 import base64
 import uuid
 import os
+import tempfile
 import google.generativeai as genai
 import cv2
 import numpy as np
@@ -58,6 +59,8 @@ class ProfileUpdateRequest(BaseModel):
     experience_years: Optional[str] = None
     # Live Photo
     image_base64: str
+    image_left_base64: Optional[str] = None
+    image_right_base64: Optional[str] = None
 
 def parse_base64(b64_string: str) -> bytes:
     if ',' in b64_string:
@@ -85,7 +88,7 @@ def register_employee(request: EmployeeRegistrationRequest):
         "password": request.password, # Plain text for MVP mock
         "role": "employee",
         "status": "incomplete_profile",
-        "created_at": datetime.datetime.utcnow().isoformat()
+        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
     }
     
     if mongo_db.users is not None:
@@ -130,17 +133,23 @@ def complete_profile(request: ProfileUpdateRequest):
 
     try:
         live_photo_bytes = parse_base64(request.image_base64)
+        live_photo_left_bytes = parse_base64(request.image_left_base64) if request.image_left_base64 else None
+        live_photo_right_bytes = parse_base64(request.image_right_base64) if request.image_right_base64 else None
         bank_photo_bytes = parse_base64(request.bank_photo_base64)
         edu_cert_bytes = parse_base64(request.education_cert_base64)
     except Exception as e:
         return {"error": "Invalid base64 image or document upload"}
 
     reference_image_key = f"reference_faces/{request.employee_id}.jpg"
+    reference_image_left_key = f"reference_faces/{request.employee_id}_left.jpg" if live_photo_left_bytes else None
+    reference_image_right_key = f"reference_faces/{request.employee_id}_right.jpg" if live_photo_right_bytes else None
     bank_photo_key = f"documents/{request.employee_id}_bank.jpg"
     edu_cert_key = f"documents/{request.employee_id}_edu.jpg"
     
     # Save files to S3
     s3_db.save_image(reference_image_key, live_photo_bytes, content_type='image/jpeg')
+    if live_photo_left_bytes: s3_db.save_image(reference_image_left_key, live_photo_left_bytes, content_type='image/jpeg')
+    if live_photo_right_bytes: s3_db.save_image(reference_image_right_key, live_photo_right_bytes, content_type='image/jpeg')
     s3_db.save_image(bank_photo_key, bank_photo_bytes, content_type='image/jpeg')
     s3_db.save_image(edu_cert_key, edu_cert_bytes, content_type='image/jpeg')
     
@@ -164,7 +173,9 @@ def complete_profile(request: ProfileUpdateRequest):
         } if request.is_experienced else None,
         "status": "pending_approval",
         "reference_image_key": reference_image_key,
-        "updated_at": datetime.datetime.utcnow().isoformat()
+        "reference_image_left_key": reference_image_left_key,
+        "reference_image_right_key": reference_image_right_key,
+        "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
     }
     
     mongo_db.users.update_one({"employee_id": request.employee_id}, {"$set": update_data})
@@ -224,7 +235,7 @@ def admin_approve_employee(request: AdminApprovalRequest):
             "privilege_leave_rate": request.privilege_leave_rate,
             "sick_leave_rate": request.sick_leave_rate,
             "casual_leave_rate": request.casual_leave_rate,
-            "joining_date": datetime.datetime.utcnow().isoformat()
+            "joining_date": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
     else:
         status_to_set = "rejected"
@@ -273,7 +284,7 @@ class Notification(BaseModel):
     type: str # "onboarding", "leave", "deduction", "attendance"
     message: str
     employee_id: Optional[str] = None
-    created_at: str = datetime.datetime.utcnow().isoformat()
+    created_at: str = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
 class PayslipReleaseRequest(BaseModel):
     month_year: str # e.g. "March 2026"
@@ -303,6 +314,32 @@ class OfferLetterRequest(BaseModel):
     in_hand_salary: float = 0
     annexure_details: Optional[str] = None
 
+class RelievingLetterRequest(BaseModel):
+    employee_id: str
+    relieving_date: str
+    joining_date: str
+    last_working_day: str
+    designation: str
+    reason_for_leaving: Optional[str] = "Personal reasons"
+
+class WorkdayOverride(BaseModel):
+    date: str  # YYYY-MM-DD
+    type: str  # 'forced_working' or 'forced_holiday'
+    reason: str = ""
+
+class CompOffAction(BaseModel):
+    request_id: str
+    status: str  # 'Approved' or 'Rejected'
+
+class WeekendWorkRequest(BaseModel):
+    employee_id: str
+    date: str
+    reason: str
+
+class WeekendWorkAction(BaseModel):
+    request_id: str
+    status: str  # 'Approved' or 'Rejected'
+
 class TemplateUploadRequest(BaseModel):
     employment_type: str
     content_base64: str
@@ -312,7 +349,7 @@ class TemplateUploadRequest(BaseModel):
 def apply_leave(request: LeaveRequest):
     record = request.dict()
     record["status"] = "Pending Admin Approval"
-    record["applied_on"] = datetime.datetime.utcnow().isoformat()
+    record["applied_on"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     record["id"] = uuid.uuid4().hex[:8]
     if mongo_db.db is not None:
         mongo_db.leaves.insert_one(record)
@@ -424,6 +461,8 @@ def get_admin_photo(photo_key: str):
 class AttendanceScanRequest(BaseModel):
     employee_id: str
     image_base64: str
+    image_left_base64: Optional[str] = None
+    image_right_base64: Optional[str] = None
     location: str
     action_type: str # 'sign_in' or 'sign_out'
 
@@ -441,11 +480,18 @@ def process_face_scan(request: AttendanceScanRequest):
 
     # 1. Decode Image
     try:
-        if ',' in request.image_base64:
-            base64_data = request.image_base64.split(',')[1]
-        else:
-            base64_data = request.image_base64
+        base64_data = request.image_base64.split(',')[1] if ',' in request.image_base64 else request.image_base64
         image_bytes = base64.b64decode(base64_data)
+        
+        left_bytes = None
+        if request.image_left_base64:
+            left_b64 = request.image_left_base64.split(',')[1] if ',' in request.image_left_base64 else request.image_left_base64
+            left_bytes = base64.b64decode(left_b64)
+            
+        right_bytes = None
+        if request.image_right_base64:
+            right_b64 = request.image_right_base64.split(',')[1] if ',' in request.image_right_base64 else request.image_right_base64
+            right_bytes = base64.b64decode(right_b64)
     except Exception as e:
         return {"error": "Invalid image format"}
 
@@ -483,11 +529,16 @@ def process_face_scan(request: AttendanceScanRequest):
     if not face_match_success:
         return {"error": "Face does not match the registered identity."}
 
-    timestamp = datetime.datetime.utcnow().isoformat()
-    image_key = f"attendance_faces/{request.employee_id}_{datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.jpg"
+    timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    timestamp_str = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    image_key = f"attendance_faces/{request.employee_id}_{timestamp_str}.jpg"
+    image_left_key = f"attendance_faces/{request.employee_id}_{timestamp_str}_left.jpg" if left_bytes else None
+    image_right_key = f"attendance_faces/{request.employee_id}_{timestamp_str}_right.jpg" if right_bytes else None
     
     # 2. Save Daily Image to S3
     s3_db.save_image(image_key, image_bytes, content_type='image/jpeg')
+    if left_bytes: s3_db.save_image(image_left_key, left_bytes, content_type='image/jpeg')
+    if right_bytes: s3_db.save_image(image_right_key, right_bytes, content_type='image/jpeg')
     
     # 3. Save to MongoDB
     attendance_record = {
@@ -496,6 +547,8 @@ def process_face_scan(request: AttendanceScanRequest):
         "timestamp": timestamp,
         "location": request.location,
         "s3_image_key": image_key,
+        "s3_image_left_key": image_left_key,
+        "s3_image_right_key": image_right_key,
         "ai_verification_score": 0.99
     }
     mongo_db.attendance.insert_one(attendance_record)
@@ -506,7 +559,7 @@ def process_face_scan(request: AttendanceScanRequest):
             "type": "attendance",
             "message": f"Employee {request.employee_id} signed in.",
             "employee_id": request.employee_id,
-            "created_at": datetime.datetime.utcnow().isoformat()
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
         })
 
     if "_id" in attendance_record:
@@ -522,24 +575,42 @@ class CopilotQuery(BaseModel):
 
 @router.post("/copilot/ask")
 def ask_hr_copilot(query: CopilotQuery):
-    # Mock AI response based on query
-    q = query.query.lower()
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return {"agent": "HR Copilot", "response": "AI Copilot is not configured (missing API Key)."}
     
-    response = "I'm not sure how to answer that yet."
-    if "low productivity" in q:
-        response = "Based on recent analytics, the Marketing team has seen a 15% drop in productivity. Would you like me to schedule a check-in with the team lead?"
-    elif "resignation probability" in q or "risk" in q:
-        response = "The Employee Risk Prediction engine highlights 3 employees in the Engineering department with a high burnout risk score (>85%). Suggesting immediate 1-on-1s."
-    elif "policy" in q:
-        # Mock VectorDB integration
-        search_results = vector_db.search([0.1, 0.2, 0.3])
-        docs = [res['metadata']['title'] for res in search_results]
-        response = f"According to our knowledge base ({', '.join(docs)}), the policy states standard rules apply."
-        
-    return {
-        "agent": "HR Copilot",
-        "response": response
-    }
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    
+    # 1. Context Retrieval from Chroma (Company Policies)
+    context = ""
+    try:
+        search_results = vector_db.search(query_texts=[query.query], top_k=2)
+        for res in search_results:
+            context += f"\nCompany Policy: {res.get('document', '')}"
+    except:
+        context = "No specific company policies found in vector DB."
+
+    prompt = f"""
+    You are the Dhanadurga Employee HR Copilot. Use the context below to answer the employee's query.
+    Context: {context}
+    
+    Employee Query: {query.query}
+    
+    Response (Helpful, professional, and concise. Mention if information is based on company policy):
+    """
+    
+    try:
+        response = model.generate_content(prompt)
+        return {
+            "agent": "HR Copilot",
+            "response": response.text
+        }
+    except Exception as e:
+        return {
+            "agent": "HR Copilot",
+            "response": f"I'm having trouble thinking right now. AI Error: {str(e)}"
+        }
 
 @router.get("/employee/attendance/status")
 def get_attendance_status(employee_id: str):
@@ -554,10 +625,8 @@ def get_attendance_status(employee_id: str):
     )
     
     if latest:
-        # Convert ISO to readable time
-        dt = datetime.datetime.fromisoformat(latest["timestamp"])
         return {
-            "last_punch": dt.strftime("%I:%M %p"),
+            "last_punch": latest["timestamp"],
             "action": latest["action"],
             "status": "Signed In" if latest["action"] == "sign_in" else "Signed Out"
         }
@@ -566,103 +635,238 @@ def get_attendance_status(employee_id: str):
 
 @router.get("/employee/attendance/calendar")
 def get_attendance_calendar(employee_id: str):
-    if mongo_db.attendance is None:
-        return {"history": []}
+    if mongo_db.attendance is None or mongo_db.users is None:
+        return {"history": [], "recent_captures": []}
     
-    # Get last 30 days of unique day statuses
-    # In a real app, this would be an aggregation. For MVP, we fetch and process.
-    records = list(mongo_db.attendance.find({"employee_id": employee_id}, {"_id": 0}).sort("timestamp", -1).limit(100))
+    # 1. Fetch User Profile
+    user = mongo_db.users.find_one({"employee_id": employee_id})
+    if not user:
+        return {"history": [], "recent_captures": []}
+        
+    employment_type = user.get("employment_type", "Full-Time")
+    is_intern = employment_type == "Intern"
+    joining_date_str = user.get("joining_date")
     
-    history = {}
-    for r in records:
+    # Calculate daily salary
+    daily_salary = 1000 # default fallback
+    if is_intern:
+        daily_salary = 500 # Fixed cut for interns
+    else:
+        monthly_salary = user.get("monthly_salary", 0)
+        if monthly_salary > 0:
+            daily_salary = monthly_salary / 30
+            
+    # 2. Determine Date Range (Current Month)
+    now = datetime.datetime.utcnow()
+    year = now.year
+    month = now.month
+    today = now.date()
+    
+    # 3. Fetch all records for this employee for the current month
+    # We use regex to match the year-month prefix
+    month_prefix = f"{year}-{month:02d}"
+    all_month_records = list(mongo_db.attendance.find({
+        "employee_id": employee_id,
+        "timestamp": {"$regex": f"^{month_prefix}"}
+    }).sort("timestamp", 1))
+    
+    # Group by day
+    history_map = {}
+    for r in all_month_records:
         day = r["timestamp"].split('T')[0]
-        time_str = r["timestamp"].split('T')[1][:5]
-        if day not in history:
-            history[day] = {
-                "date": day,
-                "punches": []
-            }
-        history[day]["punches"].append({
-            "action": r.get("action", "sign_in"),
-            "time": time_str,
-            "datetime": r["timestamp"]
-        })
+        if day not in history_map:
+            history_map[day] = []
+        history_map[day].append(r)
         
-    dates_sorted = sorted(list(history.keys()))
+    # 4. Fetch Approved Leaves for the month
+    leaves = []
+    if mongo_db.leaves is not None:
+        leaves = list(mongo_db.leaves.find({
+            "employee_id": employee_id,
+            "status": "Approved",
+            "$or": [
+                {"start_date": {"$regex": f"^{month_prefix}"}},
+                {"end_date": {"$regex": f"^{month_prefix}"}}
+            ]
+        }))
+
+    # 5. Fetch Global Holidays and Workday Overrides
+    holidays = list(mongo_db.holidays.find({"date": {"$regex": f"^{month_prefix}"}}, {"_id": 0}))
+    holiday_map = {h['date']: h for h in holidays}
+    overrides = list(mongo_db.workday_overrides.find({"date": {"$regex": f"^{month_prefix}"}}, {"_id": 0}))
+    override_map = {o['date']: o for o in overrides}
+    
     early_logout_count = 0
+    final_history = []
+    
+    # Parse joining date for comparison
+    joining_date = None
+    if joining_date_str:
+        try:
+            joining_date = datetime.datetime.fromisoformat(joining_date_str).date()
+        except: pass
+
+    import calendar
+    _, last_day_in_month = calendar.monthrange(year, month)
+    
+    # Iterate through every day of the month up to today
+    for d in range(1, today.day + 1):
+        current_date = datetime.date(year, month, d)
+        day_str = current_date.isoformat()
+        
+        # Rule: Count from DOJ only
+        if joining_date and current_date < joining_date:
+            continue
             
-    for day in dates_sorted:
-        data = history[day]
-        punches = sorted(data["punches"], key=lambda x: x["datetime"])
-        first_in = next((p["time"] for p in punches if p["action"] == "sign_in"), "-")
-        last_out = next((p["time"] for p in reversed(punches) if p["action"] == "sign_out"), "-")
+        day_records = history_map.get(day_str, [])
+        override = override_map.get(day_str)
+        holiday = holiday_map.get(day_str)
+        is_weekend = current_date.weekday() >= 5 # 5=Saturday, 6=Sunday
         
-        total_hrs = "-"
-        tot_sec = 0
-        if first_in != "-" and last_out != "-":
-            try:
-                fmt = "%H:%M"
-                tdelta = datetime.datetime.strptime(last_out, fmt) - datetime.datetime.strptime(first_in, fmt)
-                tot_sec = int(tdelta.total_seconds())
-                if tot_sec > 0:
-                    hrs, rem = divmod(tot_sec, 3600)
-                    mins, _ = divmod(rem, 60)
-                    total_hrs = f"{hrs:02d}:{mins:02d}"
-            except Exception:
-                pass
-                
-        # Fetch leaves to check for admin-approved half day
-        has_half_day_leave = False
-        if mongo_db.db is not None:
-            leave = mongo_db.leaves.find_one({
-                "employee_id": employee_id,
-                "status": "Approved",
-                "start_date": {"$lte": day},
-                "end_date": {"$gte": day}
-            })
-            if leave and leave.get("type") == "Half Day Leave":
-                has_half_day_leave = True
-                
-        # Status Logic
-        status_text = "Present"
-        status_char = "P"
-        color = "var(--secondary)"
-        deduction = 0
+        is_originally_non_working = is_weekend or (holiday is not None)
+            
+        if is_forced_working:
+            is_working_day = True
+            day_label = "Swapped Working Day"
+        elif is_forced_holiday:
+            is_working_day = False
+            day_label = "Forced Holiday"
+        elif holiday:
+            is_working_day = False
+            day_label = f"Holiday: {holiday['name']}"
+        elif is_weekend:
+            is_working_day = False
+            day_label = "Weekend"
+        else:
+            is_working_day = True
+            day_label = "Working Day"
+            
+        # Check for approved leaves
+        approved_leave = next((l for l in leaves if l["start_date"] <= day_str <= l["end_date"]), None)
         
-        if tot_sec >= 9 * 3600:
-            status_text = "Present"
-            status_char = "P"
-            color = "var(--secondary)"
-        elif first_in != "-": # Logged in but less than 9 hours
-            if has_half_day_leave:
-                status_text = "Half Day Leave"
-                status_char = "HL"
-                color = "#A855F7" # Purple
-            else:
-                early_logout_count += 1
-                if is_forgot_logout:
-                    status_text = "Absent (Forgot Logout)"
-                    status_char = "A"
-                    color = "#EF4444"
-                    deduction = 500 # Full day penalty
+        # Default day data
+        data = {
+            "date": day_str,
+            "first_in": "-",
+            "last_out": "-",
+            "total_work_hrs": "-",
+            "status": "Absent",
+            "status_char": "A",
+            "color": "#EF4444",
+            "deduction": 0,
+            "day_label": day_label
+        }
+        
+        if day_records:
+            # Sort punches
+            punches = sorted(day_records, key=lambda x: x["timestamp"])
+            first_in_obj = next((p for p in punches if p["action"] == "sign_in"), None)
+            last_out_obj = next((p for p in reversed(punches) if p["action"] == "sign_out"), None)
+            
+            first_in = first_in_obj["timestamp"] if first_in_obj else "-"
+            last_out = last_out_obj["timestamp"] if last_out_obj else "-"
+            
+            data["first_in_raw"] = first_in
+            data["last_out_raw"] = last_out
+            
+            # Calculate hours
+            tot_sec = 0
+            if (isinstance(first_in, str) and 'T' in first_in) and (isinstance(last_out, str) and 'T' in last_out):
+                try:
+                    t1 = datetime.datetime.fromisoformat(first_in.replace('Z', '+00:00'))
+                    t2 = datetime.datetime.fromisoformat(last_out.replace('Z', '+00:00'))
+                    tdelta = t2 - t1
+                    tot_sec = int(tdelta.total_seconds())
+                    if tot_sec > 0:
+                        hrs, rem = divmod(tot_sec, 3600)
+                        mins, _ = divmod(rem, 60)
+                        data["total_work_hrs"] = f"{hrs:02d}:{mins:02d}"
+                except: pass
+            
+            is_forgot_logout = (first_in != "-" and last_out == "-")
+            
+            # Status logic for WORKING day with records
+            if is_working_day:
+                if tot_sec >= 9 * 3600:
+                    data["status"] = "Present"
+                    data["status_char"] = "P"
+                    data["color"] = "var(--secondary)"
+                elif is_forgot_logout:
+                    data["status"] = "Present (Forgot Logout)"
+                    data["status_char"] = "P"
+                    data["color"] = "var(--secondary)"
                 else:
-                    # Treat every late login/early logout as a half-day immediately as per rule
-                    status_text = "Half Day (Time Variance)"
-                    status_char = "HD"
-                    color = "#F59E0B"
-                    deduction = 250
-                
-        data["first_in"] = first_in
-        data["last_out"] = last_out
-        data["total_work_hrs"] = total_hrs
-        data["actual_work_hrs"] = total_hrs
-        data["status"] = status_text
-        data["status_char"] = status_char
-        data["color"] = color
-        data["deduction"] = deduction
-        del data["punches"] # clean up payload
-            
-    return {"history": list(history.values())}
+                    early_logout_count += 1
+                    if early_logout_count <= 4:
+                        data["status"] = "Present (Early)"
+                        data["status_char"] = "P"
+                        data["color"] = "var(--secondary)"
+                    else:
+                        data["status"] = "Half Day"
+                        data["status_char"] = "HD"
+                        data["color"] = "#F59E0B"
+                        data["deduction"] = daily_salary * 0.5
+                # Create Comp-Off Request if >= 9 hours AND it was originally a non-working day
+                if tot_sec >= 9 * 3600 and is_originally_non_working:
+                    req_id = f"RL_{employee_id}_{day_str.replace('-', '')}"
+                    existing = mongo_db.comp_off_requests.find_one({"request_id": req_id})
+                    if not existing:
+                        mongo_db.comp_off_requests.insert_one({
+                            "request_id": req_id,
+                            "employee_id": employee_id,
+                            "date": day_str,
+                            "hours": data["total_work_hrs"],
+                            "status": "Pending",
+                            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+                        })
+                    data["status"] = "Present (Earned Comp-Off Request)"
+                else:
+                    if is_working_day:
+                        # Normal present status
+                        data["status"] = "Present"
+                        data["status_char"] = "P"
+                        data["color"] = "var(--secondary)"
+                    else:
+                        # Worked on holiday but < 9 hours
+                        data["status"] = "Worked on Holiday (<9h)"
+                        data["status_char"] = "WOH"
+                        data["color"] = "#ff7a00"
+        else:
+            # No sign-in: check day type
+            if is_working_day:
+                if approved_leave:
+                    data["status"] = f"Leave ({approved_leave['leave_type']})"
+                    data["status_char"] = "L"
+                    data["color"] = "#A855F7"
+                    data["deduction"] = 0
+                else:
+                    data["status"] = "Absent"
+                    data["status_char"] = "A"
+                    data["color"] = "#EF4444"
+                    data["deduction"] = daily_salary
+            else:
+                # Normal weekend/holiday without work
+                data["status"] = day_label
+                data["status_char"] = "H" if holiday or is_forced_holiday else "W"
+                data["color"] = "#9CA3AF"
+                data["deduction"] = 0
+                    
+        final_history.append(data)
+        
+    # Get recent captures (flat list) for the whole history
+    recent_records = list(mongo_db.attendance.find({"employee_id": employee_id}, {"_id": 0}).sort("timestamp", -1).limit(20))
+    recent_captures = []
+    for r in recent_records:
+        recent_captures.append({
+            "timestamp": r["timestamp"],
+            "s3_image_key": r.get("s3_image_key"),
+            "action": r.get("action", "sign_in")
+        })
+
+    return {
+        "history": final_history,
+        "recent_captures": recent_captures
+    }
 
 @router.put("/admin/holidays/{old_date}")
 def update_holiday(old_date: str, request: HolidayRequest):
@@ -686,6 +890,93 @@ def delete_holiday(date: str):
         
     mongo_db.holidays.delete_one({"date": date})
     return {"message": "Holiday deleted successfully."}
+
+@router.get("/admin/workday-overrides")
+def get_workday_overrides():
+    if mongo_db.db is None: return {"overrides": []}
+    overrides = list(mongo_db.workday_overrides.find({}, {"_id": 0}))
+    return {"overrides": overrides}
+
+@router.post("/admin/workday-overrides")
+def add_workday_override(request: WorkdayOverride):
+    if mongo_db.db is None: return {"error": "DB error"}
+    mongo_db.workday_overrides.update_one(
+        {"date": request.date},
+        {"$set": request.dict()},
+        upsert=True
+    )
+    return {"message": f"Workday override set for {request.date}"}
+
+@router.delete("/admin/workday-overrides/{date}")
+def delete_workday_override(date: str):
+    if mongo_db.db is None: return {"error": "DB error"}
+    mongo_db.workday_overrides.delete_one({"date": date})
+    return {"message": "Override deleted"}
+
+@router.get("/admin/comp-off-requests")
+def get_comp_off_requests():
+    if mongo_db.db is None: return {"requests": []}
+    requests = list(mongo_db.comp_off_requests.find({"status": "Pending"}, {"_id": 0}))
+    return {"requests": requests}
+
+@router.post("/admin/comp-off-requests/action")
+def process_comp_off_action(action: CompOffAction):
+    if mongo_db.db is None: return {"error": "DB error"}
+    
+    # 1. Fetch request
+    request = mongo_db.comp_off_requests.find_one({"request_id": action.request_id})
+    if not request: return {"error": "Request not found"}
+    
+    # 2. Update Status
+    mongo_db.comp_off_requests.update_one(
+        {"request_id": action.request_id},
+        {"$set": {"status": action.status}}
+    )
+    
+    # 3. If Approved, increment balance
+    if action.status == "Approved":
+        mongo_db.users.update_one(
+            {"employee_id": request["employee_id"]},
+            {"$inc": {"comp_off_balance": 1}}
+        )
+        # Notify
+        mongo_db.db["notifications"].insert_one({
+            "type": "leave",
+            "message": f"Your Comp-Off request for {request['date']} has been approved.",
+            "employee_id": request["employee_id"],
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        })
+        
+    return {"message": f"Comp-off request {action.status}"}
+
+@router.post("/employee/weekend-work/request")
+def request_weekend_work(req: WeekendWorkRequest):
+    record = req.dict()
+    record["status"] = "Pending"
+    record["created_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    record["request_id"] = f"WWR_{req.employee_id}_{req.date.replace('-', '')}"
+    if mongo_db.db is not None:
+        mongo_db.weekend_work_requests.update_one(
+            {"request_id": record["request_id"]},
+            {"$set": record},
+            upsert=True
+        )
+    return {"message": "Weekend work request submitted successfully", "record": record}
+
+@router.get("/admin/weekend-work/requests")
+def get_admin_weekend_work_requests():
+    if mongo_db.db is None: return {"requests": []}
+    reqs = list(mongo_db.weekend_work_requests.find({"status": "Pending"}, {"_id": 0}))
+    return {"requests": reqs}
+
+@router.post("/admin/weekend-work/requests/action")
+def action_weekend_work_request(req_action: WeekendWorkAction):
+    if mongo_db.db is not None:
+        mongo_db.weekend_work_requests.update_one(
+            {"request_id": req_action.request_id},
+            {"$set": {"status": req_action.status}}
+        )
+    return {"message": f"Request {req_action.status} successfully"}
 
 @router.get("/employee/dashboard-insights")
 def get_employee_insights(employee_id: str):
@@ -771,30 +1062,46 @@ def get_leave_balance(employee_id: str):
     is_intern = user.get("employment_type") == "Intern"
     
     if is_intern:
+        accrued_co = user.get("comp_off_balance", 0.0)
+        # Fetch approved comp-off usage for interns too
+        used_co = 0
+        if mongo_db.db is not None:
+             approved_leaves = list(mongo_db.leaves.find({"employee_id": employee_id, "status": "Approved"}))
+             for leaf in approved_leaves:
+                 if "Compensatory" in leaf["leave_type"] or "Comp-Off" in leaf["leave_type"]:
+                     try:
+                        start = datetime.datetime.fromisoformat(leaf["start_date"])
+                        end = datetime.datetime.fromisoformat(leaf["end_date"])
+                        used_co += (end - start).days + 1
+                     except: continue
+        
+        rem_co = max(0, accrued_co - used_co)
+        
         return {
-            "total": 0,
-            "used": 0,
-            "remaining": 0,
+            "total": rem_co,
+            "used": used_co,
+            "remaining": rem_co,
             "is_intern": True,
             "types": [
                 {"name": "Privilege Leave", "remaining": 0},
                 {"name": "Sick Leave", "remaining": 0},
-                {"name": "Casual Leave", "remaining": 0}
+                {"name": "Casual Leave", "remaining": 0},
+                {"name": "Compensatory Off", "remaining": round(rem_co, 1)}
             ],
-            "message": "Interns are not eligible for paid leaves as per company policy."
+            "message": "Interns are eligible for Compensatory Off credits earned via holiday work."
         }
 
     # Calculate Accrued Leaves for Full-Time
     joining_date_str = user.get("joining_date")
     if not joining_date_str:
-        joining_date_str = datetime.datetime.utcnow().isoformat()
+        joining_date_str = datetime.datetime.now(datetime.timezone.utc).isoformat()
     
     joining_date = datetime.datetime.fromisoformat(joining_date_str)
     now = datetime.datetime.utcnow()
     
-    # Calculate months passed
-    months_passed = (now.year - joining_date.year) * 12 + (now.month - joining_date.month)
-    if months_passed < 0: months_passed = 0
+    # Calculate months passed (Include joining month)
+    months_passed = (now.year - joining_date.year) * 12 + (now.month - joining_date.month) + 1
+    if months_passed < 1: months_passed = 1
     
     # Rates (Default to user's stored rates or system defaults)
     pl_rate = user.get("privilege_leave_rate", 0.0)
@@ -809,6 +1116,7 @@ def get_leave_balance(employee_id: str):
     used_pl = 0
     used_sl = 0
     used_cl = 0
+    used_co = 0
     
     if mongo_db.db is not None:
         approved_leaves = list(mongo_db.leaves.find({
@@ -826,6 +1134,7 @@ def get_leave_balance(employee_id: str):
                 if "Privilege" in l_type: used_pl += days
                 elif "Sick" in l_type: used_sl += days
                 elif "Casual" in l_type: used_cl += days
+                elif "Compensatory" in l_type or "Comp-Off" in l_type: used_co += days
             except:
                 continue
 
@@ -833,15 +1142,20 @@ def get_leave_balance(employee_id: str):
     rem_sl = max(0, accrued_sl - used_sl)
     rem_cl = max(0, accrued_cl - used_cl)
     
+    # Comp-Off is stored directly as a balance in user profile (granted by Admin)
+    accrued_co = user.get("comp_off_balance", 0.0)
+    rem_co = max(0, accrued_co - used_co)
+    
     return {
-        "total": rem_pl + rem_sl + rem_cl,
-        "used": used_pl + used_sl + used_cl,
-        "remaining": rem_pl + rem_sl + rem_cl,
+        "total": rem_pl + rem_sl + rem_cl + rem_co,
+        "used": used_pl + used_sl + used_cl + used_co,
+        "remaining": rem_pl + rem_sl + rem_cl + rem_co,
         "is_intern": False,
         "types": [
             {"name": "Privilege Leave", "remaining": round(rem_pl, 1)},
             {"name": "Sick Leave", "remaining": round(rem_sl, 1)},
-            {"name": "Casual Leave", "remaining": round(rem_cl, 1)}
+            {"name": "Casual Leave", "remaining": round(rem_cl, 1)},
+            {"name": "Compensatory Off", "remaining": round(rem_co, 1)}
         ],
         "accrual_info": {
             "months_passed": months_passed,
@@ -914,36 +1228,107 @@ def generate_payslip_pdf(employee, salary, month_year, format_info):
     
     # 1. Background Template
     template_image = s3_db.get_image("settings/payslip_template.jpg")
+    has_template = False
     if template_image:
-        temp_path = "/tmp/template_ps.jpg"
-        with open(temp_path, "wb") as f:
-            f.write(template_image)
-        pdf.image(temp_path, x=0, y=0, w=210, h=297) # A4 size
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+                tmp.write(template_image)
+                temp_path = tmp.name
+            pdf.image(temp_path, x=0, y=0, w=210, h=297) # A4 size
+            os.unlink(temp_path) # Clean up
+            has_template = True
+        except:
+            pass # Fallback to manual generation if template fails
+            
+    # 2. Add Professional Header if no template exists
+    if not has_template:
+        # Header bar
+        pdf.set_fill_color(200, 76, 255) # #c84cff (Violet)
+        pdf.rect(0, 0, 210, 40, 'F')
+        
+        pdf.set_font("Arial", 'B', 24)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_xy(15, 12)
+        pdf.cell(0, 10, "NeuZen AI", ln=False)
+        
+        pdf.set_font("Arial", 'B', 12)
+        pdf.set_xy(150, 15)
+        pdf.cell(45, 10, "PAYSLIP REPORT", align='R', ln=True)
+        
+        pdf.set_font("Arial", '', 10)
+        pdf.set_xy(150, 22)
+        pdf.cell(45, 10, f"{month_year}", align='R', ln=True)
+        pdf.ln(25)
     
     # 2. Overlay Text
-    # For now, we'll use a set of default coordinates if Gemini didn't provide precise ones
-    # In a real scenario, we'd parse the 'description' from format_info
-    
-    pdf.set_font("Arial", size=10)
+    pdf.set_font("Arial", 'B', 12)
     pdf.set_text_color(0, 0, 0)
     
-    # Generic placement (can be refined via Gemini analysis)
-    # This is a fallback if Gemini's description isn't JSON-parseable easily
-    fields = [
-        ("Employee Name", employee.get("name"), 40, 50),
-        ("Employee ID", employee.get("employee_id"), 40, 60),
-        ("Month", month_year, 150, 50),
-        ("Gross Salary", f"Rs. {salary.get('gross_salary'):,}", 150, 100),
-        ("Net Salary", f"Rs. {salary.get('net_salary'):,}", 150, 200),
-        ("Deductions", f"Rs. {salary.get('deductions'):,}", 150, 150),
-    ]
-    
-    # Try to extract data from Gemini analysis if it looks like coordinates
-    # For now, let's just place them at these sample spots or use Gemini to find them
-    
-    for label, val, x, y in fields:
-        pdf.set_xy(x, y)
-        pdf.cell(0, 10, txt=f"{val}", ln=False)
+    if not has_template:
+        # Section titles
+        pdf.set_xy(15, 50)
+        pdf.cell(0, 10, "Employee Details", ln=True)
+        pdf.line(15, 58, 195, 58)
+        
+        pdf.set_font("Arial", '', 10)
+        pdf.set_xy(15, 65)
+        pdf.cell(40, 10, f"Name: {employee.get('name')}", ln=True)
+        pdf.set_x(15)
+        pdf.cell(40, 10, f"ID: {employee.get('employee_id')}", ln=True)
+        pdf.set_x(15)
+        pdf.cell(40, 10, f"Type: {employee.get('employment_type', 'Full-Time')}", ln=True)
+        
+        pdf.set_font("Arial", 'B', 12)
+        pdf.set_xy(15, 100)
+        pdf.cell(0, 10, "Salary Breakdown", ln=True)
+        pdf.line(15, 108, 195, 108)
+        
+        pdf.set_font("Arial", '', 10)
+        pdf.set_xy(15, 115)
+        pdf.cell(100, 10, "Description", ln=False)
+        pdf.cell(0, 10, "Amount", align='R', ln=True)
+        
+        pdf.line(15, 123, 195, 123)
+        
+        items = [
+            ("Gross Monthly Salary", salary.get('gross_salary')),
+            ("Attendance Penalty", -salary.get('attendance_penalty', 0)),
+            ("LOP Deductions", -salary.get('lop_deduction', 0)),
+            ("Professional Tax / Other", -salary.get('tax', 0)),
+        ]
+        
+        curr_y = 130
+        for label, val in items:
+            pdf.set_xy(15, curr_y)
+            pdf.cell(100, 10, label)
+            pdf.set_x(150)
+            pdf.cell(45, 10, f"Rs. {val:,}", align='R', ln=True)
+            curr_y += 8
+            
+        pdf.line(15, curr_y + 5, 195, curr_y + 5)
+        pdf.set_font("Arial", 'B', 11)
+        pdf.set_xy(15, curr_y + 10)
+        pdf.cell(100, 10, "NET PAYABLE")
+        pdf.set_x(150)
+        pdf.cell(45, 10, f"Rs. {salary.get('net_salary'):,}", align='R', ln=True)
+        
+        pdf.set_font("Arial", 'I', 8)
+        pdf.set_xy(15, 260)
+        pdf.cell(0, 10, "This is a computer generated document and does not require a signature.", align='C')
+    else:
+        # Use existing coordinate-based overlay if template exists
+        pdf.set_font("Arial", size=10)
+        fields = [
+            ("Employee Name", employee.get("name"), 40, 50),
+            ("Employee ID", employee.get("employee_id"), 40, 60),
+            ("Month", month_year, 150, 50),
+            ("Gross Salary", f"Rs. {salary.get('gross_salary'):,}", 150, 100),
+            ("Net Salary", f"Rs. {salary.get('net_salary'):,}", 150, 200),
+            ("Deductions", f"Rs. {salary.get('deductions'):,}", 150, 150),
+        ]
+        for label, val, x, y in fields:
+            pdf.set_xy(x, y)
+            pdf.cell(0, 10, txt=f"{val}", ln=False)
 
     return pdf.output()
 
@@ -1006,7 +1391,7 @@ def analyze_payslip_template(request: PayslipTemplateRequest):
         if mongo_db.db is not None:
             mongo_db.db.settings.update_one(
                 {"key": "payslip_format"},
-                {"$set": {"description": format_description, "template_image_key": "settings/payslip_template.jpg", "updated_at": datetime.datetime.utcnow().isoformat()}},
+                {"$set": {"description": format_description, "template_image_key": "settings/payslip_template.jpg", "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat()}},
                 upsert=True
             )
             s3_db.save_image("settings/payslip_template.jpg", image_bytes, content_type='image/jpeg')
@@ -1078,7 +1463,7 @@ def release_payslip(request: PayslipReleaseRequest):
     
     mongo_db.payslip_releases.update_one(
         {"month_year": request.month_year},
-        {"$set": {"released": request.release, "updated_at": datetime.datetime.utcnow().isoformat()}},
+        {"$set": {"released": request.release, "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat()}},
         upsert=True
     )
     return {"message": f"Payslips for {request.month_year} {'released' if request.release else 'hidden'}"}
@@ -1089,6 +1474,29 @@ def get_payslip_release_status():
         return {"releases": []}
     releases = list(mongo_db.payslip_releases.find({}, {"_id": 0}))
     return {"releases": releases}
+
+@router.get("/employee/payslips")
+def get_employee_payslips(employee_id: str):
+    if mongo_db.users is None or mongo_db.payslip_releases is None:
+        return {"payslips": []}
+    
+    user = mongo_db.users.find_one({"employee_id": employee_id})
+    if not user:
+        return {"payslips": []}
+        
+    salary = user.get("monthly_salary", 0)
+    # Filter releases that are set to True
+    releases = list(mongo_db.payslip_releases.find({"released": True}, {"_id": 0}))
+    
+    payslips = []
+    for r in releases:
+        payslips.append({
+            "month": r.get("month_year"),
+            "date": r.get("updated_at", "").split('T')[0] if r.get("updated_at") else "2026-03-05",
+            "amount": f"₹{salary:,}"
+        })
+        
+    return {"payslips": payslips}
 
 @router.get("/employee/team-availability")
 def get_team_availability():
@@ -1144,7 +1552,7 @@ class KudosRequest(BaseModel):
 @router.post("/employee/kudos")
 def give_kudos(request: KudosRequest):
     record = request.dict()
-    record["timestamp"] = datetime.datetime.utcnow().isoformat()
+    record["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     if mongo_db.db is not None:
         # Create kudos collection if it doesn't exist
         mongo_db.kudos.insert_one(record)
@@ -1185,7 +1593,7 @@ def update_announcement(request: AnnouncementRequest):
     record = {
         "title": request.title,
         "content": request.content,
-        "updated_at": datetime.datetime.utcnow().isoformat()
+        "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
     }
     mongo_db.db.announcements.insert_one(record)
     return {"message": "Announcement updated successfully", "record": {"title": record["title"], "content": record["content"]}}
@@ -1540,17 +1948,119 @@ def finalize_offer_letter(employee_id: str):
     
     return {"message": "Offer letter sent to employee"}
 
-@router.get("/employee/offer-letter")
+@router.api_route("/employee/offer-letter/{employee_id}", methods=["GET", "HEAD"])
 def get_employee_offer_letter(employee_id: str):
     user = mongo_db.users.find_one({"employee_id": employee_id})
-    if not user or "offer_letter_key" not in user:
-        return {"error": "No offer letter found"}
+    if not user or "offer_letter_key" not in user or user.get("offer_letter_status") != "final":
+        return Response(status_code=404)
         
     pdf_bytes = s3_db.get_image(user["offer_letter_key"])
     return Response(
         content=pdf_bytes, 
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=NeuzenAI_Offer_Letter.pdf"}
+    )
+
+def generate_relieving_letter_pdf(data):
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Header
+    pdf.set_font("Arial", 'B', 20)
+    pdf.set_text_color(255, 122, 0) # Primary
+    pdf.cell(0, 10, "NeuZen AI", ln=True, align='C')
+    pdf.set_font("Arial", size=10)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 5, "Experience & Relieving Certificate", ln=True, align='C')
+    pdf.ln(15)
+    
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Arial", size=11)
+    pdf.cell(0, 10, f"Date: {data['relieving_date']}", ln=True, align='R')
+    pdf.ln(10)
+    
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, "TO WHOMSOEVER IT MAY CONCERN", ln=True, align='C')
+    pdf.ln(10)
+    
+    pdf.set_font("Arial", size=12)
+    pdf.multi_cell(0, 8, f"""This is to certify that {data['name']} (Emp ID: {data['employee_id']}) was employed with NeuZen AI from {data['joining_date']} to {data['last_working_day']}.
+
+At the time of leaving, {data['name']} held the position of {data['designation']}. During the tenure of service, we found them to be hardworking and dedicated to their responsibilities.
+
+We would like to confirm that {data['name']} has been relieved from their duties effective {data['relieving_date']}.
+
+The reason for leaving as per our records is: {data['reason_for_leaving']}.
+
+We wish {data['name']} all the best for their future endeavors.""")
+
+    pdf.ln(30)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(0, 10, "For NeuZen AI,", ln=True)
+    pdf.ln(10)
+    pdf.cell(0, 10, "Authorized Signatory", ln=True)
+    pdf.cell(0, 5, "HR Department", ln=True)
+    
+    return pdf.output(dest='S').encode('latin1')
+
+@router.post("/admin/employee/generate-relieving-letter")
+def admin_generate_relieving_letter(request: RelievingLetterRequest):
+    user = mongo_db.users.find_one({"employee_id": request.employee_id})
+    if not user:
+        return {"error": "Employee not found"}
+        
+    data = request.dict()
+    data["name"] = user["name"]
+    
+    try:
+        pdf_bytes = generate_relieving_letter_pdf(data)
+        key = f"drafts/relieving_letter_{request.employee_id}.pdf"
+        s3_db.save_image(key, pdf_bytes, content_type='application/pdf')
+        
+        mongo_db.users.update_one(
+            {"employee_id": request.employee_id},
+            {"$set": {"relieving_letter_draft_key": key, "relieving_letter_status": "draft"}}
+        )
+        return {"message": "Relieving letter draft generated", "draft_key": key}
+    except Exception as e:
+        return {"error": f"Failed to generate relieving letter: {str(e)}"}
+
+@router.post("/admin/employee/finalize-relieving-letter/{employee_id}")
+def finalize_relieving_letter(employee_id: str):
+    user = mongo_db.users.find_one({"employee_id": employee_id})
+    if not user or "relieving_letter_draft_key" not in user:
+        return {"error": "Draft not found"}
+        
+    final_key = f"documents/relieving_letter_{employee_id}.pdf"
+    pdf_bytes = s3_db.get_image(user["relieving_letter_draft_key"])
+    s3_db.save_image(final_key, pdf_bytes, content_type='application/pdf')
+    
+    mongo_db.users.update_one(
+        {"employee_id": employee_id},
+        {"$set": {"relieving_letter_key": final_key, "relieving_letter_status": "final"}}
+    )
+    return {"message": "Relieving letter finalized and sent"}
+
+@router.get("/admin/employee/relieving-letter-preview/{employee_id}")
+def preview_relieving_letter(employee_id: str):
+    user = mongo_db.users.find_one({"employee_id": employee_id})
+    if not user or "relieving_letter_draft_key" not in user:
+        return Response(status_code=404)
+        
+    pdf_bytes = s3_db.get_image(user["relieving_letter_draft_key"])
+    return Response(content=pdf_bytes, media_type="application/pdf")
+
+@router.api_route("/employee/relieving-letter/{employee_id}", methods=["GET", "HEAD"])
+def get_employee_relieving_letter(employee_id: str):
+    user = mongo_db.users.find_one({"employee_id": employee_id})
+    if not user or "relieving_letter_key" not in user or user.get("relieving_letter_status") != "final":
+        return Response(status_code=404)
+        
+    pdf_bytes = s3_db.get_image(user["relieving_letter_key"])
+    return Response(
+        content=pdf_bytes, 
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=NeuzenAI_Relieving_Letter.pdf"}
     )
 
 # --- Template Management ---
@@ -1618,7 +2128,7 @@ def upload_offer_letter_template(request: TemplateUploadRequest):
             "html_content": analysis["html_template"],
             "placeholders": analysis["placeholders"],
             "original_type": request.file_type,
-            "updated_at": datetime.datetime.utcnow().isoformat()
+            "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }},
         upsert=True
     )

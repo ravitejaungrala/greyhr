@@ -1,14 +1,16 @@
 :root {
-  --primary: #ff4500;
-  --primary-hover: #e63e00;
-  --secondary: #10B981;
-  --secondary-light: #D1FAE5;
-  --bg-color: #FFFFFF;
-  --surface-color: #F9FAFB;
-  --text-light: #1a1a1a;
-  --text-muted: #4B5563;
+  --primary: #ff7a00;
+  --primary-hover: #e66d00;
+  --secondary: #0a66c2;
+  --violet: #c84cff;
+  --bg-color: #f9fafb;
+  --surface-color: #ffffff;
+  --text-light: #1f2937;
+  --text-muted: #6b7280;
   --border-color: #E5E7EB;
-  --accent-orange: #FFF7ED;
+  --accent-orange: #fff3e5;
+  --main-gradient: linear-gradient(135deg, #ff7a00 0%, #c84cff 50%, #0a66c2 100%);
+  --hover-gradient: linear-gradient(135deg, #0a66c2 0%, #c84cff 50%, #ff7a00 100%);
 
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -48,9 +50,6 @@ body {
 
 .sidebar-header {
   padding: 1.5rem;
-  font-size: 1.25rem;
-  font-weight: bold;
-  color: var(--primary);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
@@ -77,9 +76,9 @@ body {
 
 .nav-item:hover,
 .nav-item.active {
-  background-color: var(--accent-orange);
-  color: var(--primary);
-  border-right: 3px solid var(--primary);
+  background-color: rgba(10, 102, 194, 0.06);
+  color: var(--secondary);
+  border-right: 3px solid var(--secondary);
 }
 
 .main-content {
@@ -114,7 +113,8 @@ body {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: var(--primary);
+  background-color: #c84cff;
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -168,12 +168,13 @@ body {
 }
 
 .btn-primary {
-  background-color: var(--primary);
+  background: var(--main-gradient);
   color: white;
+  border: none;
 }
 
 .btn-primary:hover {
-  background-color: var(--primary-hover);
+  background: var(--hover-gradient);
 }
 
 .btn-secondary {

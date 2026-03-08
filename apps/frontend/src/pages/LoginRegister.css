@@ -10,7 +10,7 @@
 .login-hero {
     flex: 1;
     display: none;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+    background: var(--main-gradient);
     color: white;
     justify-content: center;
     align-items: center;
@@ -30,13 +30,36 @@
 .login-hero::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: url('data:image/svg+xml;utf8,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,0.1)" stroke-width="2" fill="none"/></svg>') repeat;
-    opacity: 0.5;
-    animation: bg-scroll 20s linear infinite;
+    top: -50%;
+    left: -50%;
+    right: -50%;
+    bottom: -50%;
+    background: url('/icon (2).png') repeat;
+    background-size: 120px 120px;
+    opacity: 0.06;
+    animation: bg-scroll 30s linear infinite;
+    transform: rotate(-15deg);
+}
+
+.hero-icon-animate {
+    animation: float-icon 4s ease-in-out infinite;
+}
+
+@keyframes float-icon {
+    0% {
+        transform: translateY(0px);
+        filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+    }
+
+    50% {
+        transform: translateY(-12px);
+        filter: drop-shadow(0 12px 12px rgba(0, 0, 0, 0.15));
+    }
+
+    100% {
+        transform: translateY(0px);
+        filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+    }
 }
 
 @keyframes bg-scroll {
@@ -104,7 +127,7 @@
 .input-field:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(255, 69, 0, 0.1);
+    box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.1);
 }
 
 .btn-login {
@@ -113,17 +136,18 @@
     font-size: 1rem;
     font-weight: 600;
     border-radius: 8px;
-    background: linear-gradient(to right, var(--primary), #ff6b35);
+    background: var(--main-gradient);
     color: white;
     border: none;
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 4px 6px rgba(255, 69, 0, 0.2);
+    box-shadow: 0 4px 6px rgba(255, 122, 0, 0.2);
 }
 
 .btn-login:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(255, 69, 0, 0.3);
+    box-shadow: 0 6px 12px rgba(255, 122, 0, 0.3);
+    background: var(--hover-gradient);
 }
 
 .btn-login:active {

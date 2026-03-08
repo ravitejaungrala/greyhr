@@ -138,9 +138,11 @@ const LoginRegister = ({ onLoginSuccess }) => {
         <div className="login-page-container">
             <div className="login-hero">
                 <div style={{ position: 'relative', zIndex: 1, maxWidth: '600px' }}>
-                    <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🌊</div>
+                    <div style={{ marginBottom: '1rem' }}>
+                        <img src="/icon (2).png" alt="Logo" className="hero-icon-animate" style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '16px', background: 'rgba(255,255,255,0.1)', padding: '0.5rem', backdropFilter: 'blur(10px)' }} />
+                    </div>
                     <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '1rem', lineHeight: 1.2 }}>
-                        Welcome to<br />DurgDhana HRMS
+                        Welcome to<br />HRMS
                     </h1>
                     <p style={{ fontSize: '1.125rem', opacity: 0.9 }}>
                         Empowering your workforce with modern AI-driven tools. Streamline operations, foster engagement, and unlock potential.
@@ -151,15 +153,17 @@ const LoginRegister = ({ onLoginSuccess }) => {
             <div className="login-form-container">
                 <div className="login-card">
                     <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-                        <div style={{ fontSize: '2.5rem', display: 'inline-block', marginBottom: '0.5rem' }}>🌊</div>
-                        <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-light)', marginBottom: '0.5rem' }}>DurgDhana HRMS</h2>
+                        <div style={{ display: 'inline-block', marginBottom: '0.5rem' }}>
+                            <img src="/icon (2).png" alt="Logo" style={{ width: '48px', height: '48px', objectFit: 'contain', borderRadius: '8px' }} />
+                        </div>
+                        <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-light)', marginBottom: '0.5rem' }}>HRMS</h2>
                         <p style={{ color: 'var(--text-muted)' }}>
                             {mode === 'login' ? 'Sign in to your account' : 'Create your employee account'}
                         </p>
                     </div>
 
                     {message && (
-                        <div style={{ padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', background: message.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', color: message.type === 'error' ? '#EF4444' : 'var(--secondary)', fontSize: '0.875rem', fontWeight: 500, border: `1px solid ${message.type === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}` }}>
+                        <div style={{ padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', background: message.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(10, 102, 194, 0.1)', color: message.type === 'error' ? '#EF4444' : 'var(--secondary)', fontSize: '0.875rem', fontWeight: 500, border: `1px solid ${message.type === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(10, 102, 194, 0.2)'}` }}>
                             {message.text}
                         </div>
                     )}
