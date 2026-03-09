@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        /* PDF Page Setup to prevent overflow */
+        @page {
+            size: A4;
+            margin: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            line-height: 1.4;
+        }
+
+        /* Header Image Section (Matches image_138e54.png) */
+        .header-top {
+            background: linear-gradient(to right, #ff3b30, #ff9500);
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .header-content {
+            text-align: center;
+            padding: 15px 0 5px 0;
+        }
+
+        .header-content img {
+            height: 50px;
+        }
+
+        .company-title {
+            font-weight: bold;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .company-addr {
+            font-size: 10px;
+            color: #555;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .contact-line {
+            color: #e87132;
+            font-size: 11px;
+            margin-top: 5px;
+            font-weight: bold;
+        }
+
+        .orange-line {
+            border-bottom: 3px solid #e87132;
+            width: 80%;
+            margin: 10px auto;
+        }
+
+        /* Document Body */
+        .letter-body {
+            width: 85%;
+            margin: 0 auto;
+            padding-bottom: 80px;
+            position: relative;
+        }
+
+        .doc-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 20px 0;
+            text-transform: uppercase;
+        }
+
+        .meta-data {
+            margin-bottom: 15px;
+            font-size: 13px;
+        }
+
+        .salutation {
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .text-content {
+            text-align: justify;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        /* Signature Section */
+        .signature-section {
+            margin-top: 30px;
+            font-size: 13px;
+        }
+
+        /* Footer Section (Matches image_138e79.png) */
+        .footer-fixed {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            height: 35px;
+            background: linear-gradient(to right, #ff3b30, #ff9500);
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        /* Watermark */
+        .watermark {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            opacity: 0.08;
+            font-size: 70px;
+            font-weight: bold;
+            pointer-events: none;
+            width: 100%;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header-top">
+        <span>NEUZENAI</span>
+        <span>NEUZENAI IT Solutions Pvt Ltd</span>
+    </div>
+
+    <div class="header-content">
+        <img src="logo.png" alt="NEUZENAI">
+        <div class="company-title">NEUZENAI IT Solutions Pvt Ltd</div>
+        <div class="company-addr">T Hub Phase 2, 20, Inorbit Mall Rd, Vittal Rao Nagar, Madhapur, Hyderabad, Telangana
+            500081</div>
+        <div class="contact-line">
+            ✉ contact@neuzenai.com &nbsp;&nbsp; 🌐 www.neuzenai.com &nbsp;&nbsp; 📞 +91-8885257422
+        </div>
+        <div class="orange-line"></div>
+    </div>
+
+    <div class="letter-body">
+        <div class="watermark">NEUZENAI</div>
+
+        <h2 class="doc-title">Relieving Letter</h2>
+
+        <div class="meta-data">
+            <strong>Date:</strong> {{ current_date }}<br><br>
+            <strong>Name:</strong> {{ emp_name }}<br>
+            <strong>Designation:</strong> {{ designation }}<br>
+            <strong>Department:</strong> {{ department }}
+        </div>
+
+        <div class="salutation">Dear {{ emp_name }},</div>
+
+        <div class="text-content">
+            This letter serves as a formal confirmation that you have been relieved from your duties at <strong>NEUZENAI
+                IT Solutions Pvt Ltd</strong> effective from <strong>{{ last_working_day }}</strong>.
+            <br><br>
+            We acknowledge your resignation, which was submitted on <strong>{{ resignation_date }}</strong>. We would
+            like to thank you for your contributions during your tenure. You were a valuable member of the team, and we
+            appreciate the dedication you put into your role.
+            <br><br>
+            Your final settlement, including any outstanding dues, will be processed in accordance with company
+            policies. We wish you all the best in your future endeavors.
+        </div>
+
+        <div class="signature-section">
+            Sincerely,<br><br><br>
+            <strong>{{ emp_name }}</strong><br>
+            {{ designation }}<br>
+            <strong>NEUZENAI IT Solutions Pvt Ltd</strong>
+        </div>
+    </div>
+
+    <div class="footer-fixed">
+        <span>www.neuzenai.com</span>
+        <span>contact@neuzenai.com</span>
+        <span>+91-8885257422</span>
+    </div>
+
+</body>
+
+</html>

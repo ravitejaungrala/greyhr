@@ -322,6 +322,14 @@ class RelievingLetterRequest(BaseModel):
     designation: str
     reason_for_leaving: Optional[str] = "Personal reasons"
 
+class ExperienceCertificateRequest(BaseModel):
+    employee_id: str
+    issue_date: str
+    joining_date: str
+    last_working_day: str
+    designation: str
+    performance_summary: Optional[str] = "Good"
+
 class WorkdayOverride(BaseModel):
     date: str  # YYYY-MM-DD
     type: str  # 'forced_working' or 'forced_holiday'
@@ -344,6 +352,13 @@ class TemplateUploadRequest(BaseModel):
     employment_type: str
     content_base64: str
     file_type: str  # 'html' or 'pdf'
+
+class TemplateSaveRequest(BaseModel):
+    employment_type: str
+    html_template: str
+    placeholders: list[str] = []
+    roi_fields: list[str] = []
+    original_type: str = "html"
 
 @router.post("/leaves/apply")
 def apply_leave(request: LeaveRequest):
@@ -2003,6 +2018,44 @@ We wish {data['name']} all the best for their future endeavors.""")
     
     return pdf.output(dest='S').encode('latin1')
 
+def generate_experience_certificate_pdf(data):
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Header
+    pdf.set_font("Arial", 'B', 20)
+    pdf.set_text_color(255, 122, 0) # Primary
+    pdf.cell(0, 10, "NeuZen AI", ln=True, align='C')
+    pdf.set_font("Arial", size=10)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 5, "Experience Certificate", ln=True, align='C')
+    pdf.ln(15)
+    
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Arial", size=11)
+    pdf.cell(0, 10, f"Date: {data['issue_date']}", ln=True, align='R')
+    pdf.ln(10)
+    
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, "TO WHOMSOEVER IT MAY CONCERN", ln=True, align='C')
+    pdf.ln(10)
+    
+    pdf.set_font("Arial", size=12)
+    pdf.multi_cell(0, 8, f"""This is to certify that {data['name']} (Emp ID: {data['employee_id']}) was employed with NeuZen AI as a {data['designation']} from {data['joining_date']} to {data['last_working_day']}.
+
+During their tenure, we found {data['name']} to be a dedicated and committed professional. Their performance was '{data.get('performance_summary', 'Good')}', and they contributed significantly to our organization's growth.
+
+We appreciate their contributions and wish them the very best in all their future endeavors.""")
+
+    pdf.ln(30)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(0, 10, "For NeuZen AI,", ln=True)
+    pdf.ln(10)
+    pdf.cell(0, 10, "Authorized Signatory", ln=True)
+    pdf.cell(0, 5, "HR Department", ln=True)
+    
+    return pdf.output(dest='S').encode('latin1')
+
 @router.post("/admin/employee/generate-relieving-letter")
 def admin_generate_relieving_letter(request: RelievingLetterRequest):
     user = mongo_db.users.find_one({"employee_id": request.employee_id})
@@ -2050,22 +2103,75 @@ def preview_relieving_letter(employee_id: str):
     pdf_bytes = s3_db.get_image(user["relieving_letter_draft_key"])
     return Response(content=pdf_bytes, media_type="application/pdf")
 
-@router.api_route("/employee/relieving-letter/{employee_id}", methods=["GET", "HEAD"])
-def get_employee_relieving_letter(employee_id: str):
-    user = mongo_db.users.find_one({"employee_id": employee_id})
-    if not user or "relieving_letter_key" not in user or user.get("relieving_letter_status") != "final":
-        return Response(status_code=404)
-        
-    pdf_bytes = s3_db.get_image(user["relieving_letter_key"])
     return Response(
         content=pdf_bytes, 
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=NeuzenAI_Relieving_Letter.pdf"}
     )
 
+@router.post("/admin/employee/generate-experience-certificate")
+def admin_generate_experience_certificate(request: ExperienceCertificateRequest):
+    user = mongo_db.users.find_one({"employee_id": request.employee_id})
+    if not user:
+        return {"error": "Employee not found"}
+        
+    data = request.dict()
+    data["name"] = user["name"]
+    
+    try:
+        pdf_bytes = generate_experience_certificate_pdf(data)
+        key = f"drafts/experience_cert_{request.employee_id}.pdf"
+        s3_db.save_image(key, pdf_bytes, content_type='application/pdf')
+        
+        mongo_db.users.update_one(
+            {"employee_id": request.employee_id},
+            {"$set": {"experience_cert_draft_key": key, "experience_cert_status": "draft"}}
+        )
+        return {"message": "Experience certificate draft generated", "draft_key": key}
+    except Exception as e:
+        return {"error": f"Failed to generate experience certificate: {str(e)}"}
+
+@router.post("/admin/employee/finalize-experience-certificate/{employee_id}")
+def finalize_experience_certificate(employee_id: str):
+    user = mongo_db.users.find_one({"employee_id": employee_id})
+    if not user or "experience_cert_draft_key" not in user:
+        return {"error": "Draft not found"}
+        
+    final_key = f"documents/experience_cert_{employee_id}.pdf"
+    pdf_bytes = s3_db.get_image(user["experience_cert_draft_key"])
+    s3_db.save_image(final_key, pdf_bytes, content_type='application/pdf')
+    
+    mongo_db.users.update_one(
+        {"employee_id": employee_id},
+        {"$set": {"experience_cert_key": final_key, "experience_cert_status": "final"}}
+    )
+    return {"message": "Experience certificate finalized and sent"}
+
+@router.get("/admin/employee/experience-certificate-preview/{employee_id}")
+def preview_experience_certificate(employee_id: str):
+    user = mongo_db.users.find_one({"employee_id": employee_id})
+    if not user or "experience_cert_draft_key" not in user:
+        return Response(status_code=404)
+        
+    pdf_bytes = s3_db.get_image(user["experience_cert_draft_key"])
+    return Response(content=pdf_bytes, media_type="application/pdf")
+
+@router.api_route("/employee/experience-certificate/{employee_id}", methods=["GET", "HEAD"])
+def get_employee_experience_certificate(employee_id: str):
+    user = mongo_db.users.find_one({"employee_id": employee_id})
+    if not user or "experience_cert_key" not in user or user.get("experience_cert_status") != "final":
+        return Response(status_code=404)
+        
+    pdf_bytes = s3_db.get_image(user["experience_cert_key"])
+    return Response(
+        content=pdf_bytes, 
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=NeuzenAI_Experience_Certificate.pdf"}
+    )
+
 # --- Template Management ---
 
-def analyze_and_convert_template(content_b64: str, file_type: str):
+def analyze_and_convert_template(content_b64: str, file_type: str, document_type: str = "Document"):
     try:
         content_bytes = parse_base64(content_b64)
         
@@ -2084,17 +2190,37 @@ def analyze_and_convert_template(content_b64: str, file_type: str):
         model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-image-preview")
         model = genai.GenerativeModel(model_name)
         
+        # Specialized prompts based on document type
+        document_type = document_type if document_type else "Document"
+        
+        extra_instr = ""
+        if "payslip" in document_type.lower():
+            extra_instr = """
+            - CRITICAL: Identify and list all "ROI / Investment" fields (e.g., 80C, 80D, HRA, Medical, NPS).
+            - Include these in the "roi_fields" array in the returned JSON.
+            - CRITICAL: DO NOT convert the Company Name and Company Address into placeholders. They MUST remain as fixed static text in the HTML exactly as they appear in the document.
+            - ONLY create placeholders for: Employee Details, Earnings, Deductions, Net Salary, "Payslip for the month of X", and Amount in Words.
+            """
+        elif "relieving" in document_type.lower() or "experience" in document_type.lower():
+             extra_instr = """
+            - CRITICAL: Identify exit-related fields (Joining Date, Relieving Date, Last Working Day, Reason for Leaving, Performance Review).
+            - Add these naturally as placeholders in the HTML.
+            """
+
         prompt = f"""
-        You are an HR technical assistant. I have an offer letter template in {file_type} format.
+        You are an HR technical assistant at NeuzenAI. I have a {document_type} template in {file_type} format.
         
         TASK:
         1. Identify all existing placeholders like {{{{name}}}}, {{{{role}}}}, or unique markers.
-        2. Create a professional, clean HTML/CSS template version of this letter.
-        3. Ensure the HTML template uses Jinja2 style placeholders {{{{key}}}} for all dynamic data.
-        4. If the original didn't have placeholders, add them naturally for: name, employee_id, date, role, role_description, stipend, duration (if intern), annual_ctc, in_hand_salary, notice_period (if full-time).
+        2. CRITICAL: REPLICATE the EXACT original HTML layout, structure, tables, and design of the provided document. DO NOT create a new design or change the format.
+        3. CRITICAL: You MUST preserve ALL original colors, fonts, branding, alignments, and css styling exactly as they appear in the original uploaded document. Do not lose the color scheme.
+        4. Ensure the HTML template uses Jinja2 style placeholders {{{{key}}}} for all dynamic data.
+        {extra_instr}
+        5. If the original didn't have placeholders, add them naturally for relevant fields.
         
-        RETURN ONLY a JSON object with two fields:
+        RETURN ONLY a valid JSON object with:
         "placeholders": [list of strings],
+        "roi_fields": [list of strings or []],
         "html_template": "the full html source string"
         
         Template Raw Content/Text:
@@ -2111,38 +2237,43 @@ def analyze_and_convert_template(content_b64: str, file_type: str):
         print(f"Template Analysis Error: {e}")
         return None
 
-@router.post("/admin/templates/upload")
-def upload_offer_letter_template(request: TemplateUploadRequest):
-    if mongo_db.offer_letter_templates is None:
-        return {"error": "Database error: offer_letter_templates collection missing"}
-    
-    # AI Analysis & Conversion
-    analysis = analyze_and_convert_template(request.content_base64, request.file_type)
+@router.post("/admin/templates/analyze")
+def analyze_template_api(request: TemplateUploadRequest):
+    # AI Analysis & Conversion Only
+    analysis = analyze_and_convert_template(request.content_base64, request.file_type, request.employment_type)
     
     if not analysis:
         return {"error": "AI Analysis failed. Please try a cleaner file."}
 
+    return analysis
+
+@router.post("/admin/templates/upload")
+def save_analyzed_template(request: TemplateSaveRequest):
+    # This route now performs the actual saving AFTER admin confirmation
+    if mongo_db.offer_letter_templates is None:
+        return {"error": "Database error: offer_letter_templates collection missing"}
+
     mongo_db.offer_letter_templates.update_one(
         {"employment_type": request.employment_type},
         {"$set": {
-            "html_content": analysis["html_template"],
-            "placeholders": analysis["placeholders"],
-            "original_type": request.file_type,
+            "html_content": request.html_template,
+            "placeholders": request.placeholders,
+            "roi_fields": request.roi_fields,
+            "original_type": request.original_type,
             "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }},
         upsert=True
     )
     return {
-        "message": f"Template processed and updated for {request.employment_type}",
-        "placeholders": analysis["placeholders"]
+        "message": f"Template officially saved for {request.employment_type}"
     }
 
 @router.get("/admin/templates")
 def list_offer_letter_templates():
     if mongo_db.offer_letter_templates is None:
         return []
-    # Return everything except the massive html_content to keep list light
-    templates = list(mongo_db.offer_letter_templates.find({}, {"_id": 0, "html_content": 0}))
+    # Return everything including html_content so preview works
+    templates = list(mongo_db.offer_letter_templates.find({}, {"_id": 0}))
     return templates
 
 @router.delete("/admin/templates/{employment_type}")

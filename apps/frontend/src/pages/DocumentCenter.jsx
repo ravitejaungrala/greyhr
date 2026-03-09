@@ -4,6 +4,7 @@ const DocumentCenter = ({ user }) => {
     const [payslips, setPayslips] = useState([]);
     const [hasOfferLetter, setHasOfferLetter] = useState(false);
     const [hasRelievingLetter, setHasRelievingLetter] = useState(false);
+    const [hasExperienceCertificate, setHasExperienceCertificate] = useState(false);
     const [loading, setLoading] = useState(true);
     const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
@@ -28,6 +29,12 @@ const DocumentCenter = ({ user }) => {
                 if (rlRes.ok) {
                     setHasRelievingLetter(true);
                 }
+
+                // Check Experience Certificate
+                const ecRes = await fetch(`${apiUrl}/employee/experience-certificate/${user.employee_id}`, { method: 'HEAD' });
+                if (ecRes.ok) {
+                    setHasExperienceCertificate(true);
+                }
             } catch (err) {
                 console.error("Error fetching documents:", err);
             } finally {
@@ -50,6 +57,10 @@ const DocumentCenter = ({ user }) => {
 
     const handleDownloadRelievingLetter = () => {
         window.open(`${apiUrl}/employee/relieving-letter/${user.employee_id}`, '_blank');
+    };
+
+    const handleDownloadExperienceCertificate = () => {
+        window.open(`${apiUrl}/employee/experience-certificate/${user.employee_id}`, '_blank');
     };
 
     return (
@@ -86,6 +97,21 @@ const DocumentCenter = ({ user }) => {
                                 </div>
                                 {hasRelievingLetter ? (
                                     <button className="btn btn-primary" onClick={handleDownloadRelievingLetter}>Download</button>
+                                ) : (
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Not Available</span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Experience Certificate */}
+                        <div className="card" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <div style={{ fontWeight: 'bold' }}>📄 Experience Certificate</div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Proof of service & performance</div>
+                                </div>
+                                {hasExperienceCertificate ? (
+                                    <button className="btn btn-primary" onClick={handleDownloadExperienceCertificate}>Download</button>
                                 ) : (
                                     <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Not Available</span>
                                 )}

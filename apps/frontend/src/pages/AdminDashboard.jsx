@@ -48,6 +48,16 @@ const AdminDashboard = ({ activeTab }) => {
         reason_for_leaving: 'Personal reasons'
     });
     const [isGeneratingRL, setIsGeneratingRL] = useState(false);
+    const [experienceCertificateParams, setExperienceCertificateParams] = useState({
+        employee_id: '',
+        issue_date: new Date().toISOString().split('T')[0],
+        joining_date: '',
+        last_working_day: new Date().toISOString().split('T')[0],
+        designation: '',
+        performance_summary: 'Good'
+    });
+    const [isGeneratingEC, setIsGeneratingEC] = useState(false);
+    const [previewActiveTemplate, setPreviewActiveTemplate] = useState(null);
 
     // Form states
     const [newHoliday, setNewHoliday] = useState({ name: '', date: '', type: 'Public Holiday' });
@@ -286,6 +296,39 @@ const AdminDashboard = ({ activeTab }) => {
         }
     };
 
+    const handleGenerateExperienceCertificate = async (empId) => {
+        setIsGeneratingEC(true);
+        try {
+            const res = await fetch(`${apiUrl}/admin/employee/generate-experience-certificate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(experienceCertificateParams)
+            });
+            if (res.ok) {
+                alert("Experience certificate draft generated! Review it below.");
+                setPreviewTimestamp(Date.now());
+                fetchData();
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsGeneratingEC(false);
+        }
+    };
+
+    const handleFinalizeExperienceCertificate = async (empId) => {
+        try {
+            const res = await fetch(`${apiUrl}/admin/employee/finalize-experience-certificate/${empId}`, { method: 'POST' });
+            if (res.ok) {
+                alert("Experience certificate finalized and released to employee!");
+                setIsRelievingLetterModalOpen(false);
+                fetchData();
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const handleSetOverride = async (date, type, reason = "") => {
         try {
             const res = await fetch(`${apiUrl}/admin/workday-overrides`, {
@@ -411,7 +454,7 @@ const AdminDashboard = ({ activeTab }) => {
 
             setUploadingTemplate(true);
             try {
-                const res = await fetch(`${apiUrl}/admin/templates/upload`, {
+                const res = await fetch(`${apiUrl}/admin/templates/analyze`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -421,7 +464,9 @@ const AdminDashboard = ({ activeTab }) => {
                     })
                 });
                 const data = await res.json();
-                if (data.message) {
+                if (data.html_template || data.placeholders) {
+                    setTemplateAnalysis({ ...data, original_type: fileType }); // Store the full analysis object
+                } else if (data.message) {
                     alert(data.message);
                     fetchData();
                 } else {
@@ -432,6 +477,8 @@ const AdminDashboard = ({ activeTab }) => {
                 alert(`Upload failed! Could not connect to ${apiUrl}/admin/templates/upload. Please ensure the backend server is running.`);
             } finally {
                 setUploadingTemplate(false);
+                // After upload, trigger a re-fetch of templates to show in the list
+                fetchData();
             }
         };
         reader.readAsDataURL(file);
@@ -797,20 +844,28 @@ const AdminDashboard = ({ activeTab }) => {
                                         <button onClick={() => setSelectedApprovedEmp(null)} className="btn btn-secondary">Cancel</button>
                                         <button
                                             onClick={() => {
-                                                setRelievingLetterParams({
+                                                const baseParams = {
                                                     employee_id: selectedApprovedEmp.employee_id,
-                                                    relieving_date: new Date().toISOString().split('T')[0],
-                                                    joining_date: selectedApprovedEmp.joining_date || 'N/A',
+                                                    joining_date: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : 'N/A',
                                                     last_working_day: new Date().toISOString().split('T')[0],
-                                                    designation: selectedApprovedEmp.position || 'Software Engineer',
+                                                    designation: selectedApprovedEmp.position || 'Software Engineer'
+                                                };
+                                                setRelievingLetterParams({
+                                                    ...baseParams,
+                                                    relieving_date: new Date().toISOString().split('T')[0],
                                                     reason_for_leaving: 'Personal reasons'
+                                                });
+                                                setExperienceCertificateParams({
+                                                    ...baseParams,
+                                                    issue_date: new Date().toISOString().split('T')[0],
+                                                    performance_summary: 'Good'
                                                 });
                                                 setIsRelievingLetterModalOpen(true);
                                             }}
                                             className="btn btn-secondary"
                                             style={{ color: '#ff7a00', borderColor: '#ff7a00' }}
                                         >
-                                            📄 Prepare Relieving Letter
+                                            📄 Prepare Exit Documents
                                         </button>
                                         <button onClick={() => handleUpdateEmployee(selectedApprovedEmp.employee_id)} className="btn btn-primary" style={{ backgroundColor: '#0a66c2' }}>Save Profile Changes</button>
                                     </div>
@@ -1062,190 +1117,7 @@ const AdminDashboard = ({ activeTab }) => {
                                     </div>
                                 )}
                             </div>
-                        </div>
-                    )}
-
-                    {/* TAB: PAYROLL */}
-                    {activeTab === 'payroll' && (
-                        <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                            <div className="card glass-panel">
-                                <h2 className="card-title">📄 Payslip Template Configuration</h2>
-                                <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>Upload a sample payslip image to train the AI on your specific company format.</p>
-
-                                <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ padding: '2rem', border: '2px dashed #E5E7EB', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', background: '#ffffff' }} onClick={() => document.getElementById('template-upload').click()}>
-                                            <span style={{ fontSize: '2rem' }}>📁</span>
-                                            <p style={{ marginTop: '0.5rem' }}>{isAnalyzing ? 'Analyzing format with AI...' : 'Click to upload payslip template (JPG/PNG)'}</p>
-                                            <input id="template-upload" type="file" hidden accept="image/*" onChange={handleTemplateUpload} />
-                                        </div>
-                                    </div>
-                                    {templateAnalysis && (
-                                        <div style={{ flex: 1, padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
-                                            <div style={{ fontWeight: 'bold', fontSize: '0.8rem', marginBottom: '0.5rem', color: '#ff7a00' }}>✔ AI ANALYSIS COMPLETE</div>
-                                            <pre style={{ fontSize: '0.7rem', color: '#1f2937', whiteSpace: 'pre-wrap', maxHeight: '150px', overflowY: 'auto' }}>{templateAnalysis}</pre>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="card">
-                                <h2 className="card-title">🚀 Payslip Release Control</h2>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    {['February 2026', 'March 2026'].map(month => {
-                                        const isReleased = payrollStatus.some(p => p.month_year === month && p.released);
-                                        return (
-                                            <div key={month} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
-                                                <div>
-                                                    <div style={{ fontWeight: 'bold' }}>{month}</div>
-                                                    <div style={{ fontSize: '0.8rem', color: isReleased ? '#0a66c2' : '#6b7280' }}>{isReleased ? 'Released to Employees' : 'Not yet released'}</div>
-                                                </div>
-                                                <button
-                                                    className={`btn ${isReleased ? 'btn-secondary' : 'btn-primary'}`}
-                                                    onClick={async () => {
-                                                        const res = await fetch(`${apiUrl}/admin/payslips/release`, {
-                                                            method: 'POST',
-                                                            headers: { 'Content-Type': 'application/json' },
-                                                            body: JSON.stringify({ month_year: month, release: !isReleased })
-                                                        });
-                                                        if (res.ok) fetchData();
-                                                    }}
-                                                >
-                                                    {isReleased ? 'Hide Payslips' : 'Release Payslips'}
-                                                </button>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                            <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(79, 70, 229, 0.05)', borderRadius: '8px', borderLeft: '4px solid #ff7a00' }}>
-                                <div style={{ fontWeight: 'bold', color: '#ff7a00', marginBottom: '0.5rem' }}>AI Payroll Note:</div>
-                                <p style={{ fontSize: '0.875rem', margin: 0 }}>All LOP (Loss of Pay) deductions are automatically calculated based on attendance and leave records for the selected month.</p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* TAB: TEMPLATES */}
-                    {activeTab === 'templates' && (
-                        <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
-                            <h2 className="card-title">📄 Offer Letter HTML Templates</h2>
-                            <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>Upload custom HTML templates with <code>{"{{placeholder}}"}</code> for Intern and Full-Time offers.</p>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                                <div className="card" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid #E5E7EB' }}>
-                                    <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Upload New Template</h3>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                        <div style={{ display: 'flex', gap: '1rem' }}>
-                                            <div style={{ flex: 1 }}>
-                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Employment Type</label>
-                                                <select
-                                                    value={selectedTemplateType}
-                                                    onChange={(e) => setSelectedTemplateType(e.target.value)}
-                                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937', marginTop: '0.5rem' }}
-                                                >
-                                                    <option value="Intern">Intern Offer Letter</option>
-                                                    <option value="Full-Time">Full-Time Offer Letter</option>
-                                                </select>
-                                            </div>
-                                        </div>
-
-                                        <div
-                                            style={{
-                                                padding: '2.5rem',
-                                                border: '2px dashed #E5E7EB',
-                                                borderRadius: '8px',
-                                                textAlign: 'center',
-                                                cursor: 'pointer',
-                                                background: '#ffffff',
-                                                transition: 'all 0.2s',
-                                                hover: { borderColor: '#ff7a00', background: 'rgba(79, 70, 229, 0.05)' }
-                                            }}
-                                            onClick={() => document.getElementById('template-upload-input').click()}
-                                        >
-                                            <span style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}>📤</span>
-                                            {uploadingTemplate ? (
-                                                <div style={{ color: '#ff7a00', fontWeight: 'bold' }}>AI is analyzing template content...</div>
-                                            ) : (
-                                                <div>
-                                                    <div style={{ fontWeight: 'bold' }}>Click to upload Offer Template</div>
-                                                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem' }}>Supports .pdf or .html files</div>
-                                                </div>
-                                            )}
-                                            <input
-                                                id="template-upload-input"
-                                                type="file"
-                                                hidden
-                                                accept=".html,.pdf"
-                                                onChange={handleTemplateUpload}
-                                            />
-                                        </div>
-
-                                        <div style={{ fontSize: '0.75rem', color: '#6b7280', background: 'rgba(7, 10, 20, 0.4)', padding: '1.25rem', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
-                                            <div style={{ fontWeight: 'bold', color: '#0a66c2', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <span>ℹ️</span> AI Placeholder Detection
-                                            </div>
-                                            <p style={{ margin: '0 0 0.5rem 0' }}>Our AI will automatically scan your file for markers and inject standard placeholders if missing.</p>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem' }}>
-                                                {['name', 'role', 'date', 'annual_ctc'].map(p => (
-                                                    <code key={p} style={{ background: '#ffffff', padding: '2px 6px', borderRadius: '4px', border: '1px solid #E5E7EB' }}>{`{{${p}}}`}</code>
-                                                ))}
-                                                <span>...</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="card" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid #E5E7EB' }}>
-                                    <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Active Templates</h3>
-                                    {offerLetterTemplates.length === 0 ? (
-                                        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#6b7280' }}>
-                                            <div style={{ fontSize: '2.5rem', marginBottom: '1rem', opacity: 0.5 }}>📂</div>
-                                            <p>No custom templates found.<br />Using default system format.</p>
-                                        </div>
-                                    ) : (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                            {offerLetterTemplates.map((tpl, i) => (
-                                                <div key={i} style={{ padding: '1.25rem', background: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB', position: 'relative' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                        <div>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
-                                                                <span style={{ background: tpl.employment_type === 'Intern' ? '#0a66c2' : '#ff7a00', color: 'white', fontSize: '0.7rem', padding: '2px 8px', borderRadius: '100px', fontWeight: 'bold' }}>
-                                                                    {tpl.employment_type.toUpperCase()}
-                                                                </span>
-                                                                <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{tpl.original_type?.toUpperCase() || 'HTML'} Format</span>
-                                                            </div>
-                                                            <div style={{ fontSize: '0.7rem', color: '#6b7280', marginBottom: '0.75rem' }}>
-                                                                Last updated: {new Date(tpl.updated_at).toLocaleString()}
-                                                            </div>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => handleDeleteTemplate(tpl.employment_type)}
-                                                            className="btn-icon"
-                                                            style={{ color: '#EF4444', background: 'rgba(239, 68, 68, 0.1)', border: 'none', borderRadius: '4px', width: '28px', height: '28px', cursor: 'pointer' }}
-                                                            title="Delete Template"
-                                                        >
-                                                            🗑️
-                                                        </button>
-                                                    </div>
-
-                                                    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '8px' }}>
-                                                        <div style={{ fontSize: '0.7rem', color: '#0a66c2', fontWeight: 'bold', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Detected Placeholders</div>
-                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                            {tpl.placeholders?.map(p => (
-                                                                <span key={p} style={{ fontSize: '0.65rem', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                                                    {p}
-                                                                </span>
-                                                            )) || <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>None detected</span>}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Weekend/Holiday Work Requests Section */}
+                            {/* Weekend/Holiday Work Requests Section (Moved here) */}
                             <div style={{ marginTop: '2.5rem', borderTop: '2px solid #0a66c2', paddingTop: '2rem' }}>
                                 <h2 className="card-title">🗓️ Weekend/Holiday Work Requests</h2>
                                 <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
@@ -1288,40 +1160,360 @@ const AdminDashboard = ({ activeTab }) => {
                         </div>
                     )}
 
+                    {/* TAB: PAYROLL */}
+                    {activeTab === 'payroll' && (
+                        <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
-                    {/* TAB: ANNOUNCEMENTS */}
-                    {activeTab === 'announcements' && (
-                        <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
-                            <h2 className="card-title">📢 Manage System Announcements</h2>
-                            <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>This message will be visible to all employees in their Engage module.</p>
-
-                            <form onSubmit={handleUpdateAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#6b7280' }}>Announcement Title</label>
-                                    <input
-                                        type="text"
-                                        value={announcementMsg.title}
-                                        onChange={(e) => setAnnouncementMsg({ ...announcementMsg, title: e.target.value })}
-                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
-                                        placeholder="e.g. 📌 Essential Office Guidelines"
-                                    />
+                            <div className="card">
+                                <h2 className="card-title">🚀 Payslip Release Control</h2>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    {['February 2026', 'March 2026'].map(month => {
+                                        const isReleased = payrollStatus.some(p => p.month_year === month && p.released);
+                                        return (
+                                            <div key={month} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                                                <div>
+                                                    <div style={{ fontWeight: 'bold' }}>{month}</div>
+                                                    <div style={{ fontSize: '0.8rem', color: isReleased ? '#0a66c2' : '#6b7280' }}>{isReleased ? 'Released to Employees' : 'Not yet released'}</div>
+                                                </div>
+                                                <button
+                                                    className={`btn ${isReleased ? 'btn-secondary' : 'btn-primary'}`}
+                                                    onClick={async () => {
+                                                        const res = await fetch(`${apiUrl}/admin/payslips/release`, {
+                                                            method: 'POST',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            body: JSON.stringify({ month_year: month, release: !isReleased })
+                                                        });
+                                                        if (res.ok) fetchData();
+                                                    }}
+                                                >
+                                                    {isReleased ? 'Hide Payslips' : 'Release Payslips'}
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#6b7280' }}>Content</label>
-                                    <textarea
-                                        rows="6"
-                                        value={announcementMsg.content}
-                                        onChange={(e) => setAnnouncementMsg({ ...announcementMsg, content: e.target.value })}
-                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937', lineHeight: '1.5' }}
-                                        placeholder="Type the announcement content here..."
-                                    />
-                                </div>
-                                <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', padding: '0.75rem 2rem' }}>Update Announcement</button>
-                            </form>
+                            </div>
+                            <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(79, 70, 229, 0.05)', borderRadius: '8px', borderLeft: '4px solid #ff7a00' }}>
+                                <div style={{ fontWeight: 'bold', color: '#ff7a00', marginBottom: '0.5rem' }}>AI Payroll Note:</div>
+                                <p style={{ fontSize: '0.875rem', margin: 0 }}>All LOP (Loss of Pay) deductions are automatically calculated based on attendance and leave records for the selected month.</p>
+                            </div>
                         </div>
                     )}
+
+                    {/* TAB: TEMPLATES */}
+                    {activeTab === 'templates' && (
+                        <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
+                            <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '1.5rem' }}>📄 AI Document Templates</h1>
+                            <p style={{ color: '#6b7280', marginBottom: '2rem' }}>Train our AI on your specific company documents. Upload any PDF/HTML format and we'll convert it into a dynamic system template.</p>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2.5rem' }}>
+                                {/* CARD 1: OFFER LETTERS */}
+                                <div className="card" style={{ background: '#ffffff', border: '1px solid #E5E7EB', display: 'flex', flexDirection: 'column' }}>
+                                    <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span style={{ fontSize: '1.5rem' }}>📑</span> Offer Letters
+                                    </h3>
+                                    <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1.5rem', flex: 1 }}>Upload layouts for Intern and Full-Time appointment letters.</p>
+
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <select
+                                            value={selectedTemplateType}
+                                            onChange={(e) => setSelectedTemplateType(e.target.value)}
+                                            style={{ width: '100%', padding: '0.7rem', borderRadius: '4px', border: '1px solid #E5E7EB', fontSize: '0.85rem' }}
+                                        >
+                                            <option value="Intern">Intern Format</option>
+                                            <option value="Full-Time">Full-Time Format</option>
+                                        </select>
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            // Ensure type is set before trigger
+                                            if (selectedTemplateType !== 'Intern' && selectedTemplateType !== 'Full-Time') {
+                                                setSelectedTemplateType('Intern');
+                                            }
+                                            document.getElementById('template-upload-input').click();
+                                        }}
+                                        className="btn btn-primary"
+                                        style={{ width: '100%', background: '#0a66c2' }}
+                                    >
+                                        Upload Offer Template
+                                    </button>
+                                </div>
+
+                                {/* CARD 2: PAYSLIPS */}
+                                <div className="card" style={{ background: '#ffffff', border: '1px solid #E5E7EB', display: 'flex', flexDirection: 'column' }}>
+                                    <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span style={{ fontSize: '1.5rem' }}>💰</span> Payslip Design
+                                    </h3>
+                                    <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1.5rem', flex: 1 }}>Train AI to recognize your payslip components and ROI investment fields.</p>
+
+                                    <button
+                                        onClick={() => {
+                                            setSelectedTemplateType('Payslip');
+                                            document.getElementById('template-upload-input').click();
+                                        }}
+                                        disabled={uploadingTemplate}
+                                        className="btn btn-primary"
+                                        style={{ width: '100%', background: '#10B981' }}
+                                    >
+                                        {uploadingTemplate && selectedTemplateType === 'Payslip' ? "Analyzing..." : "Upload Payslip Template"}
+                                    </button>
+                                </div>
+
+                                {/* CARD 3: EXIT DOCUMENTS */}
+                                <div className="card" style={{ background: '#ffffff', border: '1px solid #E5E7EB', display: 'flex', flexDirection: 'column' }}>
+                                    <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span style={{ fontSize: '1.5rem' }}>🚪</span> Exit Documents
+                                    </h3>
+                                    <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1.5rem', flex: 1 }}>Upload professional formats for Relieving Letters and Experience Certificates.</p>
+
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <select
+                                            value={selectedTemplateType}
+                                            onChange={(e) => setSelectedTemplateType(e.target.value)}
+                                            style={{ width: '100%', padding: '0.7rem', borderRadius: '4px', border: '1px solid #E5E7EB', fontSize: '0.85rem' }}
+                                        >
+                                            <option value="Relieving">Relieving Letter</option>
+                                            <option value="Experience">Experience Certificate</option>
+                                        </select>
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            if (selectedTemplateType !== 'Relieving' && selectedTemplateType !== 'Experience') {
+                                                setSelectedTemplateType('Relieving');
+                                            }
+                                            document.getElementById('template-upload-input').click();
+                                        }}
+                                        disabled={uploadingTemplate}
+                                        className="btn btn-primary"
+                                        style={{ width: '100%', background: '#ff7a00' }}
+                                    >
+                                        {uploadingTemplate && (selectedTemplateType === 'Relieving' || selectedTemplateType === 'Experience') ? "Analyzing..." : "Upload Exit Template"}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <input id="template-upload-input" type="file" hidden accept=".html,.pdf" onChange={handleTemplateUpload} />
+
+                            <div className="card" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid #E5E7EB', padding: '1.5rem' }}>
+                                <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Active System Templates</h3>
+                                {offerLetterTemplates.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#6b7280' }}>
+                                        <div style={{ fontSize: '2.5rem', marginBottom: '1rem', opacity: 0.5 }}>📂</div>
+                                        No templates configured yet.
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'grid', gap: '2rem' }}>
+                                        {['Full-Time', 'Intern', 'Payslip', 'Relieving', 'Experience'].map(category => {
+                                            const categoryTemplates = offerLetterTemplates.filter(t => t.employment_type === category);
+                                            if (categoryTemplates.length === 0) return null;
+
+                                            return (
+                                                <div key={category}>
+                                                    <h4 style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#9CA3AF', letterSpacing: '0.1em', marginBottom: '1rem', borderBottom: '1px solid #E5E7EB', paddingBottom: '0.5rem' }}>
+                                                        {category} Templates
+                                                    </h4>
+                                                    <div style={{ display: 'grid', gap: '0.75rem' }}>
+                                                        {categoryTemplates.map((temp, idx) => (
+                                                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                                                                <div>
+                                                                    <div style={{ fontWeight: '600', color: '#111827' }}>{temp.employment_type} Format</div>
+                                                                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                                                        Format: <span style={{ textTransform: 'uppercase' }}>{temp.original_type}</span> •
+                                                                        Placeholders: {temp.placeholders?.length || 0} •
+                                                                        Updated: {new Date(temp.updated_at).toLocaleDateString()}
+                                                                    </div>
+                                                                </div>
+                                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                                    <button className="btn" style={{ fontSize: '0.7rem', padding: '0.4rem 0.8rem', border: '1px solid #E5E7EB' }} onClick={() => setPreviewActiveTemplate(temp.html_content)}>Preview</button>
+                                                                    <button
+                                                                        className="btn btn-danger"
+                                                                        style={{ fontSize: '0.7rem', padding: '0.4rem 0.8rem' }}
+                                                                        onClick={() => handleDeleteTemplate(temp.employment_type)}
+                                                                    >
+                                                                        Delete
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+
+                    {/* TEMPLATE ANALYSIS MODAL */}
+                    {
+                        templateAnalysis && (
+                            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100, padding: '2rem' }}>
+                                <div className="card glass-panel" style={{ width: '100%', maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto', border: '1px solid #ff7a00', boxShadow: '0 0 40px rgba(255,122,0,0.2)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                                        <div>
+                                            <h2 className="card-title" style={{ margin: 0 }}>🧠 AI Analysis Complete</h2>
+                                            <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '0.5rem 0 0' }}>We've scanned your {selectedTemplateType} template and extracted the logic.</p>
+                                        </div>
+                                        <button className="btn" onClick={() => setTemplateAnalysis(null)}>✕</button>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                            <div style={{ padding: '1.5rem', background: 'rgba(10, 102, 194, 0.05)', borderRadius: '12px', border: '1px solid #0a66c2' }}>
+                                                <h3 style={{ fontSize: '1rem', color: '#0a66c2', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <span>🏷️</span> Detected Placeholders
+                                                </h3>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                                    {templateAnalysis.placeholders?.map(p => (
+                                                        <span key={p} style={{ padding: '0.4rem 0.8rem', background: '#ffffff', color: '#1f2937', borderRadius: '4px', fontSize: '0.75rem', border: '1px solid #E5E7EB' }}>
+                                                            {`{{${p}}}`}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '1rem' }}>
+                                                    * These markers will be replaced with real employee data during generation.
+                                                </p>
+                                            </div>
+
+                                            {templateAnalysis.roi_fields?.length > 0 && (
+                                                <div style={{ padding: '1.5rem', background: 'rgba(16, 185, 129, 0.05)', borderRadius: '12px', border: '1px solid #10B981' }}>
+                                                    <h3 style={{ fontSize: '1rem', color: '#10B981', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <span>💰</span> ROI / Investment Fields Found
+                                                    </h3>
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                                        {templateAnalysis.roi_fields.map(field => (
+                                                            <span key={field} style={{ padding: '0.4rem 0.8rem', background: 'rgba(16, 185, 129, 0.2)', color: '#065f46', borderRadius: '20px', fontSize: '0.75rem', border: '1px solid #10B981' }}>
+                                                                {field} detected
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '1rem' }}>
+                                                        * These fields are mapped to automated tax and payroll processing.
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div style={{ border: '1px solid #E5E7EB', borderRadius: '12px', overflow: 'hidden', background: '#ffffff' }}>
+                                            <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#6b7280' }}>🖥️ LIVE HTML PREVIEW</span>
+                                                <span style={{ fontSize: '0.6rem', color: '#10B981' }}>● Responsive AI Layout</span>
+                                            </div>
+                                            <div style={{ padding: '0px', height: '450px', background: '#fff' }}>
+                                                {templateAnalysis.html_template ? (
+                                                    <iframe
+                                                        srcDoc={templateAnalysis.html_template}
+                                                        style={{ width: '100%', height: '100%', border: 'none' }}
+                                                        title="AI Template Preview"
+                                                    />
+                                                ) : (
+                                                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#6b7280' }}>
+                                                        No HTML preview generated for this file type.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid #E5E7EB' }}>
+                                        <button className="btn btn-secondary" onClick={() => setTemplateAnalysis(null)}>Discard</button>
+                                        <button
+                                            className="btn btn-primary"
+                                            style={{ background: '#ff7a00', padding: '0.75rem 2rem' }}
+                                            onClick={async () => {
+                                                try {
+                                                    const res = await fetch(`${apiUrl}/admin/templates/upload`, {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            employment_type: selectedTemplateType,
+                                                            html_template: templateAnalysis.html_template,
+                                                            placeholders: templateAnalysis.placeholders || [],
+                                                            roi_fields: templateAnalysis.roi_fields || [],
+                                                            original_type: templateAnalysis.original_type || 'html'
+                                                        })
+                                                    });
+                                                    const data = await res.json();
+                                                    if (res.ok) {
+                                                        alert(`Template for ${selectedTemplateType} saved successfully!`);
+                                                        setTemplateAnalysis(null);
+                                                        fetchData();
+                                                    } else {
+                                                        alert('Failed to save template: ' + (data.error || 'Unknown error'));
+                                                    }
+                                                } catch (err) {
+                                                    console.error("Save Error:", err);
+                                                    alert("Failed to connect to server during save.");
+                                                }
+                                            }}
+                                        >
+                                            ✅ Confirm & Save Template
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    {/* ACTIVE TEMPLATE PREVIEW MODAL */}
+                    {
+                        previewActiveTemplate && (
+                            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200, padding: '1rem' }}>
+                                <div className="card glass-panel" style={{ width: '95vw', maxWidth: '1600px', height: '95vh', display: 'flex', flexDirection: 'column' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                        <h2 className="card-title" style={{ margin: 0 }}>👁️ Template Preview</h2>
+                                        <button className="btn" onClick={() => setPreviewActiveTemplate(null)}>✕</button>
+                                    </div>
+                                    <div style={{ flex: 1, border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden', background: '#ffffff', minHeight: 0 }}>
+                                        <iframe
+                                            srcDoc={previewActiveTemplate}
+                                            style={{ width: '100%', height: '100%', border: 'none' }}
+                                            title="Active Template Preview"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    {
+                        activeTab === 'announcements' && (
+                            <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
+                                <h2 className="card-title">📢 Manage System Announcements</h2>
+                                <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>This message will be visible to all employees in their Engage module.</p>
+
+                                <form onSubmit={handleUpdateAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#6b7280' }}>Announcement Title</label>
+                                        <input
+                                            type="text"
+                                            value={announcementMsg.title}
+                                            onChange={(e) => setAnnouncementMsg({ ...announcementMsg, title: e.target.value })}
+                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                            placeholder="e.g. 📌 Essential Office Guidelines"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#6b7280' }}>Content</label>
+                                        <textarea
+                                            rows="6"
+                                            value={announcementMsg.content}
+                                            onChange={(e) => setAnnouncementMsg({ ...announcementMsg, content: e.target.value })}
+                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937', lineHeight: '1.5' }}
+                                            placeholder="Type the announcement content here..."
+                                        />
+                                    </div>
+                                    <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', padding: '0.75rem 2rem' }}>Update Announcement</button>
+                                </form>
+                            </div>
+                        )}
                 </div>
             )}
+
 
             {/* OFFER LETTER MODAL */}
             {isOfferLetterModalOpen && viewedEmp && (
@@ -1433,82 +1625,143 @@ const AdminDashboard = ({ activeTab }) => {
                                 ✅ Approve & Send to {offerLetterParams.employment_type === 'Intern' ? 'Intern' : 'Employee'}
                             </button>
                         </div>
-                    </div>
+                    </div >
                 </div>
             )}
 
-            {isRelievingLetterModalOpen && (
-                <div className="modal-overlay">
-                    <div className="modal-content glass-panel" style={{ maxWidth: '900px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 className="card-title">📄 Relieving & Experience Certificate</h2>
-                            <button onClick={() => setIsRelievingLetterModalOpen(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.5rem' }}>✕</button>
-                        </div>
-
-                        <div className="grid-2">
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div style={{ padding: '1rem', background: 'rgba(255,122,0,0.05)', borderRadius: '8px', border: '1px solid rgba(255,122,0,0.2)' }}>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#ff7a00' }}>
-                                        <strong>Employee:</strong> {selectedApprovedEmp?.name} ({selectedApprovedEmp?.employee_id})
-                                    </p>
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <div>
-                                        <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Joining Date</label>
-                                        <input type="date" value={relievingLetterParams.joining_date} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, joining_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }} />
-                                    </div>
-                                    <div>
-                                        <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Relieving Date (Issue Date)</label>
-                                        <input type="date" value={relievingLetterParams.relieving_date} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, relieving_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }} />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Last Working Day</label>
-                                    <input type="date" value={relievingLetterParams.last_working_day} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, last_working_day: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }} />
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Designation</label>
-                                    <input type="text" value={relievingLetterParams.designation} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, designation: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }} />
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Reason for Leaving</label>
-                                    <textarea rows="2" value={relievingLetterParams.reason_for_leaving} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, reason_for_leaving: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }} />
-                                </div>
-                                <button className="btn btn-primary" onClick={() => handleGenerateRelievingLetter(selectedApprovedEmp.employee_id)} disabled={isGeneratingRL} style={{ backgroundColor: '#ff7a00' }}>
-                                    {isGeneratingRL ? 'Generating Draft...' : '🔄 Generate / Update Draft'}
-                                </button>
+            {
+                isRelievingLetterModalOpen && (
+                    <div className="modal-overlay">
+                        <div className="modal-content glass-panel" style={{ maxWidth: '1000px', width: '95%', maxHeight: '95vh', overflowY: 'auto' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h2 className="card-title">📄 Exit Documents: Relieving & Experience</h2>
+                                <button onClick={() => setIsRelievingLetterModalOpen(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.5rem' }}>✕</button>
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '1rem', background: '#f9fafb' }}>
-                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#ff7a00' }}>📄 DRAFT PREVIEW</div>
-                                {selectedApprovedEmp?.relieving_letter_status === 'draft' ? (
-                                    <iframe
-                                        src={`${apiUrl}/admin/employee/relieving-letter-preview/${selectedApprovedEmp.employee_id}?t=${previewTimestamp}`}
-                                        style={{ width: '100%', height: '350px', border: 'none', background: '#fff' }}
-                                        title="Relieving Letter Preview"
-                                    />
-                                ) : (
-                                    <div style={{ height: '350px', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', color: '#6b7280', border: '1px dashed #E5E7EB', background: '#fff' }}>
-                                        Draft not generated yet.<br />Fill details and click Generate.
+                            {/* --- RELIEVING LETTER SECTION --- */}
+                            <div style={{ border: '1px solid #E5E7EB', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem', background: 'rgba(255,122,0,0.02)' }}>
+                                <h3 style={{ fontSize: '1.1rem', color: '#ff7a00', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    📑 1. Relieving Letter
+                                </h3>
+                                <div className="grid-2">
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Joining Date</label>
+                                                <input type="date" value={relievingLetterParams.joining_date} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, joining_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Relieving Date</label>
+                                                <input type="date" value={relievingLetterParams.relieving_date} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, relieving_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Last Working Day</label>
+                                                <input type="date" value={relievingLetterParams.last_working_day} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, last_working_day: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Designation</label>
+                                                <input type="text" value={relievingLetterParams.designation} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, designation: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Reason for Leaving</label>
+                                            <textarea rows="2" value={relievingLetterParams.reason_for_leaving} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, reason_for_leaving: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '1rem' }}>
+                                            <button className="btn btn-primary" onClick={() => handleGenerateRelievingLetter(selectedApprovedEmp.employee_id)} disabled={isGeneratingRL} style={{ backgroundColor: '#ff7a00', flex: 1 }}>
+                                                {isGeneratingRL ? 'Generating...' : '🔄 Update/Generate Draft'}
+                                            </button>
+                                            <button
+                                                className="btn btn-primary"
+                                                style={{ backgroundColor: '#0a66c2', flex: 1 }}
+                                                disabled={selectedApprovedEmp?.relieving_letter_status !== 'draft'}
+                                                onClick={() => handleFinalizeRelievingLetter(selectedApprovedEmp.employee_id)}
+                                            >
+                                                ✅ Finalize & Release
+                                            </button>
+                                        </div>
                                     </div>
-                                )}
+                                    <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '0.5rem', background: '#f9fafb' }}>
+                                        <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#ff7a00', marginBottom: '0.5rem' }}>DRAFT PREVIEW</div>
+                                        {selectedApprovedEmp?.relieving_letter_status === 'draft' ? (
+                                            <iframe src={`${apiUrl}/admin/employee/relieving-letter-preview/${selectedApprovedEmp.employee_id}?t=${previewTimestamp}`} style={{ width: '100%', height: '250px', border: 'none', background: '#fff' }} title="RL Preview" />
+                                        ) : (
+                                            <div style={{ height: '250px', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', color: '#6b7280', border: '1px dashed #E5E7EB', background: '#fff', fontSize: '0.8rem' }}>Draft not generated yet.</div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
 
-                        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid #E5E7EB' }}>
-                            <button className="btn btn-secondary" onClick={() => setIsRelievingLetterModalOpen(false)}>Cancel</button>
-                            <button
-                                className="btn btn-primary"
-                                style={{ backgroundColor: '#0a66c2' }}
-                                disabled={selectedApprovedEmp?.relieving_letter_status !== 'draft'}
-                                onClick={() => handleFinalizeRelievingLetter(selectedApprovedEmp.employee_id)}
-                            >
-                                ✅ Finalize & Release to Employee
-                            </button>
+                            {/* --- EXPERIENCE CERTIFICATE SECTION --- */}
+                            <div style={{ border: '1px solid #E5E7EB', borderRadius: '12px', padding: '1.5rem', background: 'rgba(10, 102, 194, 0.02)' }}>
+                                <h3 style={{ fontSize: '1.1rem', color: '#0a66c2', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    🏆 2. Experience Certificate
+                                </h3>
+                                <div className="grid-2">
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Joining Date</label>
+                                                <input type="date" value={experienceCertificateParams.joining_date} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, joining_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Issue Date</label>
+                                                <input type="date" value={experienceCertificateParams.issue_date} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, issue_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Last Working Day</label>
+                                                <input type="date" value={experienceCertificateParams.last_working_day} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, last_working_day: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Designation</label>
+                                                <input type="text" value={experienceCertificateParams.designation} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, designation: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Performance Summary</label>
+                                            <select value={experienceCertificateParams.performance_summary} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, performance_summary: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }}>
+                                                <option>Outstanding</option>
+                                                <option>Excellent</option>
+                                                <option>Good</option>
+                                                <option>Satisfactory</option>
+                                            </select>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '1rem' }}>
+                                            <button className="btn btn-primary" onClick={() => handleGenerateExperienceCertificate(selectedApprovedEmp.employee_id)} disabled={isGeneratingEC} style={{ backgroundColor: '#0a66c2', flex: 1 }}>
+                                                {isGeneratingEC ? 'Generating...' : '🔄 Update/Generate Draft'}
+                                            </button>
+                                            <button
+                                                className="btn btn-primary"
+                                                style={{ backgroundColor: '#0a66c2', flex: 1 }}
+                                                disabled={selectedApprovedEmp?.experience_cert_status !== 'draft'}
+                                                onClick={() => handleFinalizeExperienceCertificate(selectedApprovedEmp.employee_id)}
+                                            >
+                                                ✅ Finalize & Release
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '0.5rem', background: '#f9fafb' }}>
+                                        <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#0a66c2', marginBottom: '0.5rem' }}>DRAFT PREVIEW</div>
+                                        {selectedApprovedEmp?.experience_cert_status === 'draft' ? (
+                                            <iframe src={`${apiUrl}/admin/employee/experience-certificate-preview/${selectedApprovedEmp.employee_id}?t=${previewTimestamp}`} style={{ width: '100%', height: '250px', border: 'none', background: '#fff' }} title="EC Preview" />
+                                        ) : (
+                                            <div style={{ height: '250px', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', color: '#6b7280', border: '1px dashed #E5E7EB', background: '#fff', fontSize: '0.8rem' }}>Draft not generated yet.</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center', paddingTop: '1.5rem', borderTop: '1px solid #E5E7EB' }}>
+                                <button className="btn btn-secondary" onClick={() => setIsRelievingLetterModalOpen(false)} style={{ minWidth: '200px' }}>Done / Close</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
         </div>
     );
 };
