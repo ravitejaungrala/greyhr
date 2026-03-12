@@ -19,6 +19,7 @@ from io import BytesIO
 import jinja2
 from xhtml2pdf import pisa
 from pypdf import PdfReader
+from api.doc_engine import generate_any_neuzenai_doc, extract_doc_data, render_and_save_doc, render_doc_to_bytes
 
 router = APIRouter()
 
@@ -211,10 +212,19 @@ class AdminApprovalRequest(BaseModel):
 class EmployeeUpdate(BaseModel):
     employment_type: Optional[str] = None
     position: Optional[str] = None
+    department: Optional[str] = None
+    joining_date: Optional[str] = None
     monthly_salary: Optional[int] = None
     privilege_leave_rate: Optional[float] = None
     sick_leave_rate: Optional[float] = None
     casual_leave_rate: Optional[float] = None
+    # Additional fields extracted/used for documents
+    bank_account: Optional[str] = None
+    bank_ifsc: Optional[str] = None
+    bank_name: Optional[str] = None
+    uan: Optional[str] = None
+    pf_no: Optional[str] = None
+    esi_no: Optional[str] = None
 
 @router.post("/auth/admin/approve")
 def admin_approve_employee(request: AdminApprovalRequest):
@@ -259,9 +269,24 @@ def update_employee_details(employee_id: str, update: EmployeeUpdate):
     if not update_data:
         return {"message": "No changes provided"}
         
+    # Handle nested fields mapping
+    set_ops = {}
+    for k, v in update_data.items():
+        if k in ["bank_account", "bank_ifsc", "bank_name"]:
+            # Nested in bank_details
+            if "bank_details" not in set_ops:
+                # We need to map to existing or create new ones using dot notation for mongo
+                pass
+            if k == "bank_account": set_ops["bank_details.account_number"] = v
+            elif k == "bank_ifsc": set_ops["bank_details.ifsc"] = v
+            elif k == "bank_name": set_ops["bank_details.bank_name"] = v
+        else:
+            set_ops[k] = v
+
+    # Ensure status doesn't accidentally revert if missing, keep existing status
     result = mongo_db.users.update_one(
         {"employee_id": employee_id},
-        {"$set": update_data}
+        {"$set": set_ops}
     )
     
     if result.matched_count == 0:
@@ -359,6 +384,148 @@ class TemplateSaveRequest(BaseModel):
     placeholders: list[str] = []
     roi_fields: list[str] = []
     original_type: str = "html"
+
+class DocumentGenerationRequest(BaseModel):
+    raw_data: str
+    doc_type: str # 'payslip', 'internship_offer', 'full_time_offer', 'relieving', 'experience'
+
+class DocumentExtractRequest(BaseModel):
+    raw_data: str
+    doc_type: str
+
+class DocumentFinalizeRequest(BaseModel):
+    data: dict
+    doc_type: str
+
+DOCUMENT_SCHEMAS = {
+    "payslip": {
+        "emp_name": "Text",
+        "employee_id": "Text",
+        "month_year": "Text (e.g. March 2026)",
+        "designation": "Text",
+        "department": "Text",
+        "uan": "Text",
+        "pf_no": "Text",
+        "esi_no": "Text",
+        "bank_name": "Text",
+        "account_no": "Text",
+        "ifsc": "Text",
+        "doj": "Date",
+        "date_of_pay": "Date",
+        "basic_salary": "Number",
+        "hra": "Number",
+        "special_allowance": "Number",
+        "pf_deduction": "Number",
+        "pt_deduction": "Number",
+        "tax_deduction": "Number",
+        "total_earnings": "Number",
+        "total_deductions": "Number",
+        "net_salary": "Number",
+        "amount_in_words": "Text"
+    },
+    "internship_offer": {
+        "emp_name": "Text",
+        "date": "Date",
+        "employee_id": "Text",
+        "role": "Text",
+        "role_description": "Text",
+        "stipend": "Text",
+        "duration": "Text"
+    },
+    "full_time_offer": {
+        "emp_name": "Text",
+        "designation": "Text",
+        "doj": "Date",
+        "offer_date": "Date",
+        "annual_ctc": "Number",
+        "monthly_basic": "Number",
+        "annual_basic": "Number",
+        "monthly_hra": "Number",
+        "annual_hra": "Number",
+        "monthly_stat_bonus": "Number",
+        "annual_stat_bonus": "Number",
+        "monthly_lta": "Number",
+        "annual_lta": "Number",
+        "monthly_personal_allowance": "Number",
+        "annual_personal_allowance": "Number",
+        "monthly_gross": "Number",
+        "annual_gross": "Number",
+        "employer_pf_monthly": "Number",
+        "monthly_gratuity": "Number",
+        "fixed_ctc_monthly": "Number",
+        "fixed_ctc_annual": "Number",
+        "variable_bonus_monthly": "Number",
+        "variable_bonus_annual": "Number",
+        "total_ctc_monthly": "Number",
+        "total_ctc_annual": "Number",
+        "inhand_amount": "Number",
+        "employee_signature_name": "Text",
+        "signing_date": "Date"
+    },
+    "relieving": {
+        "emp_name": "Text",
+        "employee_id": "Text",
+        "relieving_date": "Date",
+        "joining_date": "Date",
+        "last_working_day": "Date",
+        "designation": "Text",
+        "reason_for_leaving": "Text",
+        "roles_responsibilities": "Text"
+    },
+    "experience": {
+        "emp_name": "Text",
+        "employee_id": "Text",
+        "issue_date": "Date",
+        "joining_date": "Date",
+        "last_working_day": "Date",
+        "designation": "Text",
+        "performance_summary": "Text",
+        "roles_responsibilities": "Text"
+    }
+}
+
+@router.get("/generate-doc/fields")
+def get_document_fields():
+    """Returns the required fields schema for all document types so the frontend can render dynamic forms."""
+    return DOCUMENT_SCHEMAS
+
+@router.post("/generate-doc")
+def generate_doc_api(request: DocumentGenerationRequest):
+    result = generate_any_neuzenai_doc(request.raw_data, request.doc_type)
+    return result
+
+@router.post("/generate-doc/extract")
+def extract_doc_api(request: DocumentExtractRequest):
+    """Admin preview step 1: extract data only"""
+    return extract_doc_data(request.raw_data, request.doc_type)
+
+@router.post("/generate-doc/preview")
+def preview_doc_api(request: DocumentFinalizeRequest):
+    """Admin preview step 1.5: generate PDF base64 for previewing"""
+    pdf_bytes, error = render_doc_to_bytes(request.data, request.doc_type)
+    if error:
+        return {"error": error}
+    
+    pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
+    return {"status": "success", "pdf_base64": pdf_base64}
+
+@router.post("/generate-doc/finalize")
+def finalize_doc_api(request: DocumentFinalizeRequest):
+    """Admin preview step 2: render with confirmed data and save to S3"""
+    result = render_and_save_doc(request.data, request.doc_type)
+    if "error" in result:
+        return result
+        
+    output_path = result.get("output_path")
+    if output_path and os.path.exists(output_path):
+        with open(output_path, "rb") as f:
+            pdf_bytes = f.read()
+            
+        s3_key = f"generated_docs/{result['output_filename']}"
+        s3_db.save_file(s3_key, pdf_bytes, content_type='application/pdf')
+        result["s3_key"] = s3_key
+        
+    return result
 
 @router.post("/leaves/apply")
 def apply_leave(request: LeaveRequest):
@@ -2193,16 +2360,18 @@ def analyze_and_convert_template(content_b64: str, file_type: str, document_type
         # Specialized prompts based on document type
         document_type = document_type if document_type else "Document"
         
-        extra_instr = ""
+        extra_instr = """
+        - CRITICAL: Identify and list all "ROI / Investment / Deduction" fields (e.g., 80C, 80D, HRA, Medical, NPS, PF).
+        - Include these in the "roi_fields" array in the returned JSON. If none exist, return an empty array [].
+        - CRITICAL: DO NOT convert the Company Name and Company Address into placeholders. They MUST remain as fixed static text in the HTML exactly as they appear in the document.
+        """
+        
         if "payslip" in document_type.lower():
-            extra_instr = """
-            - CRITICAL: Identify and list all "ROI / Investment" fields (e.g., 80C, 80D, HRA, Medical, NPS).
-            - Include these in the "roi_fields" array in the returned JSON.
-            - CRITICAL: DO NOT convert the Company Name and Company Address into placeholders. They MUST remain as fixed static text in the HTML exactly as they appear in the document.
+            extra_instr += """
             - ONLY create placeholders for: Employee Details, Earnings, Deductions, Net Salary, "Payslip for the month of X", and Amount in Words.
             """
         elif "relieving" in document_type.lower() or "experience" in document_type.lower():
-             extra_instr = """
+             extra_instr += """
             - CRITICAL: Identify exit-related fields (Joining Date, Relieving Date, Last Working Day, Reason for Leaving, Performance Review).
             - Add these naturally as placeholders in the HTML.
             """
@@ -2231,7 +2400,21 @@ def analyze_and_convert_template(content_b64: str, file_type: str, document_type
         # Clean response if it contains markdown code blocks
         resp_text = response.text.replace('```json', '').replace('```', '').strip()
         import json
-        analysis = json.loads(resp_text)
+        try:
+            analysis = json.loads(resp_text, strict=False)
+        except json.JSONDecodeError as e:
+            # Often caused by invalid \ escapes in CSS (e.g., content: "\2022")
+            # We try a naive fallback by doubling backslashes
+            print(f"JSONDecodeError encountered: {e}. Attempting fallback parsing.")
+            try:
+                # Replace backslashes but try not to break valid \n
+                resp_text_escaped = resp_text.replace('\\', '\\\\')
+                # But revert standard JSON escapes
+                resp_text_escaped = resp_text_escaped.replace('\\\\n', '\\n').replace('\\\\r', '\\r').replace('\\\\t', '\\t').replace('\\\\"', '\\"')
+                analysis = json.loads(resp_text_escaped, strict=False)
+            except Exception as inner_e:
+                print(f"Fallback parsing also failed: {inner_e}")
+                return None
         return analysis
     except Exception as e:
         print(f"Template Analysis Error: {e}")
@@ -2252,6 +2435,10 @@ def save_analyzed_template(request: TemplateSaveRequest):
     # This route now performs the actual saving AFTER admin confirmation
     if mongo_db.offer_letter_templates is None:
         return {"error": "Database error: offer_letter_templates collection missing"}
+
+    # Save HTML template to S3
+    s3_key = f"templates/{request.employment_type.replace(' ', '_').lower()}.html"
+    s3_db.save_file(s3_key, request.html_template.encode('utf-8'), content_type='text/html')
 
     mongo_db.offer_letter_templates.update_one(
         {"employment_type": request.employment_type},

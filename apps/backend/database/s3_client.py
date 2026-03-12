@@ -53,6 +53,24 @@ class S3Database:
             print(f"Error saving image to S3: {e}")
             return False
 
+    def save_file(self, key: str, file_bytes: bytes, content_type: str):
+        if self.mock_mode:
+            print(f"Mock Mode: Saving file to local storage at {key}")
+            self.local_storage[key] = file_bytes
+            return True
+            
+        try:
+            self.s3_client.put_object(
+                Bucket=self.bucket_name,
+                Key=key,
+                Body=file_bytes,
+                ContentType=content_type
+            )
+            return True
+        except ClientError as e:
+            print(f"Error saving file to S3: {e}")
+            return False
+
     def get_image(self, key: str):
         if self.mock_mode:
             print(f"Mock Mode: Retrieving image from local storage at {key}")

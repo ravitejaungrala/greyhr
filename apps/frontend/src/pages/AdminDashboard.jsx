@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DocumentGeneratorModal from '../components/DocumentGeneratorModal';
 
 const AdminDashboard = ({ activeTab }) => {
     // Data States
@@ -58,6 +59,18 @@ const AdminDashboard = ({ activeTab }) => {
     });
     const [isGeneratingEC, setIsGeneratingEC] = useState(false);
     const [previewActiveTemplate, setPreviewActiveTemplate] = useState(null);
+
+    // AI Document Generator states
+    const [isDocGenModalOpen, setIsDocGenModalOpen] = useState(false);
+    const [docGenType, setDocGenType] = useState('');
+    const [docGenInitialData, setDocGenInitialData] = useState({});
+    const [docGenEmployee, setDocGenEmployee] = useState(null);
+
+    // Payslip Manager states
+    const [isPayslipManagerOpen, setIsPayslipManagerOpen] = useState(false);
+    const [payslipManagerMonth, setPayslipManagerMonth] = useState('');
+    const [selectedPayslipEmployees, setSelectedPayslipEmployees] = useState([]);
+    const [isBatchSending, setIsBatchSending] = useState(false);
 
     // Form states
     const [newHoliday, setNewHoliday] = useState({ name: '', date: '', type: 'Public Holiday' });
@@ -675,32 +688,26 @@ const AdminDashboard = ({ activeTab }) => {
 
                                             <button
                                                 onClick={() => {
-                                                    // Set defaults based on employment type
-                                                    if (empRoleSetup.employment_type === 'Intern') {
-                                                        setOfferLetterParams({
-                                                            employment_type: 'Intern',
-                                                            date: new Date().toISOString().split('T')[0],
-                                                            role: empRoleSetup.position || 'Full Stack Intern',
-                                                            role_description: 'Full stack development projects, contributing to both frontend and backend systems, and learning modern IT stacks.',
-                                                            stipend: 'Unpaid / Certificate Based',
-                                                            duration: '3 Months'
-                                                        });
-                                                    } else {
-                                                        setOfferLetterParams({
-                                                            employment_type: 'Full-Time',
-                                                            date: new Date().toISOString().split('T')[0],
-                                                            role: empRoleSetup.position || 'Software Engineer',
-                                                            role_description: 'Software development, system design, and contributing to the overall technical excellence of NeuzenAI products.',
-                                                            stipend: empRoleSetup.monthly_salary ? `₹${empRoleSetup.monthly_salary * 12} LPA (Fixed)` : 'As discussed',
-                                                            duration: '30 Days' // For notice period
-                                                        });
-                                                    }
-                                                    setIsOfferLetterModalOpen(true);
+                                                    const isIntern = empRoleSetup.employment_type === 'Intern';
+                                                    setDocGenType(isIntern ? 'internship_offer' : 'full_time_offer');
+                                                    setDocGenEmployee(viewedEmp);
+                                                    setDocGenInitialData({
+                                                        emp_name: viewedEmp.name,
+                                                        employee_id: viewedEmp.employee_id,
+                                                        designation: empRoleSetup.position || (isIntern ? 'Full Stack Intern' : 'Software Engineer'),
+                                                        doj: new Date().toISOString().split('T')[0],
+                                                        offer_date: new Date().toISOString().split('T')[0],
+                                                        annual_ctc: empRoleSetup.monthly_salary ? empRoleSetup.monthly_salary * 12 : 0,
+                                                        fixed_ctc_annual: empRoleSetup.monthly_salary ? "₹" + (empRoleSetup.monthly_salary * 12) : "0",
+                                                        inhand_amount: empRoleSetup.monthly_salary || 0,
+                                                        annual_basic: empRoleSetup.monthly_salary ? (empRoleSetup.monthly_salary * 12) * 0.4 : 0
+                                                    });
+                                                    setIsDocGenModalOpen(true);
                                                 }}
                                                 className="btn btn-secondary"
                                                 style={{ color: '#ff7a00', borderColor: '#ff7a00' }}
                                             >
-                                                📝 Prepare Offer Letter
+                                                ✨ AI Generate Offer Letter
                                             </button>
 
                                             <button onClick={() => handleApproval(viewedEmp.employee_id, 'approve')} className="btn btn-primary" style={{ backgroundColor: '#0a66c2' }}>Approve Onboarding</button>
@@ -844,28 +851,60 @@ const AdminDashboard = ({ activeTab }) => {
                                         <button onClick={() => setSelectedApprovedEmp(null)} className="btn btn-secondary">Cancel</button>
                                         <button
                                             onClick={() => {
-                                                const baseParams = {
+                                                setDocGenType('relieving_letter');
+                                                setDocGenEmployee(selectedApprovedEmp);
+                                                setDocGenInitialData({
+                                                    emp_name: selectedApprovedEmp.name,
                                                     employee_id: selectedApprovedEmp.employee_id,
-                                                    joining_date: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : 'N/A',
+                                                    designation: selectedApprovedEmp.position || 'Software Engineer',
                                                     last_working_day: new Date().toISOString().split('T')[0],
-                                                    designation: selectedApprovedEmp.position || 'Software Engineer'
-                                                };
-                                                setRelievingLetterParams({
-                                                    ...baseParams,
-                                                    relieving_date: new Date().toISOString().split('T')[0],
-                                                    reason_for_leaving: 'Personal reasons'
+                                                    doj: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : 'N/A',
+                                                    offer_date: new Date().toISOString().split('T')[0]
                                                 });
-                                                setExperienceCertificateParams({
-                                                    ...baseParams,
-                                                    issue_date: new Date().toISOString().split('T')[0],
-                                                    performance_summary: 'Good'
-                                                });
-                                                setIsRelievingLetterModalOpen(true);
+                                                setIsDocGenModalOpen(true);
                                             }}
                                             className="btn btn-secondary"
                                             style={{ color: '#ff7a00', borderColor: '#ff7a00' }}
                                         >
-                                            📄 Prepare Exit Documents
+                                            ✨ AI Relieving Letter
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setDocGenType('experience_certificate');
+                                                setDocGenEmployee(selectedApprovedEmp);
+                                                setDocGenInitialData({
+                                                    emp_name: selectedApprovedEmp.name,
+                                                    employee_id: selectedApprovedEmp.employee_id,
+                                                    designation: selectedApprovedEmp.position || 'Software Engineer',
+                                                    last_working_day: new Date().toISOString().split('T')[0],
+                                                    doj: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : 'N/A',
+                                                    offer_date: new Date().toISOString().split('T')[0]
+                                                });
+                                                setIsDocGenModalOpen(true);
+                                            }}
+                                            className="btn btn-secondary"
+                                            style={{ color: '#ff7a00', borderColor: '#ff7a00' }}
+                                        >
+                                            ✨ AI Experience Cert
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setDocGenType('payslip');
+                                                setDocGenEmployee(selectedApprovedEmp);
+                                                setDocGenInitialData({
+                                                    emp_name: selectedApprovedEmp.name,
+                                                    employee_id: selectedApprovedEmp.employee_id,
+                                                    designation: selectedApprovedEmp.position || 'Software Engineer',
+                                                    month_year: 'March 2026',
+                                                    gross_salary: empRoleSetup.monthly_salary || 50000,
+                                                    net_salary: empRoleSetup.monthly_salary ? empRoleSetup.monthly_salary - 200 : 49800
+                                                });
+                                                setIsDocGenModalOpen(true);
+                                            }}
+                                            className="btn btn-secondary"
+                                            style={{ color: '#10B981', borderColor: '#10B981' }}
+                                        >
+                                            💰 AI Payslip
                                         </button>
                                         <button onClick={() => handleUpdateEmployee(selectedApprovedEmp.employee_id)} className="btn btn-primary" style={{ backgroundColor: '#0a66c2' }}>Save Profile Changes</button>
                                     </div>
@@ -1177,16 +1216,13 @@ const AdminDashboard = ({ activeTab }) => {
                                                 </div>
                                                 <button
                                                     className={`btn ${isReleased ? 'btn-secondary' : 'btn-primary'}`}
-                                                    onClick={async () => {
-                                                        const res = await fetch(`${apiUrl}/admin/payslips/release`, {
-                                                            method: 'POST',
-                                                            headers: { 'Content-Type': 'application/json' },
-                                                            body: JSON.stringify({ month_year: month, release: !isReleased })
-                                                        });
-                                                        if (res.ok) fetchData();
+                                                    onClick={() => {
+                                                        setPayslipManagerMonth(month);
+                                                        setSelectedPayslipEmployees([]);
+                                                        setIsPayslipManagerOpen(true);
                                                     }}
                                                 >
-                                                    {isReleased ? 'Hide Payslips' : 'Release Payslips'}
+                                                    {isReleased ? 'Manage Payslips' : 'Generate & Release Payslips'}
                                                 </button>
                                             </div>
                                         );
@@ -1762,6 +1798,138 @@ const AdminDashboard = ({ activeTab }) => {
                     </div>
                 )
             }
+
+            {
+                isPayslipManagerOpen && (
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '2rem' }}>
+                        <div className="card glass-panel" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <div>
+                                    <h2 className="card-title" style={{ margin: 0 }}>💰 Release Payslips</h2>
+                                    <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0.25rem 0 0' }}>Month: <strong>{payslipManagerMonth}</strong></p>
+                                </div>
+                                <button className="btn" onClick={() => setIsPayslipManagerOpen(false)}>✕</button>
+                            </div>
+
+                            <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem' }}>Select employees to generate and send payslips for. You can preview individual payslips using the AI Generator before sending all.</p>
+
+                            <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden', marginBottom: '1.5rem' }}>
+                                <div style={{ background: '#f9fafb', padding: '0.75rem 1rem', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedPayslipEmployees.length === approvedEmployees.length && approvedEmployees.length > 0}
+                                        onChange={(e) => {
+                                            if (e.target.checked) setSelectedPayslipEmployees(approvedEmployees.map(emp => emp.employee_id));
+                                            else setSelectedPayslipEmployees([]);
+                                        }}
+                                        style={{ width: '1rem', height: '1rem' }}
+                                    />
+                                    <span style={{ fontSize: '0.875rem', fontWeight: 'bold', color: '#374151' }}>Select All ({approvedEmployees.length})</span>
+                                </div>
+                                <div style={{ maxHeight: '400px', overflowY: 'auto', background: '#ffffff' }}>
+                                    {approvedEmployees.length === 0 && <div style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>No employees found.</div>}
+                                    {approvedEmployees.map(emp => (
+                                        <div key={emp.employee_id} style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedPayslipEmployees.includes(emp.employee_id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) setSelectedPayslipEmployees([...selectedPayslipEmployees, emp.employee_id]);
+                                                        else setSelectedPayslipEmployees(selectedPayslipEmployees.filter(id => id !== emp.employee_id));
+                                                    }}
+                                                    style={{ width: '1rem', height: '1rem' }}
+                                                />
+                                                <div>
+                                                    <div style={{ fontWeight: '600', color: '#111827', fontSize: '0.875rem' }}>{emp.name}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>ID: {emp.employee_id} | Salary: ₹{emp.monthly_salary || 0}</div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    setDocGenType('payslip');
+                                                    setDocGenEmployee(emp);
+                                                    setDocGenInitialData({
+                                                        emp_name: emp.name,
+                                                        employee_id: emp.employee_id,
+                                                        designation: emp.position || 'Software Engineer',
+                                                        month_year: payslipManagerMonth,
+                                                        gross_salary: emp.monthly_salary || 50000,
+                                                        net_salary: emp.monthly_salary ? emp.monthly_salary - 200 : 49800
+                                                    });
+                                                    setIsDocGenModalOpen(true);
+                                                }}
+                                                className="btn btn-secondary"
+                                                style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', color: '#0a66c2', borderColor: '#0a66c2' }}
+                                            >
+                                                👁️ AI Preview
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '1px solid #E5E7EB', paddingTop: '1.5rem' }}>
+                                <button className="btn btn-secondary" onClick={() => setIsPayslipManagerOpen(false)} disabled={isBatchSending}>Cancel</button>
+                                <button
+                                    className="btn btn-primary"
+                                    style={{ background: '#10B981', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                    disabled={selectedPayslipEmployees.length === 0 || isBatchSending}
+                                    onClick={async () => {
+                                        setIsBatchSending(true);
+                                        let successCount = 0;
+                                        for (const empId of selectedPayslipEmployees) {
+                                            const emp = approvedEmployees.find(e => e.employee_id === empId);
+                                            if (!emp) continue;
+                                            const data = {
+                                                emp_name: emp.name,
+                                                employee_id: emp.employee_id,
+                                                designation: emp.position || 'Software Engineer',
+                                                month_year: payslipManagerMonth,
+                                                gross_salary: emp.monthly_salary || 50000,
+                                                net_salary: emp.monthly_salary ? emp.monthly_salary - 200 : 49800
+                                            };
+                                            try {
+                                                const res = await fetch(`${apiUrl}/generate-doc/finalize`, {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ data, doc_type: 'payslip' })
+                                                });
+                                                const result = await res.json();
+                                                if (result.status === 'success') successCount++;
+                                            } catch (err) {
+                                                console.error('Error generating payslip for', empId, err);
+                                            }
+                                        }
+                                        setIsBatchSending(false);
+                                        alert(`Successfully generated and sent ${successCount} payslips out of ${selectedPayslipEmployees.length}!`);
+                                        setIsPayslipManagerOpen(false);
+
+                                        // Mark as released
+                                        await fetch(`${apiUrl}/admin/payslips/release`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ month_year: payslipManagerMonth, release: true })
+                                        });
+                                        fetchData();
+                                    }}
+                                >
+                                    {isBatchSending ? '⏳ Generating...' : `✅ Generate & Send (${selectedPayslipEmployees.length})`}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            <DocumentGeneratorModal
+                isOpen={isDocGenModalOpen}
+                onClose={() => setIsDocGenModalOpen(false)}
+                apiUrl={apiUrl}
+                docType={docGenType}
+                initialData={docGenInitialData}
+                employee={docGenEmployee}
+            />
         </div>
     );
 };
