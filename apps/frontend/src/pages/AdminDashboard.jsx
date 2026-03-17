@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import DocumentGeneratorModal from '../components/DocumentGeneratorModal';
+import EnhancedDocumentGenerator from '../components/EnhancedDocumentGenerator';
+import { PLACEHOLDER_IMAGE } from '../utils';
 
-const AdminDashboard = ({ activeTab }) => {
+const AdminDashboard = ({ activeTab, user }) => {
+    const isSuperAdmin = user?.role === 'super_admin';
     // Data States
     const [pendingEmployees, setPendingEmployees] = useState([]);
     const [approvedEmployees, setApprovedEmployees] = useState([]);
@@ -17,8 +20,13 @@ const AdminDashboard = ({ activeTab }) => {
     const [isReportsLoading, setIsReportsLoading] = useState(false);
     const [announcementMsg, setAnnouncementMsg] = useState({ title: '', content: '' });
     const [payslipTemplate, setPayslipTemplate] = useState(null);
+    const [calMonth, setCalMonth] = useState(new Date().getMonth());
+    const [calYear, setCalYear] = useState(new Date().getFullYear());
     const [templateAnalysis, setTemplateAnalysis] = useState(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [itemRequests, setItemRequests] = useState([]);
+    const [salaryReport, setSalaryReport] = useState([]);
+    const [salaryReportMonth, setSalaryReportMonth] = useState(`${new Date().toLocaleString('default', { month: 'long' })} ${new Date().getFullYear()}`);
     const [isOfferLetterModalOpen, setIsOfferLetterModalOpen] = useState(false);
     const [offerLetterParams, setOfferLetterParams] = useState({
         employment_type: 'Intern',
@@ -66,6 +74,9 @@ const AdminDashboard = ({ activeTab }) => {
     const [docGenInitialData, setDocGenInitialData] = useState({});
     const [docGenEmployee, setDocGenEmployee] = useState(null);
 
+    // Enhanced Document Generator states
+    const [isEnhancedDocGenOpen, setIsEnhancedDocGenOpen] = useState(false);
+
     // Payslip Manager states
     const [isPayslipManagerOpen, setIsPayslipManagerOpen] = useState(false);
     const [payslipManagerMonth, setPayslipManagerMonth] = useState('');
@@ -81,12 +92,21 @@ const AdminDashboard = ({ activeTab }) => {
         monthly_salary: 50000,
         privilege_leave_rate: 0.0,
         sick_leave_rate: 0.5,
-        casual_leave_rate: 1.0
+        casual_leave_rate: 1.0,
+        role: 'employee',
+        in_hand_salary: 0,
+        internship_end_date: '',
+        internship_completed: false,
+        pan_no: '',
+        pf_no: '',
+        bank_name: '',
+        bank_account: ''
     });
     const [workdayOverrides, setWorkdayOverrides] = useState([]);
     const [compOffRequests, setCompOffRequests] = useState([]);
     const [weekendWorkRequests, setWeekendWorkRequests] = useState([]);
     const [isProcessingCompOff, setIsProcessingCompOff] = useState(false);
+    const [previewDoc, setPreviewDoc] = useState(null);
 
     const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
@@ -97,13 +117,15 @@ const AdminDashboard = ({ activeTab }) => {
                 const res = await fetch(`${apiUrl}/auth/admin/pending`);
                 const data = await res.json();
                 setPendingEmployees(data.employees || []);
-                // Only unset viewedEmp if they are no longer in the pending list
                 setViewedEmp(prev => prev && data.employees?.some(e => e.employee_id === prev.employee_id) ? data.employees.find(e => e.employee_id === prev.employee_id) : null);
             } else if (activeTab === 'employees') {
                 const res = await fetch(`${apiUrl}/auth/admin/employees`);
                 const data = await res.json();
                 setApprovedEmployees(data.employees || []);
-                setViewedEmp(null);
+            } else if (activeTab === 'items') {
+                const res = await fetch(`${apiUrl}/admin/items/all`);
+                const data = await res.json();
+                setItemRequests(data.requests || []);
             } else if (activeTab === 'leaves') {
                 const res = await fetch(`${apiUrl}/admin/leaves`);
                 const data = await res.json();
@@ -143,6 +165,10 @@ const AdminDashboard = ({ activeTab }) => {
                 const res = await fetch(`${apiUrl}/announcement`);
                 const data = await res.json();
                 setAnnouncementMsg(data);
+            } else if (activeTab === 'salary_report') {
+                const res = await fetch(`${apiUrl}/admin/salary-report/${salaryReportMonth}`);
+                const data = await res.json();
+                setSalaryReport(data.report || []);
             } else if (activeTab === 'templates') {
                 const res = await fetch(`${apiUrl}/admin/templates`);
                 const data = await res.json();
@@ -172,7 +198,8 @@ const AdminDashboard = ({ activeTab }) => {
                     monthly_salary: parseInt(empRoleSetup.monthly_salary),
                     privilege_leave_rate: parseFloat(empRoleSetup.privilege_leave_rate),
                     sick_leave_rate: parseFloat(empRoleSetup.sick_leave_rate),
-                    casual_leave_rate: parseFloat(empRoleSetup.casual_leave_rate)
+                    casual_leave_rate: parseFloat(empRoleSetup.casual_leave_rate),
+                    internship_end_date: empRoleSetup.internship_end_date || null
                 })
             });
             if (response.ok) {
@@ -199,6 +226,22 @@ const AdminDashboard = ({ activeTab }) => {
         }
     };
 
+    const handleItemAction = async (requestId, status) => {
+        try {
+            const res = await fetch(`${apiUrl}/admin/items/${requestId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            if (res.ok) {
+                alert(`Item request ${status.toLowerCase()}ed!`);
+                fetchData();
+            }
+        } catch (err) {
+            console.error("Action failed", err);
+        }
+    };
+
     const handleUpdateEmployee = async (employee_id) => {
         try {
             const response = await fetch(`${apiUrl}/admin/employee/${employee_id}`, {
@@ -210,10 +253,28 @@ const AdminDashboard = ({ activeTab }) => {
                     monthly_salary: parseInt(empRoleSetup.monthly_salary),
                     privilege_leave_rate: parseFloat(empRoleSetup.privilege_leave_rate),
                     sick_leave_rate: parseFloat(empRoleSetup.sick_leave_rate),
-                    casual_leave_rate: parseFloat(empRoleSetup.casual_leave_rate)
+                    casual_leave_rate: parseFloat(empRoleSetup.casual_leave_rate),
+                    internship_end_date: empRoleSetup.internship_end_date || null,
+                    internship_completed: empRoleSetup.internship_completed,
+                    pan_no: empRoleSetup.pan_no,
+                    pf_no: empRoleSetup.pf_no,
+                    bank_name: empRoleSetup.bank_name,
+                    bank_account: empRoleSetup.bank_account,
+                    in_hand_salary: parseInt(empRoleSetup.in_hand_salary || 0)
                 })
             });
             if (response.ok) {
+                // Now assign role if changed
+                if (isSuperAdmin) {
+                    await fetch(`${apiUrl}/admin/assign-role`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            employee_id: employee_id,
+                            role: empRoleSetup.role
+                        })
+                    });
+                }
                 alert("Employee profile updated successfully!");
                 fetchData(); // Refresh list
                 setSelectedApprovedEmp(null);
@@ -511,10 +572,30 @@ const AdminDashboard = ({ activeTab }) => {
         }
     };
 
+    const DocPreviewModal = ({ doc, onClose }) => {
+        if (!doc) return null;
+        return (
+            <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+                <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '1.5rem', position: 'relative', maxWidth: '900px', width: '90%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+                    <button onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', color: '#6b7280', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
+                    <h3 style={{ marginBottom: '1.5rem', color: '#111827', fontWeight: 'bold' }}>{doc.title}</h3>
+                    <div style={{ overflow: 'auto', flex: 1, display: 'flex', justifyContent: 'center' }}>
+                        {doc.url.toLowerCase().endsWith('.pdf') ? (
+                            <iframe src={doc.url} style={{ width: '100%', height: '70vh', border: 'none' }} title="PDF Preview"></iframe>
+                        ) : (
+                            <img src={doc.url} alt="Document" style={{ maxWidth: '100%', borderRadius: '8px', border: '1px solid #eee' }} />
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="admin-dashboard">
+            <DocPreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />
             <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                {activeTab === 'onboarding' && '📋 Pending Approvals'}
+                {isSuperAdmin ? '🛡️ Super Admin' : '🛡️ Admin'} - {activeTab === 'onboarding' && '📋 Pending Approvals'}
                 {activeTab === 'employees' && '👥 Employee Directory'}
                 {activeTab === 'leaves' && '🌴 Leave Management'}
                 {activeTab === 'holidays' && '📅 Holiday Calendar'}
@@ -578,7 +659,7 @@ const AdminDashboard = ({ activeTab }) => {
                                                         src={`${apiUrl}/admin/photos/${viewedEmp.reference_image_key}`}
                                                         alt="Face"
                                                         style={{ width: '120px', height: '120px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #E5E7EB', background: '#ffffff' }}
-                                                        onError={(e) => { e.target.src = 'https://via.placeholder.com/120?text=No+Photo'; }}
+                                                        onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
                                                     />
                                                 </div>
 
@@ -589,7 +670,7 @@ const AdminDashboard = ({ activeTab }) => {
                                                             src={`${apiUrl}/admin/photos/${viewedEmp.bank_details?.bank_photo_key}`}
                                                             alt="Bank"
                                                             style={{ width: '100%', borderRadius: '4px', border: '1px solid #E5E7EB' }}
-                                                            onError={(e) => { e.target.src = 'https://via.placeholder.com/100?text=No+Image'; }}
+                                                            onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
                                                         />
                                                     </div>
                                                     <div>
@@ -629,15 +710,41 @@ const AdminDashboard = ({ activeTab }) => {
                                                         style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
                                                     />
                                                 </div>
+                                                {empRoleSetup.employment_type === 'Intern' && (
+                                                    <div style={{ gridColumn: 'span 2' }}>
+                                                        <label style={{ fontSize: '0.75rem', color: '#ff7a00', display: 'block', marginBottom: '0.25rem' }}>Internship End Date</label>
+                                                        <input
+                                                            type="date"
+                                                            value={empRoleSetup.internship_end_date}
+                                                            onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, internship_end_date: e.target.value })}
+                                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ff7a00', background: '#ffffff', color: '#1f2937' }}
+                                                        />
+                                                    </div>
+                                                )}
                                                 <div style={{ gridColumn: 'span 2' }}>
-                                                    <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Monthly Gross Salary (₹)</label>
+                                                    <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>In-hand Salary (₹) - Priority Display</label>
                                                     <input
                                                         type="number"
-                                                        value={empRoleSetup.monthly_salary}
-                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, monthly_salary: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                        value={empRoleSetup.in_hand_salary}
+                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, in_hand_salary: e.target.value })}
+                                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937', fontWeight: 'bold', borderColor: '#ff7a00' }}
                                                     />
                                                 </div>
+                                                {isSuperAdmin && (
+                                                    <div style={{ gridColumn: 'span 2' }}>
+                                                        <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Assign Role (Super Admin Only)</label>
+                                                        <select
+                                                            value={empRoleSetup.role}
+                                                            onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, role: e.target.value })}
+                                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ff7a00', background: '#ffffff', color: '#1f2937' }}
+                                                        >
+                                                            <option value="employee">Employee</option>
+                                                            <option value="admin">Admin</option>
+                                                            <option value="hr_responsible">HR Responsibility</option>
+                                                        </select>
+                                                        <div style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '0.25rem' }}>* Only Super Admin can promote/demote staff roles.</div>
+                                                    </div>
+                                                )}
 
                                                 <div style={{ gridColumn: 'span 2', marginTop: '0.5rem' }}>
                                                     <label style={{ fontSize: '0.85rem', color: '#ff7a00', fontWeight: 'bold', display: 'block', marginBottom: '0.75rem' }}>🎁 Monthly Leave Accrual Rate (days/month)</label>
@@ -676,6 +783,42 @@ const AdminDashboard = ({ activeTab }) => {
                                                             />
                                                         </div>
                                                     </div>
+                                            <div style={{ gridColumn: 'span 2' }}>
+                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>PAN Number</label>
+                                                <input
+                                                    type="text"
+                                                    value={empRoleSetup.pan_no}
+                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pan_no: e.target.value })}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                />
+                                            </div>
+                                            <div style={{ gridColumn: 'span 2' }}>
+                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>PF Number</label>
+                                                <input
+                                                    type="text"
+                                                    value={empRoleSetup.pf_no}
+                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_no: e.target.value })}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Bank Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={empRoleSetup.bank_name}
+                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_name: e.target.value })}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Bank Account Number</label>
+                                                <input
+                                                    type="text"
+                                                    value={empRoleSetup.bank_account}
+                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_account: e.target.value })}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                />
+                                            </div>
                                                     {empRoleSetup.employment_type === 'Intern' && (
                                                         <div style={{ fontSize: '0.7rem', color: '#c84cff', marginTop: '0.5rem' }}>* Interns have zero paid leaves as per policy (GreytHR guidelines).</div>
                                                     )}
@@ -695,12 +838,15 @@ const AdminDashboard = ({ activeTab }) => {
                                                         emp_name: viewedEmp.name,
                                                         employee_id: viewedEmp.employee_id,
                                                         designation: empRoleSetup.position || (isIntern ? 'Full Stack Intern' : 'Software Engineer'),
+                                                        role: empRoleSetup.position || 'Full Stack Intern',
                                                         doj: new Date().toISOString().split('T')[0],
+                                                        date: new Date().toISOString().split('T')[0],
                                                         offer_date: new Date().toISOString().split('T')[0],
-                                                        annual_ctc: empRoleSetup.monthly_salary ? empRoleSetup.monthly_salary * 12 : 0,
-                                                        fixed_ctc_annual: empRoleSetup.monthly_salary ? "₹" + (empRoleSetup.monthly_salary * 12) : "0",
+                                                        total_ctc_annual: empRoleSetup.monthly_salary ? empRoleSetup.monthly_salary * 12 : 0,
+                                                        fixed_ctc_annual: empRoleSetup.monthly_salary ? empRoleSetup.monthly_salary * 12 : 0,
                                                         inhand_amount: empRoleSetup.monthly_salary || 0,
-                                                        annual_basic: empRoleSetup.monthly_salary ? (empRoleSetup.monthly_salary * 12) * 0.4 : 0
+                                                        annual_basic: empRoleSetup.monthly_salary ? Math.round((empRoleSetup.monthly_salary * 12) * 0.4) : 0,
+                                                        monthly_basic: empRoleSetup.monthly_salary ? Math.round(empRoleSetup.monthly_salary * 0.4) : 0
                                                     });
                                                     setIsDocGenModalOpen(true);
                                                 }}
@@ -710,8 +856,9 @@ const AdminDashboard = ({ activeTab }) => {
                                                 ✨ AI Generate Offer Letter
                                             </button>
 
-                                            <button onClick={() => handleApproval(viewedEmp.employee_id, 'approve')} className="btn btn-primary" style={{ backgroundColor: '#0a66c2' }}>Approve Onboarding</button>
+                                            <button onClick={() => handleApproval(viewedEmp.employee_id, 'approve')} className="btn btn-primary" style={{ backgroundColor: '#0a66c2', fontWeight: 'bold' }}>✅ Approve Onboarding (No Offer Letter Needed)</button>
                                         </div>
+                                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem' }}>* You can approve an application immediately without generating an offer letter.</div>
                                     </div>
                                 ) : <div style={{ color: '#6b7280', textAlign: 'center' }}>Select an employee to review.</div>}
                             </div>
@@ -721,7 +868,22 @@ const AdminDashboard = ({ activeTab }) => {
                     {/* TAB: EMPLOYEES */}
                     {activeTab === 'employees' && (
                         <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
-                            <h2 className="card-title">Employee Directory ({approvedEmployees.length})</h2>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                <h2 className="card-title">Employee Directory ({approvedEmployees.length})</h2>
+                                <button
+                                    onClick={() => setIsEnhancedDocGenOpen(true)}
+                                    className="btn btn-primary"
+                                    style={{ 
+                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                        border: 'none',
+                                        padding: '0.75rem 1.5rem',
+                                        fontSize: '0.9rem',
+                                        fontWeight: '600'
+                                    }}
+                                >
+                                    📄 Enhanced Document Generator
+                                </button>
+                            </div>
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                 <thead>
                                     <tr style={{ borderBottom: '1px solid #E5E7EB', color: '#6b7280' }}>
@@ -730,6 +892,7 @@ const AdminDashboard = ({ activeTab }) => {
                                         <th style={{ padding: '1rem' }}>Name</th>
                                         <th style={{ padding: '1rem' }}>Email</th>
                                         <th style={{ padding: '1rem' }}>Status</th>
+                                        <th style={{ padding: '1rem' }}>Documents</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -744,7 +907,13 @@ const AdminDashboard = ({ activeTab }) => {
                                                     monthly_salary: emp.monthly_salary || 0,
                                                     privilege_leave_rate: emp.privilege_leave_rate || 0,
                                                     sick_leave_rate: emp.sick_leave_rate || 0.5,
-                                                    casual_leave_rate: emp.casual_leave_rate || 1.0
+                                                    casual_leave_rate: emp.casual_leave_rate || 1.0,
+                                                    role: emp.role || 'employee',
+                                                    in_hand_salary: emp.in_hand_salary || 0,
+                                                    pan_no: emp.pan_no || '',
+                                                    pf_no: emp.pf_no || '',
+                                                    bank_name: emp.bank_details?.bank_name || '',
+                                                    bank_account: emp.bank_details?.account_number || ''
                                                 });
                                             }}
                                             style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', background: selectedApprovedEmp?.employee_id === emp.employee_id ? 'rgba(79, 70, 229, 0.1)' : 'transparent' }}
@@ -754,13 +923,25 @@ const AdminDashboard = ({ activeTab }) => {
                                                     src={`${apiUrl}/admin/photos/${emp.reference_image_key}`}
                                                     alt=""
                                                     style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #E5E7EB' }}
-                                                    onError={(e) => { e.target.src = 'https://via.placeholder.com/40'; }}
+                                                    onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
                                                 />
                                             </td>
                                             <td style={{ padding: '1rem', fontFamily: 'monospace' }}>{emp.employee_id}</td>
                                             <td style={{ padding: '1rem', fontWeight: 'bold' }}>{emp.name}</td>
                                             <td style={{ padding: '1rem', color: '#6b7280' }}>{emp.email}</td>
                                             <td style={{ padding: '1rem' }}><span style={{ background: 'rgba(10, 102, 194, 0.2)', color: '#0a66c2', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem' }}>Active</span></td>
+                                            <td style={{ padding: '1rem' }}>
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); setPreviewDoc({ title: 'Bank Details', url: `${apiUrl}/admin/photos/${emp.bank_details?.bank_photo_key}` }); }} 
+                                                        className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }}
+                                                    >🏦 Bank</button>
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); setPreviewDoc({ title: 'Education Cert', url: `${apiUrl}/admin/photos/${emp.education?.cert_key}` }); }} 
+                                                        className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }}
+                                                    >🎓 Edu</button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -805,7 +986,52 @@ const AdminDashboard = ({ activeTab }) => {
                                                     style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
                                                 />
                                             </div>
+                                            <div style={{ gridColumn: 'span 2' }}>
+                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>In-hand Salary (₹) - Overrides calculations if set</label>
+                                                <input
+                                                    type="number"
+                                                    value={empRoleSetup.in_hand_salary}
+                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, in_hand_salary: e.target.value })}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937', fontWeight: 'bold', borderColor: '#ff7a00' }}
+                                                />
+                                            </div>
                                         </div>
+                                            <div style={{ gridColumn: 'span 2' }}>
+                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>PAN Number</label>
+                                                <input
+                                                    type="text"
+                                                    value={empRoleSetup.pan_no}
+                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pan_no: e.target.value })}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                />
+                                            </div>
+                                            <div style={{ gridColumn: 'span 2' }}>
+                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>PF Number</label>
+                                                <input
+                                                    type="text"
+                                                    value={empRoleSetup.pf_no}
+                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_no: e.target.value })}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Bank Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={empRoleSetup.bank_name}
+                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_name: e.target.value })}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Bank Account Number</label>
+                                                <input
+                                                    type="text"
+                                                    value={empRoleSetup.bank_account}
+                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_account: e.target.value })}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                />
+                                            </div>
 
                                         <div>
                                             <label style={{ fontSize: '0.85rem', color: '#ff7a00', fontWeight: 'bold', display: 'block', marginBottom: '0.75rem' }}>🎁 Monthly Leave Accrual Rate (days/month)</label>
@@ -851,15 +1077,15 @@ const AdminDashboard = ({ activeTab }) => {
                                         <button onClick={() => setSelectedApprovedEmp(null)} className="btn btn-secondary">Cancel</button>
                                         <button
                                             onClick={() => {
-                                                setDocGenType('relieving_letter');
+                                                setDocGenType('relieving');
                                                 setDocGenEmployee(selectedApprovedEmp);
                                                 setDocGenInitialData({
                                                     emp_name: selectedApprovedEmp.name,
                                                     employee_id: selectedApprovedEmp.employee_id,
                                                     designation: selectedApprovedEmp.position || 'Software Engineer',
+                                                    joining_date: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : '',
                                                     last_working_day: new Date().toISOString().split('T')[0],
-                                                    doj: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : 'N/A',
-                                                    offer_date: new Date().toISOString().split('T')[0]
+                                                    relieving_date: new Date().toISOString().split('T')[0]
                                                 });
                                                 setIsDocGenModalOpen(true);
                                             }}
@@ -870,15 +1096,15 @@ const AdminDashboard = ({ activeTab }) => {
                                         </button>
                                         <button
                                             onClick={() => {
-                                                setDocGenType('experience_certificate');
+                                                setDocGenType('experience');
                                                 setDocGenEmployee(selectedApprovedEmp);
                                                 setDocGenInitialData({
                                                     emp_name: selectedApprovedEmp.name,
                                                     employee_id: selectedApprovedEmp.employee_id,
                                                     designation: selectedApprovedEmp.position || 'Software Engineer',
+                                                    joining_date: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : '',
                                                     last_working_day: new Date().toISOString().split('T')[0],
-                                                    doj: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : 'N/A',
-                                                    offer_date: new Date().toISOString().split('T')[0]
+                                                    issue_date: new Date().toISOString().split('T')[0]
                                                 });
                                                 setIsDocGenModalOpen(true);
                                             }}
@@ -891,13 +1117,24 @@ const AdminDashboard = ({ activeTab }) => {
                                             onClick={() => {
                                                 setDocGenType('payslip');
                                                 setDocGenEmployee(selectedApprovedEmp);
+                                                const monthlySalary = selectedApprovedEmp.monthly_salary || 50000;
+                                                const basicSalary = Math.round(monthlySalary * 0.4);
+                                                const hra = Math.round(monthlySalary * 0.2);
+                                                const specialAllowance = monthlySalary - basicSalary - hra;
                                                 setDocGenInitialData({
                                                     emp_name: selectedApprovedEmp.name,
                                                     employee_id: selectedApprovedEmp.employee_id,
                                                     designation: selectedApprovedEmp.position || 'Software Engineer',
-                                                    month_year: 'March 2026',
-                                                    gross_salary: empRoleSetup.monthly_salary || 50000,
-                                                    net_salary: empRoleSetup.monthly_salary ? empRoleSetup.monthly_salary - 200 : 49800
+                                                    department: selectedApprovedEmp.department || '',
+                                                    doj: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : '',
+                                                    month_year: new Date().toLocaleString('default', { month: 'long', year: 'numeric' }),
+                                                    bank_name: selectedApprovedEmp.bank_name || '',
+                                                    bank_account: selectedApprovedEmp.bank_account || '',
+                                                    basic_salary: basicSalary,
+                                                    hra: hra,
+                                                    special_allowance: specialAllowance,
+                                                    total_earnings: monthlySalary,
+                                                    net_salary: monthlySalary - 200
                                                 });
                                                 setIsDocGenModalOpen(true);
                                             }}
@@ -929,10 +1166,14 @@ const AdminDashboard = ({ activeTab }) => {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                                 <span style={{ fontSize: '0.875rem', color: l.status.includes('Approved') ? '#0a66c2' : '#c84cff' }}>{l.status}</span>
                                                 {l.status.includes('Pending') && (
-                                                    <>
-                                                        <button onClick={() => handleLeaveStatus(l.id, 'Rejected')} className="btn btn-secondary" style={{ padding: '0.5rem', fontSize: '0.75rem' }}>Reject</button>
-                                                        <button onClick={() => handleLeaveStatus(l.id, 'Approved by Admin')} className="btn btn-primary" style={{ padding: '0.5rem', fontSize: '0.75rem', background: '#0a66c2' }}>Approve</button>
-                                                    </>
+                                                    user?.role === 'hr_responsible' ? (
+                                                        <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>View Only</span>
+                                                    ) : (
+                                                        <>
+                                                            <button onClick={() => handleLeaveStatus(l.id, 'Rejected')} className="btn btn-secondary" style={{ padding: '0.5rem', fontSize: '0.75rem' }}>Reject</button>
+                                                            <button onClick={() => handleLeaveStatus(l.id, 'Approved by Admin')} className="btn btn-primary" style={{ padding: '0.5rem', fontSize: '0.75rem', background: '#0a66c2' }}>Approve</button>
+                                                        </>
+                                                    )
                                                 )}
                                             </div>
                                         </div>
@@ -960,20 +1201,79 @@ const AdminDashboard = ({ activeTab }) => {
                                 </form>
                             </div>
                             <div className="card glass-panel" style={{ gridColumn: 'span 2' }}>
-                                <h2 className="card-title">Holiday Calendar</h2>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    {holidays.map((h, i) => (
-                                        <div key={i} style={{ padding: '1rem', border: '1px solid #E5E7EB', borderRadius: '8px', background: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div>
-                                                <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{h.name}</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{h.type} | {new Date(h.date).toDateString()}</div>
-                                            </div>
-                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                <button onClick={() => handleEditClick(h)} className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}>✏️ Edit</button>
-                                                <button onClick={() => handleDeleteHoliday(h.date)} className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderColor: '#EF4444', color: '#EF4444' }}>🗑️ Delete</button>
-                                            </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                    <h2 className="card-title" style={{ margin: 0 }}>Holiday Calendar</h2>
+                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        <button className="btn btn-secondary" onClick={() => {
+                                            if (calMonth === 0) { setCalMonth(11); setCalYear(calYear - 1); }
+                                            else setCalMonth(calMonth - 1);
+                                        }}>◀</button>
+                                        <div style={{ fontWeight: 'bold', minWidth: '120px', textAlign: 'center' }}>
+                                            {new Date(calYear, calMonth).toLocaleString('default', { month: 'long' })} {calYear}
                                         </div>
+                                        <button className="btn btn-secondary" onClick={() => {
+                                            if (calMonth === 11) { setCalMonth(0); setCalYear(calYear + 1); }
+                                            else setCalMonth(calMonth + 1);
+                                        }}>▶</button>
+                                    </div>
+                                </div>
+                                
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.5rem', marginBottom: '0.5rem', textAlign: 'center', fontWeight: 'bold', color: '#6b7280' }}>
+                                    <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                                </div>
+                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: '#E5E7EB', borderRadius: '12px', overflow: 'hidden', border: '1px solid #E5E7EB' }}>
+                                    {Array.from({ length: new Date(calYear, calMonth, 1).getDay() }).map((_, i) => (
+                                        <div key={`empty-${i}`} style={{ padding: '2.5rem', background: '#F9FAFB' }}></div>
                                     ))}
+                                    {Array.from({ length: new Date(calYear, calMonth + 1, 0).getDate() }).map((_, i) => {
+                                        const day = i + 1;
+                                        const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                                        const dayHolidays = holidays.filter(h => h.date === dateStr);
+                                        const isToday = dateStr === new Date().toISOString().split('T')[0];
+                                        
+                                        return (
+                                            <div key={day} style={{ 
+                                                minHeight: '120px', 
+                                                padding: '0.75rem', 
+                                                background: '#ffffff',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                position: 'relative',
+                                                transition: 'background 0.2s',
+                                                cursor: 'default'
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                                            onMouseLeave={e => e.currentTarget.style.background = '#ffffff'}
+                                            >
+                                                <div style={{ 
+                                                    fontWeight: '800', 
+                                                    marginBottom: '0.75rem', 
+                                                    color: isToday ? '#0a66c2' : '#9ca3af',
+                                                    fontSize: '0.875rem'
+                                                }}>
+                                                    {isToday && <span style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', width: '8px', height: '8px', background: '#0a66c2', borderRadius: '50%' }}></span>}
+                                                    {day}
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                                                    {dayHolidays.map((h, hi) => (
+                                                        <div key={hi} style={{ 
+                                                            fontSize: '0.7rem', 
+                                                            background: h.type === 'Public Holiday' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)', 
+                                                            color: h.type === 'Public Holiday' ? '#EF4444' : '#F59E0B', 
+                                                            padding: '0.4rem 0.6rem', 
+                                                            borderRadius: '6px',
+                                                            textAlign: 'left',
+                                                            cursor: 'pointer',
+                                                            border: `1px solid ${h.type === 'Public Holiday' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`,
+                                                            fontWeight: '600'
+                                                        }} onClick={() => handleEditClick(h)} title="Click to Edit">
+                                                            {h.name}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
 
@@ -1233,6 +1533,119 @@ const AdminDashboard = ({ activeTab }) => {
                                 <div style={{ fontWeight: 'bold', color: '#ff7a00', marginBottom: '0.5rem' }}>AI Payroll Note:</div>
                                 <p style={{ fontSize: '0.875rem', margin: 0 }}>All LOP (Loss of Pay) deductions are automatically calculated based on attendance and leave records for the selected month.</p>
                             </div>
+                        </div>
+                    )}
+
+                    {/* TAB: SALARY REPORT */}
+                    {activeTab === 'salary_report' && (
+                        <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                                <h2 className="card-title" style={{ margin: 0 }}>📊 Monthly Salary Report</h2>
+                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                    <select 
+                                        value={salaryReportMonth} 
+                                        onChange={(e) => setSalaryReportMonth(e.target.value)}
+                                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }}
+                                    >
+                                        {['January 2026', 'February 2026', 'March 2026', 'April 2026'].map(m => (
+                                            <option key={m} value={m}>{m}</option>
+                                        ))}
+                                    </select>
+                                    <button onClick={fetchData} className="btn btn-secondary">🔄 Refresh</button>
+                                </div>
+                            </div>
+
+                            <div className="table-container">
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '2px solid #E5E7EB', textAlign: 'left', color: '#6b7280', fontSize: '0.85rem' }}>
+                                            <th style={{ padding: '1rem' }}>Employee</th>
+                                            <th style={{ padding: '1rem' }}>Exp. Days</th>
+                                            <th style={{ padding: '1rem' }}>Present</th>
+                                            <th style={{ padding: '1rem' }}>Leaves</th>
+                                            <th style={{ padding: '1rem' }}>Absent (LOP)</th>
+                                            <th style={{ padding: '1rem' }}>Gross Salary</th>
+                                            <th style={{ padding: '1rem' }}>Deductions</th>
+                                            <th style={{ padding: '1rem', color: '#0a66c2' }}>Net Payable</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {salaryReport.map((row, i) => (
+                                            <tr key={i} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <div style={{ fontWeight: '600' }}>{row.name}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: '#9CA3AF' }}>{row.employee_id}</div>
+                                                </td>
+                                                <td style={{ padding: '1rem' }}>{row.expected_working_days}</td>
+                                                <td style={{ padding: '1rem', color: '#10B981' }}>{row.actual_presence}</td>
+                                                <td style={{ padding: '1rem', color: '#6366F1' }}>{row.leaves_taken}</td>
+                                                <td style={{ padding: '1rem', color: row.absent_days > 0 ? '#EF4444' : '#9CA3AF' }}>{row.absent_days}</td>
+                                                <td style={{ padding: '1rem' }}>₹{row.monthly_salary.toLocaleString()}</td>
+                                                <td style={{ padding: '1rem', color: '#EF4444' }}>-₹{row.lop_deduction.toLocaleString()}</td>
+                                                <td style={{ padding: '1rem', fontWeight: 'bold', color: '#0a66c2' }}>₹{row.net_salary.toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* TAB: ITEMS */}
+                    {activeTab === 'items' && (
+                        <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
+                            <h2 className="card-title">📦 Item Requests ({itemRequests.length})</h2>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
+                                <thead>
+                                    <tr style={{ textAlign: 'left', borderBottom: '2px solid rgba(255,255,255,0.1)', color: '#6b7280', fontSize: '0.85rem' }}>
+                                        <th style={{ padding: '1rem' }}>Employee ID</th>
+                                        <th style={{ padding: '1rem' }}>Item</th>
+                                        <th style={{ padding: '1rem' }}>Qty</th>
+                                        <th style={{ padding: '1rem' }}>Reason</th>
+                                        <th style={{ padding: '1rem' }}>Status</th>
+                                        <th style={{ padding: '1rem' }}>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {itemRequests.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>No item requests found.</td>
+                                        </tr>
+                                    ) : (
+                                        itemRequests.map(req => (
+                                            <tr key={req.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <td style={{ padding: '1rem', fontFamily: 'monospace' }}>{req.employee_id}</td>
+                                                <td style={{ padding: '1rem', fontWeight: 'bold' }}>{req.item_name}</td>
+                                                <td style={{ padding: '1rem' }}>{req.quantity}</td>
+                                                <td style={{ padding: '1rem', fontSize: '0.85rem', maxWidth: '200px' }}>{req.reason}</td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <span style={{ 
+                                                        padding: '0.25rem 0.6rem', 
+                                                        borderRadius: '4px', 
+                                                        fontSize: '0.75rem', 
+                                                        background: req.status === 'Approved' ? 'rgba(16, 185, 129, 0.2)' : (req.status === 'Rejected' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'),
+                                                        color: req.status === 'Approved' ? '#10b981' : (req.status === 'Rejected' ? '#ef4444' : '#f59e0b')
+                                                    }}>
+                                                        {req.status}
+                                                    </span>
+                                                </td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    {req.status === 'Pending' ? (
+                                                        user?.role === 'hr_responsible' ? (
+                                                            <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>View Only</span>
+                                                        ) : (
+                                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                                <button onClick={() => handleItemAction(req.id, 'Approved')} className="btn btn-primary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#10b981' }}>Approve</button>
+                                                                <button onClick={() => handleItemAction(req.id, 'Rejected')} className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: '#ef4444', borderColor: '#ef4444' }}>Reject</button>
+                                                            </div>
+                                                        )
+                                                    ) : '-'}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     )}
 
@@ -1842,7 +2255,10 @@ const AdminDashboard = ({ activeTab }) => {
                                                 />
                                                 <div>
                                                     <div style={{ fontWeight: '600', color: '#111827', fontSize: '0.875rem' }}>{emp.name}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>ID: {emp.employee_id} | Salary: ₹{emp.monthly_salary || 0}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                                        ID: {emp.employee_id} | Salary: ₹{emp.monthly_salary || 0}
+                                                        {emp.pf_number && ` | PF: ${emp.pf_number}`}
+                                                    </div>
                                                 </div>
                                             </div>
                                             <button
@@ -1855,7 +2271,8 @@ const AdminDashboard = ({ activeTab }) => {
                                                         designation: emp.position || 'Software Engineer',
                                                         month_year: payslipManagerMonth,
                                                         gross_salary: emp.monthly_salary || 50000,
-                                                        net_salary: emp.monthly_salary ? emp.monthly_salary - 200 : 49800
+                                                        net_salary: (emp.in_hand_salary && emp.in_hand_salary > 0) ? emp.in_hand_salary : (emp.monthly_salary ? emp.monthly_salary - 200 : 49800),
+                                                        pf_number: emp.pf_number || ''
                                                     });
                                                     setIsDocGenModalOpen(true);
                                                 }}
@@ -1887,13 +2304,17 @@ const AdminDashboard = ({ activeTab }) => {
                                                 designation: emp.position || 'Software Engineer',
                                                 month_year: payslipManagerMonth,
                                                 gross_salary: emp.monthly_salary || 50000,
-                                                net_salary: emp.monthly_salary ? emp.monthly_salary - 200 : 49800
+                                                        net_salary: (emp.in_hand_salary && emp.in_hand_salary > 0) ? emp.in_hand_salary : (emp.monthly_salary ? emp.monthly_salary - 200 : 49800)
                                             };
                                             try {
-                                                const res = await fetch(`${apiUrl}/generate-doc/finalize`, {
+                                                const res = await fetch(`${apiUrl}/enhanced-docs/generate`, {
                                                     method: 'POST',
                                                     headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ data, doc_type: 'payslip' })
+                                                    body: JSON.stringify({ 
+                                                        employee_id: empId, 
+                                                        doc_type: 'payslip', 
+                                                        roi_data: data 
+                                                    })
                                                 });
                                                 const result = await res.json();
                                                 if (result.status === 'success') successCount++;
@@ -1929,6 +2350,12 @@ const AdminDashboard = ({ activeTab }) => {
                 docType={docGenType}
                 initialData={docGenInitialData}
                 employee={docGenEmployee}
+            />
+
+            <EnhancedDocumentGenerator
+                isOpen={isEnhancedDocGenOpen}
+                onClose={() => setIsEnhancedDocGenOpen(false)}
+                apiUrl={apiUrl}
             />
         </div>
     );

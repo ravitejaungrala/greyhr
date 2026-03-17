@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { base64ToBlobUrl } from '../utils';
 
 const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, initialData }) => {
     const [schema, setSchema] = useState(null);
@@ -17,6 +18,11 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
             setPreviewBase64(null);
             setRawText('');
         }
+        return () => {
+            if (previewBase64 && previewBase64.startsWith('blob:')) {
+                URL.revokeObjectURL(previewBase64);
+            }
+        };
     }, [isOpen, docType, initialData]);
 
     const fetchFields = async () => {
@@ -30,13 +36,13 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
                 const empDataMapping = {};
                 if (employee) {
                     empDataMapping.bank_account = employee.bank_details?.account_number || '';
-                    empDataMapping.bank_ifsc = employee.bank_details?.ifsc || '';
                     empDataMapping.bank_name = employee.bank_details?.bank_name || '';
                     empDataMapping.department = employee.department || '';
                     empDataMapping.uan = employee.uan || '';
                     empDataMapping.pf_no = employee.pf_no || '';
-                    empDataMapping.esi_no = employee.esi_no || '';
+                    empDataMapping.pan_no = employee.pan_no || '';
                     empDataMapping.doj = employee.joining_date ? employee.joining_date.split('T')[0] : '';
+                    empDataMapping.joining_date = employee.joining_date ? employee.joining_date.split('T')[0] : '';
                 }
 
                 // Initialize empty string for each field if not in initialData
@@ -66,7 +72,8 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
             if (extracted.error) {
                 alert(extracted.error);
             } else {
-                setFormData(prev => ({ ...prev, ...extracted }));
+                const fields = extracted.data || extracted;
+                setFormData(prev => ({ ...prev, ...fields }));
             }
         } catch (err) {
             console.error(err);
@@ -86,7 +93,17 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
             });
             const data = await res.json();
             if (data.status === 'success') {
-                setPreviewBase64(`data:application/pdf;base64,${data.pdf_base64}`);
+                // The backend sends html_base64 for HTML documents
+                const base64Content = data.pdf_base64 || data.html_base64;
+                const contentType = data.html_base64 ? 'text/html' : 'application/pdf';
+                
+                // Revoke old blob URL if it exists
+                if (previewBase64 && previewBase64.startsWith('blob:')) {
+                    URL.revokeObjectURL(previewBase64);
+                }
+
+                const blobUrl = base64ToBlobUrl(base64Content, contentType);
+                setPreviewBase64(blobUrl);
             } else {
                 alert(data.error || "Preview generation failed.");
             }
@@ -101,21 +118,24 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
     const handleFinalize = async () => {
         setIsFinalizing(true);
         try {
-            const res = await fetch(`${apiUrl}/generate-doc/finalize`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: formData, doc_type: docType })
-            });
+        const res = await fetch(`${apiUrl}/enhanced-docs/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                employee_id: employee.employee_id,
+                doc_type: docType,
+                roi_data: formData 
+            })
+        });
             const data = await res.json();
             if (data.status === 'success') {
                 // Auto-save form fields back to employee profile
                 if (employee && employee.employee_id) {
                     try {
                         const updatePayload = {
-                            ...formData,
                             position: formData.designation || undefined,
-                            monthly_salary: formData.gross_salary ? parseInt(formData.gross_salary) : undefined,
-                            joining_date: formData.doj || undefined,
+                            monthly_salary: formData.total_earnings ? parseInt(formData.total_earnings) : undefined,
+                            joining_date: formData.doj || formData.joining_date || undefined,
                         };
                         await fetch(`${apiUrl}/admin/employee/${employee.employee_id}`, {
                             method: 'PATCH',
@@ -126,7 +146,7 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
                         console.error("Failed to auto-save employee profile", updateErr);
                     }
                 }
-                alert("Document successfully generated and saved to S3!");
+                alert("Document successfully generated and sent to employee!");
                 onClose();
             } else {
                 alert(data.error || "Finalization failed.");
@@ -201,7 +221,7 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
                     {/* RIGHT PANEL: Preview */}
                     <div style={{ display: 'flex', flexDirection: 'column', background: '#F3F4F6' }}>
                         <div style={{ padding: '1rem', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff' }}>
-                            <span style={{ fontWeight: '600', color: '#374151' }}>Live PDF Preview</span>
+                            <span style={{ fontWeight: '600', color: '#374151' }}>Live Document Preview</span>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                 <button
                                     onClick={handlePreview}
@@ -226,12 +246,12 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
                                 <iframe
                                     src={previewBase64}
                                     style={{ width: '100%', height: '100%', border: '1px solid #D1D5DB', borderRadius: '4px', background: '#ffffff', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                                    title="PDF Preview"
+                                    title="Document Preview"
                                 />
                             ) : (
                                 <div style={{ color: '#9CA3AF', textAlign: 'center' }}>
                                     <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📄</div>
-                                    Click "Refresh Preview" to generate PDF using current fields.
+                                    Click "Refresh Preview" to generate document using current fields.
                                 </div>
                             )}
                         </div>

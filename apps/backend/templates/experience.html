@@ -154,6 +154,8 @@
     <div class="letter-container">
         <div class="watermark">NEUZENAI</div>
 
+        <div style="text-align: right; font-weight: bold; margin-bottom: 10px; font-size: 13px;">Date: {{ current_date }}</div>
+
         <h2 class="doc-title">Work Experience Letter</h2>
 
         <div class="salutation">To Whom It May Concern,</div>
@@ -180,9 +182,10 @@
         </div>
 
         <div class="closing-section">
-            Sincerely,<br><br><br>
-            <strong>{{ emp_name }}</strong><br>
-            {{ designation }}<br>
+            Sincerely,<br>
+            <img src="{{ signature_path }}" alt="Signature" style="height: 50px; margin: 10px 0;"><br>
+            <strong>{{ signatory_name }}</strong><br>
+            {{ signatory_designation }}<br>
             <strong>NEUZENAI IT Solutions Pvt Ltd</strong>
         </div>
     </div>

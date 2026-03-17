@@ -237,21 +237,19 @@
 
 		<div class="signature-section">
 			Regards,<br>
-			<img src="signature.png" alt="Signature" class="sig-img">
-			<strong>{{ your_name }}</strong><br>
-			{{ your_designation }}<br>
+			<img src="{{ signature_path }}" alt="Signature" class="sig-img">
+			<strong>{{ signatory_name }}</strong><br>
+			{{ signatory_designation }}<br>
 			<strong>NEUZENAI IT Solutions Pvt Ltd</strong>
 		</div>
 
-		<div class="acceptance-box">
 			<strong>Acceptance</strong><br>
 			I hereby accept the offer of {{ designation }} at NEUZENAI IT Solutions Pvt Ltd on the terms and conditions
 			outlined in this offer letter.
 			<div class="sig-line-container">
-				<span>Signature of candidate</span>
-				<span>Date:</span>
+				<span>Signature: {{ employee_signature_name }}</span>
+				<span>Date: {{ signing_date }}</span>
 			</div>
-		</div>
 	</div>
 
 	<div class="footer-fixed">

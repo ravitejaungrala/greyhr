@@ -1,8 +1,7 @@
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Response, UploadFile, File
 from pydantic import BaseModel
 from typing import Optional
 from database.s3_client import s3_db
-from database.vector_client import vector_db
 from database.mongo_client import mongo_db
 from dotenv import load_dotenv
 load_dotenv(override=True)
@@ -14,12 +13,19 @@ import tempfile
 import google.generativeai as genai
 import cv2
 import numpy as np
-from fpdf import FPDF
 from io import BytesIO
 import jinja2
 from xhtml2pdf import pisa
 from pypdf import PdfReader
-from api.doc_engine import generate_any_neuzenai_doc, extract_doc_data, render_and_save_doc, render_doc_to_bytes
+from api.doc_engine import (
+    generate_any_neuzenai_doc, 
+    extract_doc_data, 
+    render_and_save_doc, 
+    render_doc_to_html_bytes,
+    process_uploaded_template,
+    save_new_template
+)
+from api.enhanced_doc_system import enhanced_router
 
 router = APIRouter()
 
@@ -62,6 +68,8 @@ class ProfileUpdateRequest(BaseModel):
     image_base64: str
     image_left_base64: Optional[str] = None
     image_right_base64: Optional[str] = None
+    # PF (Optional)
+    pf_number: Optional[str] = None
 
 def parse_base64(b64_string: str) -> bytes:
     if ',' in b64_string:
@@ -107,7 +115,7 @@ def login(request: LoginRequest):
     
     # 1. Check for Admin credentials first
     if request.email == 'admin@dhanadurga.com' and request.password == 'Dhanadurga@2003':
-        return {"role": "admin", "name": "Admin", "email": request.email}
+        return {"role": "super_admin", "name": "Super Admin", "email": request.email}
     
     # 2. Check for Employee credentials
     user = mongo_db.users.find_one({"email": request.email, "password": request.password})
@@ -172,6 +180,7 @@ def complete_profile(request: ProfileUpdateRequest):
             "prev_role": request.prev_role,
             "years": request.experience_years
         } if request.is_experienced else None,
+        "pf_number": request.pf_number,
         "status": "pending_approval",
         "reference_image_key": reference_image_key,
         "reference_image_left_key": reference_image_left_key,
@@ -208,6 +217,8 @@ class AdminApprovalRequest(BaseModel):
     privilege_leave_rate: Optional[float] = 0.0
     sick_leave_rate: Optional[float] = 0.5
     casual_leave_rate: Optional[float] = 1.0
+    in_hand_salary: Optional[int] = 0
+    internship_end_date: Optional[str] = None
 
 class EmployeeUpdate(BaseModel):
     employment_type: Optional[str] = None
@@ -218,6 +229,7 @@ class EmployeeUpdate(BaseModel):
     privilege_leave_rate: Optional[float] = None
     sick_leave_rate: Optional[float] = None
     casual_leave_rate: Optional[float] = None
+    in_hand_salary: Optional[int] = None
     # Additional fields extracted/used for documents
     bank_account: Optional[str] = None
     bank_ifsc: Optional[str] = None
@@ -225,6 +237,9 @@ class EmployeeUpdate(BaseModel):
     uan: Optional[str] = None
     pf_no: Optional[str] = None
     esi_no: Optional[str] = None
+    pan_no: Optional[str] = None
+    internship_end_date: Optional[str] = None
+    internship_completed: Optional[bool] = None
 
 @router.post("/auth/admin/approve")
 def admin_approve_employee(request: AdminApprovalRequest):
@@ -245,6 +260,8 @@ def admin_approve_employee(request: AdminApprovalRequest):
             "privilege_leave_rate": request.privilege_leave_rate,
             "sick_leave_rate": request.sick_leave_rate,
             "casual_leave_rate": request.casual_leave_rate,
+            "in_hand_salary": request.in_hand_salary,
+            "internship_end_date": request.internship_end_date,
             "joining_date": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
     else:
@@ -273,17 +290,14 @@ def update_employee_details(employee_id: str, update: EmployeeUpdate):
     set_ops = {}
     for k, v in update_data.items():
         if k in ["bank_account", "bank_ifsc", "bank_name"]:
-            # Nested in bank_details
-            if "bank_details" not in set_ops:
-                # We need to map to existing or create new ones using dot notation for mongo
-                pass
             if k == "bank_account": set_ops["bank_details.account_number"] = v
             elif k == "bank_ifsc": set_ops["bank_details.ifsc"] = v
             elif k == "bank_name": set_ops["bank_details.bank_name"] = v
+        elif k == "internship_end_date" or k == "internship_completed":
+            set_ops[k] = v
         else:
             set_ops[k] = v
 
-    # Ensure status doesn't accidentally revert if missing, keep existing status
     result = mongo_db.users.update_one(
         {"employee_id": employee_id},
         {"$set": set_ops}
@@ -293,6 +307,29 @@ def update_employee_details(employee_id: str, update: EmployeeUpdate):
         return {"error": "Employee not found"}
         
     return {"message": "Employee updated successfully"}
+
+class RoleAssignment(BaseModel):
+    employee_id: str
+    role: str # "admin", "hr_responsible", "employee"
+
+@router.post("/admin/assign-role")
+def assign_role(request: RoleAssignment):
+    if mongo_db.users is None:
+        return {"error": "Database error"}
+    
+    valid_roles = ["admin", "hr_responsible", "employee"]
+    if request.role not in valid_roles:
+        return {"error": "Invalid role"}
+        
+    result = mongo_db.users.update_one(
+        {"employee_id": request.employee_id},
+        {"$set": {"role": request.role}}
+    )
+    
+    if result.matched_count == 0:
+        return {"error": "Employee not found"}
+        
+    return {"message": f"Role updated to {request.role} for {request.employee_id}"}
 
 # --- Leaves & Admin Features ---
 class LeaveRequest(BaseModel):
@@ -385,6 +422,76 @@ class TemplateSaveRequest(BaseModel):
     roi_fields: list[str] = []
     original_type: str = "html"
 
+class EmployeeSignatureRequest(BaseModel):
+    employee_id: str
+    signature_name: str
+    signing_date: str
+
+@router.post("/admin/templates/analyze")
+async def analyze_template(request: TemplateUploadRequest):
+    """
+    Admins upload a template (PDF, Image, HTML) for analysis. 
+    AI converts it to HTML and extracts merge fields.
+    """
+    try:
+        content = base64.b64decode(request.content_base64)
+        # Pass file_type as filename for extension checking if needed
+        result = process_uploaded_template(content, f"template.{request.file_type}", f"application/{request.file_type}")
+        return result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": f"Failed to decode base64 content: {str(e)}"}
+
+@router.post("/admin/templates/upload")
+def save_template_final(request: TemplateSaveRequest):
+    """
+    Final save of a template after admin review.
+    """
+    template_name = request.employment_type # Keep original case/name as requested by frontend logic
+    result = save_new_template(template_name, request.html_template)
+    
+    if "status" in result and result["status"] == "success":
+        # Store metadata if needed in MongoDB
+        if mongo_db.db is not None:
+            mongo_db.db.templates.update_one(
+                {"employment_type": request.employment_type},
+                {"$set": {
+                    "employment_type": request.employment_type,
+                    "html_content": request.html_template,
+                    "placeholders": request.placeholders,
+                    "roi_fields": request.roi_fields,
+                    "original_type": request.original_type,
+                    "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+                }},
+                upsert=True
+            )
+        return {"message": f"Template {template_name} saved successfully.", "s3_key": result["s3_key"]}
+    
+    return result
+
+@router.get("/admin/templates")
+def list_templates():
+    """Returns all stored templates from MongoDB metadata."""
+    if mongo_db.db is None:
+        return []
+    templates = list(mongo_db.db.templates.find({}, {"_id": 0}))
+    return templates
+
+@router.delete("/admin/templates/{type}")
+def delete_template(type: str):
+    """Deletes a template from S3 and MongoDB."""
+    if mongo_db.db is not None:
+        mongo_db.db.templates.delete_one({"employment_type": type})
+    
+    # Also delete from S3
+    s3_key = f"templates/{type}.html"
+    try:
+        s3_db.s3_client.delete_object(Bucket=s3_db.bucket_name, Key=s3_key)
+        return {"message": f"Template for {type} deleted successfully"}
+    except Exception as e:
+        return {"error": f"Failed to delete from S3: {str(e)}"}
+
 class DocumentGenerationRequest(BaseModel):
     raw_data: str
     doc_type: str # 'payslip', 'internship_offer', 'full_time_offer', 'relieving', 'experience'
@@ -400,44 +507,44 @@ class DocumentFinalizeRequest(BaseModel):
 DOCUMENT_SCHEMAS = {
     "payslip": {
         "emp_name": "Text",
-        "employee_id": "Text",
+        "emp_code": "Text",
         "month_year": "Text (e.g. March 2026)",
         "designation": "Text",
         "department": "Text",
-        "uan": "Text",
-        "pf_no": "Text",
-        "esi_no": "Text",
+        "doj": "Date",
+        "days_worked": "Number",
         "bank_name": "Text",
         "account_no": "Text",
-        "ifsc": "Text",
-        "doj": "Date",
-        "date_of_pay": "Date",
-        "basic_salary": "Number",
+        "pan_no": "Text",
+        "pf_no": "Text",
+        "basic": "Number",
         "hra": "Number",
         "special_allowance": "Number",
-        "pf_deduction": "Number",
-        "pt_deduction": "Number",
-        "tax_deduction": "Number",
         "total_earnings": "Number",
+        "prof_tax": "Number",
+        "pf_deduction": "Number",
+        "income_tax": "Number",
         "total_deductions": "Number",
         "net_salary": "Number",
         "amount_in_words": "Text"
     },
     "internship_offer": {
         "emp_name": "Text",
-        "date": "Date",
-        "employee_id": "Text",
-        "role": "Text",
-        "role_description": "Text",
+        "current_date": "Date",
+        "designation": "Text",
+        "internship_description": "Text (2-3 sentences about the internship role)",
         "stipend": "Text",
-        "duration": "Text"
+        "duration": "Text",
+        "doj": "Date",
+        "acceptance_deadline": "Date",
+        "your_name": "Text (Signatory name, default: B. Subba Rami Reddy)",
+        "your_designation": "Text (Signatory title, default: Co-Founder)"
     },
     "full_time_offer": {
         "emp_name": "Text",
         "designation": "Text",
         "doj": "Date",
         "offer_date": "Date",
-        "annual_ctc": "Number",
         "monthly_basic": "Number",
         "annual_basic": "Number",
         "monthly_hra": "Number",
@@ -464,23 +571,17 @@ DOCUMENT_SCHEMAS = {
     },
     "relieving": {
         "emp_name": "Text",
-        "employee_id": "Text",
-        "relieving_date": "Date",
-        "joining_date": "Date",
-        "last_working_day": "Date",
+        "current_date": "Date",
         "designation": "Text",
-        "reason_for_leaving": "Text",
-        "roles_responsibilities": "Text"
+        "department": "Text",
+        "last_working_day": "Date",
+        "resignation_date": "Date"
     },
     "experience": {
         "emp_name": "Text",
-        "employee_id": "Text",
-        "issue_date": "Date",
-        "joining_date": "Date",
-        "last_working_day": "Date",
         "designation": "Text",
-        "performance_summary": "Text",
-        "roles_responsibilities": "Text"
+        "start_date": "Date",
+        "end_date": "Date"
     }
 }
 
@@ -502,12 +603,12 @@ def extract_doc_api(request: DocumentExtractRequest):
 @router.post("/generate-doc/preview")
 def preview_doc_api(request: DocumentFinalizeRequest):
     """Admin preview step 1.5: generate PDF base64 for previewing"""
-    pdf_bytes, error = render_doc_to_bytes(request.data, request.doc_type)
+    html_bytes, error = render_doc_to_html_bytes(request.data, request.doc_type)
     if error:
         return {"error": error}
     
-    pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
-    return {"status": "success", "pdf_base64": pdf_base64}
+    html_base64 = base64.b64encode(html_bytes).decode('utf-8')
+    return {"status": "success", "html_base64": html_base64}
 
 @router.post("/generate-doc/finalize")
 def finalize_doc_api(request: DocumentFinalizeRequest):
@@ -519,10 +620,11 @@ def finalize_doc_api(request: DocumentFinalizeRequest):
     output_path = result.get("output_path")
     if output_path and os.path.exists(output_path):
         with open(output_path, "rb") as f:
-            pdf_bytes = f.read()
+            html_bytes = f.read()
             
         s3_key = f"generated_docs/{result['output_filename']}"
-        s3_db.save_file(s3_key, pdf_bytes, content_type='application/pdf')
+        # All documents are now generated as HTML
+        s3_db.save_file(s3_key, html_bytes, content_type='text/html')
         result["s3_key"] = s3_key
         
     return result
@@ -553,6 +655,52 @@ def update_leave(leave_id: str, update: LeaveStatusUpdate):
     if mongo_db.db is not None:
         mongo_db.leaves.update_one({"id": leave_id}, {"$set": {"status": update.status}})
     return {"message": f"Leave {leave_id} updated to {update.status}"}
+
+# --- Item Requests ---
+class ItemRequest(BaseModel):
+    employee_id: str
+    item_name: str
+    reason: str
+    quantity: int = 1
+
+@router.post("/items/request")
+def request_item(request: ItemRequest):
+    if mongo_db.item_requests is None:
+        return {"error": "Database error"}
+    
+    record = request.dict()
+    record["id"] = uuid.uuid4().hex[:8]
+    record["status"] = "Pending"
+    record["applied_on"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    
+    mongo_db.item_requests.insert_one(record)
+    if "_id" in record: del record["_id"]
+    return {"message": "Item request submitted", "record": record}
+
+@router.get("/admin/items/all")
+def get_all_item_requests():
+    if mongo_db.item_requests is None:
+        return {"requests": []}
+    requests = list(mongo_db.item_requests.find({}, {"_id": 0}))
+    return {"requests": requests}
+
+class ItemStatusUpdate(BaseModel):
+    status: str # "Approved", "Rejected"
+
+@router.put("/admin/items/{request_id}/status")
+def update_item_request_status(request_id: str, update: ItemStatusUpdate):
+    if mongo_db.item_requests is None:
+        return {"error": "Database error"}
+    
+    result = mongo_db.item_requests.update_one(
+        {"id": request_id},
+        {"$set": {"status": update.status}}
+    )
+    
+    if result.matched_count == 0:
+        return {"error": "Request not found"}
+        
+    return {"message": f"Item request {request_id} updated to {update.status}"}
 
 # --- Holidays ---
 @router.post("/admin/holidays")
@@ -630,6 +778,176 @@ def get_reports_summary():
         "average_engagement_score": 88 # Mock as requested
     }
 
+@router.get("/admin/salary-report/{month_year}")
+def get_monthly_salary_report(month_year: str):
+    if mongo_db.users is None:
+        return {"report": []}
+    
+    try:
+        # Parse month_year like "March 2026"
+        report_date = datetime.datetime.strptime(month_year, "%B %Y")
+        month = report_date.month
+        year = report_date.year
+    except Exception as e:
+        return {"error": f"Invalid month_year format: {str(e)}"}
+
+    # 1. Get month boundaries
+    start_date = datetime.datetime(year, month, 1)
+    # Next month's first day
+    if month == 12:
+        next_month = datetime.datetime(year + 1, 1, 1)
+    else:
+        next_month = datetime.datetime(year, month + 1, 1)
+    num_days = (next_month - start_date).days
+    
+    # 2. Fetch all necessary data
+    employees = list(mongo_db.users.find({"status": "approved"}, {"_id": 0, "password": 0}))
+    all_holidays = list(mongo_db.holidays.find({}, {"_id": 0}))
+    all_overrides = list(mongo_db.workday_overrides.find({}, {"_id": 0}))
+    
+    # Filter holidays and overrides for this month
+    month_prefix = f"{year}-{month:02d}"
+    
+    month_holidays = {h["date"] for h in all_holidays if h["date"].startswith(month_prefix)}
+    month_overrides = {o["date"]: o["type"] for o in all_overrides if o["date"].startswith(month_prefix)}
+    
+    import calendar as py_calendar
+    _, num_days = py_calendar.monthrange(year, month)
+    total_working_days_in_month = 0
+    for d in range(1, num_days + 1):
+        curr_day = datetime.datetime(year, month, d)
+        date_str = curr_day.strftime("%Y-%m-%d")
+        weekday = curr_day.weekday()
+        is_working = True
+        if weekday >= 5: is_working = False
+        if date_str in month_holidays: is_working = False
+        if date_str in month_overrides:
+            if month_overrides[date_str] == "forced_working": is_working = True
+            elif month_overrides[date_str] == "forced_holiday": is_working = False
+        if is_working:
+            total_working_days_in_month += 1
+
+    report = []
+    
+    for emp in employees:
+        emp_id = emp["employee_id"]
+        monthly_salary = emp.get("monthly_salary", 0)
+        daily_salary = monthly_salary / 30 # Standard daily rate
+        
+        # Fetch attendance for this employee in this month
+        # We look for 'sign_in' actions
+        attendance_logs = list(mongo_db.attendance.find({
+            "employee_id": emp_id,
+            "action": "sign_in",
+            "timestamp": {"$regex": f"^{month_prefix}"}
+        }))
+        attended_dates = {log["timestamp"].split("T")[0] for log in attendance_logs}
+        
+        # DOJ filtering: count from the next day of approval
+        joining_date_str = emp.get("joining_date")
+        joining_date = None
+        if joining_date_str:
+            try:
+                # Handle cases where it might be isoformat or just date
+                if 'T' in joining_date_str:
+                    joining_date = datetime.datetime.fromisoformat(joining_date_str).date()
+                else:
+                    joining_date = datetime.datetime.strptime(joining_date_str, "%Y-%m-%d").date()
+            except: pass
+
+        # Fetch approved leaves for this employee
+        emp_leaves = list(mongo_db.leaves.find({
+            "employee_id": emp_id,
+            "status": {"$regex": "Approved"},
+            "$or": [
+                {"start_date": {"$regex": f"^{month_prefix}"}},
+                {"end_date": {"$regex": f"^{month_prefix}"}}
+            ]
+        }))
+        
+        # Helper to check if a date is within an approved leave
+        leave_dates = set()
+        for l in emp_leaves:
+            l_start = datetime.datetime.strptime(l["start_date"], "%Y-%m-%d")
+            l_end = datetime.datetime.strptime(l["end_date"], "%Y-%m-%d")
+            curr_l = l_start
+            while curr_l <= l_end:
+                if curr_l.month == month and curr_l.year == year:
+                    leave_dates.add(curr_l.strftime("%Y-%m-%d"))
+                curr_l += datetime.timedelta(days=1)
+
+        expected_working_days = 0
+        actual_presence = 0
+        leaves_taken = 0
+        
+        for d in range(1, num_days + 1):
+            curr_day = datetime.datetime(year, month, d)
+            curr_date = curr_day.date()
+            
+            # Skip days on or before joining date (approval date)
+            if joining_date and curr_date <= joining_date:
+                continue
+                
+            date_str = curr_day.strftime("%Y-%m-%d")
+            weekday = curr_day.weekday() # 0-6 (Mon-Sun)
+            
+            is_working_day = True
+            if weekday >= 5: # Sat or Sun
+                is_working_day = False
+            
+            if date_str in month_holidays:
+                is_working_day = False
+                
+            # Overrides take ultimate precedence
+            if date_str in month_overrides:
+                if month_overrides[date_str] == "forced_working":
+                    is_working_day = True
+                elif month_overrides[date_str] == "forced_holiday":
+                    is_working_day = False
+            
+            if is_working_day:
+                expected_working_days += 1
+                if date_str in attended_dates:
+                    actual_presence += 1
+                elif date_str in leave_dates:
+                    leaves_taken += 1
+        
+        # Calculate LOP
+        # absent_days = max(0, expected_working_days - actual_presence - leaves_taken)
+        # Fixed logic from user: Deduction = (Expected Working Days - Actual Attendance - Approved Paid Leaves) * (Daily Salary)
+        absent_days = expected_working_days - actual_presence - leaves_taken
+        if absent_days < 0: absent_days = 0 # Should not happen if data is perfect
+        
+        is_intern = emp.get("employment_type") == "Intern"
+        
+        # Prorated base calculation for mid-month joiners
+        if total_working_days_in_month > 0 and expected_working_days < total_working_days_in_month:
+            base_salary = (expected_working_days / total_working_days_in_month) * monthly_salary
+        else:
+            base_salary = monthly_salary
+            
+        if is_intern:
+            # Intern LOP Deduction: 500 per absent day
+            lop_deduction = absent_days * 500
+            net_salary = base_salary - lop_deduction
+        else:
+            lop_deduction = round(absent_days * daily_salary, 2)
+            net_salary = round(base_salary - lop_deduction, 2)
+        
+        report.append({
+            "employee_id": emp_id,
+            "name": emp["name"],
+            "expected_working_days": expected_working_days,
+            "actual_presence": actual_presence,
+            "leaves_taken": leaves_taken,
+            "absent_days": absent_days,
+            "monthly_salary": monthly_salary,
+            "lop_deduction": lop_deduction,
+            "net_salary": net_salary
+        })
+        
+    return {"month_year": month_year, "report": report}
+
 @router.get("/admin/photos/{photo_key:path}")
 def get_admin_photo(photo_key: str):
     image_bytes = s3_db.get_image(photo_key)
@@ -645,6 +963,7 @@ class AttendanceScanRequest(BaseModel):
     image_base64: str
     image_left_base64: Optional[str] = None
     image_right_base64: Optional[str] = None
+    image_profile_base64: Optional[str] = None
     location: str
     action_type: str # 'sign_in' or 'sign_out'
 
@@ -674,6 +993,11 @@ def process_face_scan(request: AttendanceScanRequest):
         if request.image_right_base64:
             right_b64 = request.image_right_base64.split(',')[1] if ',' in request.image_right_base64 else request.image_right_base64
             right_bytes = base64.b64decode(right_b64)
+
+        profile_bytes = None
+        if request.image_profile_base64:
+            profile_b64 = request.image_profile_base64.split(',')[1] if ',' in request.image_profile_base64 else request.image_profile_base64
+            profile_bytes = base64.b64decode(profile_b64)
     except Exception as e:
         return {"error": "Invalid image format"}
 
@@ -721,6 +1045,16 @@ def process_face_scan(request: AttendanceScanRequest):
     s3_db.save_image(image_key, image_bytes, content_type='image/jpeg')
     if left_bytes: s3_db.save_image(image_left_key, left_bytes, content_type='image/jpeg')
     if right_bytes: s3_db.save_image(image_right_key, right_bytes, content_type='image/jpeg')
+
+    # 2.5 Save Profile Photo for ID Card if provided
+    if profile_bytes:
+        profile_image_key = f"reference_faces/{request.employee_id}_id_card.jpg"
+        s3_db.save_image(profile_image_key, profile_bytes, content_type='image/jpeg')
+        # Update user record with the new official ID photo
+        mongo_db.users.update_one(
+            {"employee_id": request.employee_id},
+            {"$set": {"id_card_photo_key": profile_image_key}}
+        )
     
     # 3. Save to MongoDB
     attendance_record = {
@@ -752,6 +1086,29 @@ def process_face_scan(request: AttendanceScanRequest):
         "record": attendance_record
     }
 
+class IDPhotoUpload(BaseModel):
+    employee_id: str
+    image_base64: str
+
+@router.post("/employee/upload-id-photo")
+def upload_id_photo(request: IDPhotoUpload):
+    if mongo_db.users is None:
+        return {"error": "Database error"}
+    
+    try:
+        image_bytes = parse_base64(request.image_base64)
+    except:
+        return {"error": "Invalid image format"}
+    
+    photo_key = f"reference_faces/{request.employee_id}_id_card.jpg"
+    s3_db.save_image(photo_key, image_bytes, content_type='image/jpeg')
+    
+    mongo_db.users.update_one(
+        {"employee_id": request.employee_id},
+        {"$set": {"id_card_photo_key": photo_key}}
+    )
+    return {"message": "ID Photo updated successfully", "status": "success"}
+
 class CopilotQuery(BaseModel):
     query: str
 
@@ -764,14 +1121,7 @@ def ask_hr_copilot(query: CopilotQuery):
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel('gemini-1.5-flash')
     
-    # 1. Context Retrieval from Chroma (Company Policies)
-    context = ""
-    try:
-        search_results = vector_db.search(query_texts=[query.query], top_k=2)
-        for res in search_results:
-            context += f"\nCompany Policy: {res.get('document', '')}"
-    except:
-        context = "No specific company policies found in vector DB."
+    context = "Company policies retrieval is currently disabled."
 
     prompt = f"""
     You are the Dhanadurga Employee HR Copilot. Use the context below to answer the employee's query.
@@ -896,8 +1246,26 @@ def get_attendance_calendar(employee_id: str):
         current_date = datetime.date(year, month, d)
         day_str = current_date.isoformat()
         
-        # Rule: Count from DOJ only
-        if joining_date and current_date < joining_date:
+        # Default day data
+        data = {
+            "date": day_str,
+            "first_in": "-",
+            "last_out": "-",
+            "total_work_hrs": "-",
+            "status": "Absent",
+            "status_char": "A",
+            "color": "#EF4444",
+            "deduction": 0,
+            "day_label": "Working Day"
+        }
+        
+        # Rule: Count from the day after approval (DOJ) only
+        if joining_date and current_date <= joining_date:
+            data["status"] = "Not Applicable"
+            data["status_char"] = "-"
+            data["color"] = "var(--text-muted)"
+            data["day_label"] = "Pre-Approval"
+            final_history.append(data)
             continue
             
         day_records = history_map.get(day_str, [])
@@ -906,6 +1274,8 @@ def get_attendance_calendar(employee_id: str):
         is_weekend = current_date.weekday() >= 5 # 5=Saturday, 6=Sunday
         
         is_originally_non_working = is_weekend or (holiday is not None)
+        is_forced_working = override and override.get('type') == 'forced_working'
+        is_forced_holiday = override and override.get('type') == 'forced_holiday'
             
         if is_forced_working:
             is_working_day = True
@@ -926,18 +1296,8 @@ def get_attendance_calendar(employee_id: str):
         # Check for approved leaves
         approved_leave = next((l for l in leaves if l["start_date"] <= day_str <= l["end_date"]), None)
         
-        # Default day data
-        data = {
-            "date": day_str,
-            "first_in": "-",
-            "last_out": "-",
-            "total_work_hrs": "-",
-            "status": "Absent",
-            "status_char": "A",
-            "color": "#EF4444",
-            "deduction": 0,
-            "day_label": day_label
-        }
+        # Update day label in data
+        data["day_label"] = day_label
         
         if day_records:
             # Sort punches
@@ -1349,55 +1709,113 @@ def get_leave_balance(employee_id: str):
 def get_employee_salary(employee_id: str):
     if mongo_db.users is None:
         return {"error": "Database error"}
-    user = mongo_db.users.find_one({"employee_id": employee_id}, {"_id": 0, "monthly_salary": 1})
+    user = mongo_db.users.find_one({"employee_id": employee_id}, {"_id": 0, "monthly_salary": 1, "employment_type": 1, "in_hand_salary": 1, "joining_date": 1})
     if not user:
         return {"error": "Employee not found"}
     
-    monthly_salary = user.get("monthly_salary", 0)
+    try:
+        monthly_salary = float(user.get("monthly_salary", 0))
+    except (ValueError, TypeError):
+        monthly_salary = 0.0
+        
     employment_type = user.get("employment_type", "Full-Time")
     
-    # NEW: LOP Deduction Logic (₹500 per day)
-    lop_days = 0
-    if mongo_db.db is not None:
-        # All leaves for interns count as LOP
-        if employment_type == "Intern":
-            lop_days = mongo_db.leaves.count_documents({
-                "employee_id": employee_id,
-                "status": "Approved by Admin"
-            })
-        else:
-            # For employees, only Rejected/Unapproved leaves count as LOP (or specifically marked)
-            # In this logic, let's say "Rejected" means LOP if they took it anyway, 
-            # or we check for a specific "LOP" flag if we had one.
-            # User said: "without prior approval also for leave for each from salary cut 500 per day"
-            lop_days = mongo_db.leaves.count_documents({
-                "employee_id": employee_id,
-                "status": "Rejected"
-            })
+    # Calculate expected working days based on joining date for Proration
+    joining_date_str = user.get("joining_date")
+    joining_date = None
+    if joining_date_str:
+        try:
+            joining_date = datetime.datetime.fromisoformat(joining_date_str).date()
+        except: pass
 
-    lop_deduction = lop_days * 500
+    now = datetime.datetime.utcnow()
+    year = now.year
+    month = now.month
+    month_prefix = f"{year}-{month:02d}"
     
-    # NEW: Attendance penalty deduction (for 5+ early logouts)
+    # Fetch holidays/overrides for calculation
+    all_holidays = list(mongo_db.holidays.find({}, {"_id": 0})) if mongo_db.holidays is not None else []
+    all_overrides = list(mongo_db.workday_overrides.find({}, {"_id": 0})) if mongo_db.workday_overrides is not None else []
+    month_holidays = {h["date"] for h in all_holidays if h["date"].startswith(month_prefix)}
+    month_overrides = {o["date"]: o["type"] for o in all_overrides if o["date"].startswith(month_prefix)}
+
+    import calendar as py_calendar
+    _, num_days = py_calendar.monthrange(year, month)
+    total_working_days_in_month = 0
+    expected_working_days = 0
+    
+    for d in range(1, num_days + 1):
+        curr_day = datetime.date(year, month, d)
+        date_str = curr_day.isoformat()
+        weekday = curr_day.weekday()
+        
+        is_working = True
+        if weekday >= 5: is_working = False
+        if date_str in month_holidays: is_working = False
+        if date_str in month_overrides:
+            if month_overrides[date_str] == "forced_working": is_working = True
+            elif month_overrides[date_str] == "forced_holiday": is_working = False
+            
+        if is_working:
+            total_working_days_in_month += 1
+            if not joining_date or curr_day >= joining_date:
+                expected_working_days += 1
+
+    if total_working_days_in_month > 0 and expected_working_days < total_working_days_in_month:
+        base_salary = (expected_working_days / total_working_days_in_month) * monthly_salary
+    else:
+        base_salary = monthly_salary
+
+    # NEW: LOP Deduction Logic (₹500 per day) from attendance history
+    lop_days = 0
     attendance_penalty = 0
+    
     try:
         calendar_res = get_attendance_calendar(employee_id)
         if "history" in calendar_res:
             today_str = datetime.datetime.utcnow().strftime('%Y-%m')
             for record in calendar_res["history"]:
                 if record["date"].startswith(today_str):
-                    attendance_penalty += record.get("deduction", 0)
+                    if record.get("status_char") == "A":
+                        lop_days += 1
+                    else:
+                        attendance_penalty += record.get("deduction", 0)
     except Exception as e:
-        print(f"Error calculating attendance penalty: {e}")
+        print(f"Error calculating attendance penalty/LOP: {e}")
 
-    deductions = int(monthly_salary * 0.05) + lop_deduction + attendance_penalty
-    tax = int(monthly_salary * 0.08)
-    net_salary = monthly_salary - deductions - tax
-    
+    lop_deduction = lop_days * 500
+
+    if employment_type == "Intern":
+        attendance_penalty = 0
+        deductions = lop_deduction
+        tax = 0
+        net_salary = base_salary - lop_deduction
+    else:
+        stored_in_hand = user.get("in_hand_salary")
+        try:
+            stored_in_hand = float(stored_in_hand) if stored_in_hand is not None else 0
+        except (ValueError, TypeError):
+            stored_in_hand = 0
+            
+        if stored_in_hand > 0:
+            if total_working_days_in_month > 0 and expected_working_days < total_working_days_in_month:
+                 prorated_in_hand = (expected_working_days / total_working_days_in_month) * stored_in_hand
+            else:
+                 prorated_in_hand = stored_in_hand
+                 
+            net_salary = prorated_in_hand - lop_deduction
+            deductions = base_salary - net_salary
+            tax = 0
+        else:
+            deductions = int(base_salary * 0.05) + lop_deduction + attendance_penalty
+            tax = int(base_salary * 0.08)
+            net_salary = base_salary - deductions - tax
+            
     return {
         "net_salary": net_salary,
         "deductions": deductions,
         "tax": tax,
-        "gross_salary": monthly_salary,
+        "gross_salary": base_salary,
         "lop_days": lop_days,
         "lop_deduction": lop_deduction,
         "attendance_penalty": attendance_penalty
@@ -1516,28 +1934,24 @@ def generate_payslip_pdf(employee, salary, month_year, format_info):
 
 @router.get("/employee/payslip/download/{month_year}")
 def download_payslip(month_year: str, employee_id: str):
-    if mongo_db.users is None:
-        return {"error": "Database error"}
-    
+    # Retrieve from MongoDB users or a specific payslip collection
     user = mongo_db.users.find_one({"employee_id": employee_id})
     if not user:
-        return {"error": "User not found"}
+        return Response(status_code=404, content="Employee not found")
         
-    salary_data = get_employee_salary(employee_id)
-    format_info = {}
-    if mongo_db.db is not None:
-        fmt = mongo_db.db.settings.find_one({"key": "payslip_format"})
-        if fmt: format_info = fmt
-    
-    try:
-        pdf_bytes = generate_payslip_pdf(user, salary_data, month_year, format_info)
-        return Response(
-            content=pdf_bytes,
-            media_type="application/pdf",
-            headers={"Content-Disposition": f"attachment; filename=payslip_{month_year.replace(' ', '_')}.pdf"}
-        )
-    except Exception as e:
-        return {"error": f"PDF generation failed: {str(e)}"}
+    s3_key = user.get("payslip_document_key")
+    if not s3_key:
+        return Response(status_code=404, content="Payslip not found")
+        
+    html_bytes = s3_db.get_image(s3_key)
+    if not html_bytes:
+        return Response(status_code=404, content="Payslip file not found in storage")
+        
+    return Response(
+        content=html_bytes, 
+        media_type="text/html",
+        headers={"Content-Disposition": f"attachment; filename=NeuzenAI_Payslip_{month_year}.html"}
+    )
 def analyze_payslip_template(request: PayslipTemplateRequest):
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -1610,6 +2024,28 @@ def get_employee_payslips(employee_id: str):
     curr = datetime.datetime(now.year, now.month, 1)
     start = datetime.datetime(joining_date.year, joining_date.month, 1)
     
+    # ISSUE 1: For intern payslip will be get after completing of internship period
+    if user.get("employment_type") == "Intern":
+        # Check if internship is completed (either a flag or date check)
+        is_completed = user.get("internship_completed", False)
+        end_date_str = user.get("internship_end_date")
+        
+        if not is_completed:
+            if end_date_str:
+                try:
+                    # Handle both ISO and simple date formats
+                    if 'T' in end_date_str:
+                        end_date = datetime.datetime.fromisoformat(end_date_str).date()
+                    else:
+                        end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%d").date()
+                    
+                    if datetime.date.today() < end_date:
+                        return {"payslips": [], "message": f"Intern payslips will be available after internship completion ({end_date.strftime('%Y-%m-%d')})."}
+                except:
+                    return {"payslips": [], "message": "Internship period not yet finished."}
+            else:
+                return {"payslips": [], "message": "Internship period not yet finished."}
+
     while curr >= start:
         month_name = curr.strftime("%B %Y")
         
@@ -1727,6 +2163,11 @@ def get_team_availability():
 
 class KudosRequest(BaseModel):
     sender_id: str
+
+class EmployeeSignatureRequest(BaseModel):
+    employee_id: str
+    signature_name: str
+    signing_date: str
     sender_name: str
     receiver_name: str
     message: str
@@ -1803,14 +2244,7 @@ def admin_ai_copilot(request: AdminCopilotRequest):
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel('gemini-1.5-flash')
     
-    # 1. Context Retrieval from Chroma (Company Policies)
-    context = ""
-    try:
-        search_results = vector_db.search(query_texts=[request.query], top_k=2)
-        for res in search_results:
-            context += f"\nCompany Policy: {res.get('document', '')}"
-    except:
-        context = "No specific company policies found in vector DB."
+    context = "Company policies retrieval is currently disabled."
 
     # 2. Context Retrieval from Mongo (Employee/Candidate Info)
     # Extract names or IDs if possible, for now we can do a broad search
@@ -1844,6 +2278,9 @@ def serve_s3_photo(key: str):
     if image_bytes:
         return Response(content=image_bytes, media_type="image/jpeg")
     return {"error": "Photo not found"}
+
+# Include enhanced document system routes
+router.include_router(enhanced_router, prefix="")
 
 # --- Offer Letters ---
 
@@ -1880,10 +2317,15 @@ def generate_offer_letter_pdf(data):
     pdf.set_x(15)
     pdf.cell(0, 15, title, align='C', ln=True)
     
+    # ISSUE 5: Today's date is missing in offer letter for full time
+    offer_date = data.get('date') or data.get('offer_date')
+    if not offer_date:
+        offer_date = datetime.datetime.now().strftime("%Y-%m-%d")
+
     pdf.ln(5)
     pdf.set_font("Arial", '', 10)
     pdf.set_x(15)
-    pdf.cell(0, 10, f"Date: {data['date']}", ln=True)
+    pdf.cell(0, 10, f"Date: {offer_date}", ln=True)
     pdf.cell(0, 5, f"Ref: NZ/{'INT' if is_intern else 'FT'}/{data['employee_id'][-4:].upper()}/2026", ln=True)
     
     pdf.ln(10)
@@ -2123,9 +2565,31 @@ def finalize_offer_letter(employee_id: str):
     pdf_bytes = s3_db.get_image(user["offer_letter_draft_key"])
     s3_db.save_image(final_key, pdf_bytes, content_type='application/pdf')
     
+    import datetime
+    
+    # Determine doc type name
+    is_intern = user.get("employment_type") == "Intern"
+    doc_type = "internship_offer" if is_intern else "full_time_offer"
+    doc_name = "Internship Offer Letter" if is_intern else "Full-Time Offer Letter"
+
     mongo_db.users.update_one(
         {"employee_id": employee_id},
-        {"$set": {"offer_letter_key": final_key, "offer_letter_status": "final"}}
+        {
+            "$set": {
+                "offer_letter_key": final_key, 
+                "offer_letter_status": "final",
+                f"{doc_type}_document_key": final_key,
+                f"{doc_type}_generated_at": datetime.datetime.now().isoformat()
+            },
+            "$addToSet": {
+                "all_documents": {
+                    "type": doc_type,
+                    "name": doc_name,
+                    "s3_key": final_key,
+                    "generated_at": datetime.datetime.now().isoformat()
+                }
+            }
+        }
     )
     
     return {"message": "Offer letter sent to employee"}
@@ -2136,204 +2600,110 @@ def get_employee_offer_letter(employee_id: str):
     if not user or "offer_letter_key" not in user or user.get("offer_letter_status") != "final":
         return Response(status_code=404)
         
-    pdf_bytes = s3_db.get_image(user["offer_letter_key"])
+    html_bytes = s3_db.get_image(user["offer_letter_key"])
     return Response(
-        content=pdf_bytes, 
-        media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=NeuzenAI_Offer_Letter.pdf"}
+        content=html_bytes, 
+        media_type="text/html",
+        headers={"Content-Disposition": f"attachment; filename=NeuzenAI_Offer_Letter.html"}
     )
 
-def generate_relieving_letter_pdf(data):
-    pdf = FPDF()
-    pdf.add_page()
+@router.post("/employee/submit-offer-signature")
+def submit_offer_signature(request: EmployeeSignatureRequest):
+    """
+    ISSUE 4: After admin releases, employee signs (name & date) 
+    and then it goes back to admin side.
+    """
+    if mongo_db.users is None:
+        return {"error": "Database error"}
     
-    # Header
-    pdf.set_font("Arial", 'B', 20)
-    pdf.set_text_color(255, 122, 0) # Primary
-    pdf.cell(0, 10, "NeuZen AI", ln=True, align='C')
-    pdf.set_font("Arial", size=10)
-    pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 5, "Experience & Relieving Certificate", ln=True, align='C')
-    pdf.ln(15)
+    user = mongo_db.users.find_one({"employee_id": request.employee_id})
+    if not user or "offer_letter_key" not in user:
+        return {"error": "Offer letter not found"}
     
-    pdf.set_text_color(0, 0, 0)
-    pdf.set_font("Arial", size=11)
-    pdf.cell(0, 10, f"Date: {data['relieving_date']}", ln=True, align='R')
-    pdf.ln(10)
+    # Update user record with signature
+    mongo_db.users.update_one(
+        {"employee_id": request.employee_id},
+        {"$set": {
+            "offer_letter_status": "signed",
+            "employee_signature_name": request.signature_name,
+            "employee_signing_date": request.signing_date,
+            "signed_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }}
+    )
+
+    # RE-GENERATE the letter with the signature using the enhanced system
+    from api.enhanced_doc_system import generate_and_save_document, get_employee_prefill_data, DOCUMENT_CONFIGS
+    from api.enhanced_doc_system import DocumentGenerationRequest
     
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 10, "TO WHOMSOEVER IT MAY CONCERN", ln=True, align='C')
-    pdf.ln(10)
+    # Determine type
+    doc_type = "full_time_offer" if user.get("employment_type") != "Intern" else "internship_offer"
     
-    pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 8, f"""This is to certify that {data['name']} (Emp ID: {data['employee_id']}) was employed with NeuZen AI from {data['joining_date']} to {data['last_working_day']}.
-
-At the time of leaving, {data['name']} held the position of {data['designation']}. During the tenure of service, we found them to be hardworking and dedicated to their responsibilities.
-
-We would like to confirm that {data['name']} has been relieved from their duties effective {data['relieving_date']}.
-
-The reason for leaving as per our records is: {data['reason_for_leaving']}.
-
-We wish {data['name']} all the best for their future endeavors.""")
-
-    pdf.ln(30)
-    pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 10, "For NeuZen AI,", ln=True)
-    pdf.ln(10)
-    pdf.cell(0, 10, "Authorized Signatory", ln=True)
-    pdf.cell(0, 5, "HR Department", ln=True)
+    # Get prefill data (it will now include the signature from the DB)
+    prefill = get_employee_prefill_data(request.employee_id, doc_type)
     
-    return pdf.output(dest='S').encode('latin1')
-
-def generate_experience_certificate_pdf(data):
-    pdf = FPDF()
-    pdf.add_page()
+    if "prefill_data" in prefill:
+        gen_request = DocumentGenerationRequest(
+            employee_id=request.employee_id,
+            doc_type=doc_type,
+            roi_data=prefill["prefill_data"]
+        )
+        generate_and_save_document(gen_request)
     
-    # Header
-    pdf.set_font("Arial", 'B', 20)
-    pdf.set_text_color(255, 122, 0) # Primary
-    pdf.cell(0, 10, "NeuZen AI", ln=True, align='C')
-    pdf.set_font("Arial", size=10)
-    pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 5, "Experience Certificate", ln=True, align='C')
-    pdf.ln(15)
-    
-    pdf.set_text_color(0, 0, 0)
-    pdf.set_font("Arial", size=11)
-    pdf.cell(0, 10, f"Date: {data['issue_date']}", ln=True, align='R')
-    pdf.ln(10)
-    
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 10, "TO WHOMSOEVER IT MAY CONCERN", ln=True, align='C')
-    pdf.ln(10)
-    
-    pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 8, f"""This is to certify that {data['name']} (Emp ID: {data['employee_id']}) was employed with NeuZen AI as a {data['designation']} from {data['joining_date']} to {data['last_working_day']}.
+    return {"message": "Signature submitted successfully. Offer letter updated and Admin notified."}
 
-During their tenure, we found {data['name']} to be a dedicated and committed professional. Their performance was '{data.get('performance_summary', 'Good')}', and they contributed significantly to our organization's growth.
+# Functionality moved to enhanced_doc_system
 
-We appreciate their contributions and wish them the very best in all their future endeavors.""")
+# Functionality moved to enhanced_doc_system
 
-    pdf.ln(30)
-    pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 10, "For NeuZen AI,", ln=True)
-    pdf.ln(10)
-    pdf.cell(0, 10, "Authorized Signatory", ln=True)
-    pdf.cell(0, 5, "HR Department", ln=True)
-    
-    return pdf.output(dest='S').encode('latin1')
-
+# Obsolete relieve/experience endpoints removed. Consolidating to enhanced_doc_system.
 @router.post("/admin/employee/generate-relieving-letter")
 def admin_generate_relieving_letter(request: RelievingLetterRequest):
-    user = mongo_db.users.find_one({"employee_id": request.employee_id})
-    if not user:
-        return {"error": "Employee not found"}
-        
-    data = request.dict()
-    data["name"] = user["name"]
-    
-    try:
-        pdf_bytes = generate_relieving_letter_pdf(data)
-        key = f"drafts/relieving_letter_{request.employee_id}.pdf"
-        s3_db.save_image(key, pdf_bytes, content_type='application/pdf')
-        
-        mongo_db.users.update_one(
-            {"employee_id": request.employee_id},
-            {"$set": {"relieving_letter_draft_key": key, "relieving_letter_status": "draft"}}
-        )
-        return {"message": "Relieving letter draft generated", "draft_key": key}
-    except Exception as e:
-        return {"error": f"Failed to generate relieving letter: {str(e)}"}
+    return {"error": "Use /enhanced-docs/generate"}
 
 @router.post("/admin/employee/finalize-relieving-letter/{employee_id}")
 def finalize_relieving_letter(employee_id: str):
-    user = mongo_db.users.find_one({"employee_id": employee_id})
-    if not user or "relieving_letter_draft_key" not in user:
-        return {"error": "Draft not found"}
-        
-    final_key = f"documents/relieving_letter_{employee_id}.pdf"
-    pdf_bytes = s3_db.get_image(user["relieving_letter_draft_key"])
-    s3_db.save_image(final_key, pdf_bytes, content_type='application/pdf')
-    
-    mongo_db.users.update_one(
-        {"employee_id": employee_id},
-        {"$set": {"relieving_letter_key": final_key, "relieving_letter_status": "final"}}
-    )
-    return {"message": "Relieving letter finalized and sent"}
+    return {"error": "Use /enhanced-docs/generate"}
 
 @router.get("/admin/employee/relieving-letter-preview/{employee_id}")
 def preview_relieving_letter(employee_id: str):
+    return Response(content="Use /enhanced-docs/preview", media_type="text/plain")
+
+@router.api_route("/employee/relieving-letter/{employee_id}", methods=["GET", "HEAD"])
+def get_employee_relieving_letter(employee_id: str):
     user = mongo_db.users.find_one({"employee_id": employee_id})
-    if not user or "relieving_letter_draft_key" not in user:
+    if not user or "relieving_document_key" not in user:
         return Response(status_code=404)
         
-    pdf_bytes = s3_db.get_image(user["relieving_letter_draft_key"])
-    return Response(content=pdf_bytes, media_type="application/pdf")
-
+    html_bytes = s3_db.get_image(user["relieving_document_key"])
     return Response(
-        content=pdf_bytes, 
-        media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=NeuzenAI_Relieving_Letter.pdf"}
+        content=html_bytes, 
+        media_type="text/html",
+        headers={"Content-Disposition": f"attachment; filename=NeuzenAI_Relieving_Letter.html"}
     )
 
 @router.post("/admin/employee/generate-experience-certificate")
 def admin_generate_experience_certificate(request: ExperienceCertificateRequest):
-    user = mongo_db.users.find_one({"employee_id": request.employee_id})
-    if not user:
-        return {"error": "Employee not found"}
-        
-    data = request.dict()
-    data["name"] = user["name"]
-    
-    try:
-        pdf_bytes = generate_experience_certificate_pdf(data)
-        key = f"drafts/experience_cert_{request.employee_id}.pdf"
-        s3_db.save_image(key, pdf_bytes, content_type='application/pdf')
-        
-        mongo_db.users.update_one(
-            {"employee_id": request.employee_id},
-            {"$set": {"experience_cert_draft_key": key, "experience_cert_status": "draft"}}
-        )
-        return {"message": "Experience certificate draft generated", "draft_key": key}
-    except Exception as e:
-        return {"error": f"Failed to generate experience certificate: {str(e)}"}
+    return {"error": "Use /enhanced-docs/generate"}
 
 @router.post("/admin/employee/finalize-experience-certificate/{employee_id}")
 def finalize_experience_certificate(employee_id: str):
-    user = mongo_db.users.find_one({"employee_id": employee_id})
-    if not user or "experience_cert_draft_key" not in user:
-        return {"error": "Draft not found"}
-        
-    final_key = f"documents/experience_cert_{employee_id}.pdf"
-    pdf_bytes = s3_db.get_image(user["experience_cert_draft_key"])
-    s3_db.save_image(final_key, pdf_bytes, content_type='application/pdf')
-    
-    mongo_db.users.update_one(
-        {"employee_id": employee_id},
-        {"$set": {"experience_cert_key": final_key, "experience_cert_status": "final"}}
-    )
-    return {"message": "Experience certificate finalized and sent"}
+    return {"error": "Use /enhanced-docs/generate"}
 
 @router.get("/admin/employee/experience-certificate-preview/{employee_id}")
 def preview_experience_certificate(employee_id: str):
-    user = mongo_db.users.find_one({"employee_id": employee_id})
-    if not user or "experience_cert_draft_key" not in user:
-        return Response(status_code=404)
-        
-    pdf_bytes = s3_db.get_image(user["experience_cert_draft_key"])
-    return Response(content=pdf_bytes, media_type="application/pdf")
+    return Response(content="Use /enhanced-docs/preview", media_type="text/plain")
 
 @router.api_route("/employee/experience-certificate/{employee_id}", methods=["GET", "HEAD"])
 def get_employee_experience_certificate(employee_id: str):
     user = mongo_db.users.find_one({"employee_id": employee_id})
-    if not user or "experience_cert_key" not in user or user.get("experience_cert_status") != "final":
+    if not user or "experience_document_key" not in user:
         return Response(status_code=404)
         
-    pdf_bytes = s3_db.get_image(user["experience_cert_key"])
+    html_bytes = s3_db.get_image(user["experience_document_key"])
     return Response(
-        content=pdf_bytes, 
-        media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=NeuzenAI_Experience_Certificate.pdf"}
+        content=html_bytes, 
+        media_type="text/html",
+        headers={"Content-Disposition": f"attachment; filename=NeuzenAI_Experience_Certificate.html"}
     )
 
 # --- Template Management ---

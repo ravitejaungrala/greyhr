@@ -1,0 +1,334 @@
+
+.login-animation-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: radial-gradient(circle at center, #1b1431 0%, #080510 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 0;
+}
+
+/* Stage Layout */
+.animation-stage {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    opacity: 0;
+    transform: perspective(1000px) translateY(20px);
+    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    visibility: hidden;
+}
+
+.animation-stage.active {
+    opacity: 1;
+    transform: perspective(1000px) translateY(0);
+    visibility: visible;
+}
+
+.scene-wrapper {
+    width: 100%;
+    max-width: 500px;
+    height: 420px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+/* --- STAGE 1: Advanced Biometric Liveness --- */
+.liveness-scanner {
+    position: relative;
+    width: 320px;
+    height: 320px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.face-mesh-detailed {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.1);
+    stroke-width: 0.5;
+    transition: all 0.5s ease;
+}
+
+/* Eye Blink Animation */
+.eye-path {
+    fill: #fff;
+    transition: transform 0.1s ease;
+}
+
+.blinking .eye-path {
+    transform: scaleY(0.1);
+}
+
+/* Head Turn Transitions */
+.face-group {
+    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.look-left .face-group { transform: rotateY(-25deg) translateX(-10px); }
+.look-right .face-group { transform: rotateY(25deg) translateX(10px); }
+
+/* Shutter Flash */
+.camera-flash {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    opacity: 0;
+    z-index: 100;
+    pointer-events: none;
+}
+
+.flash-active .camera-flash {
+    animation: shutter-flash 0.3s ease-out forwards;
+}
+
+@keyframes shutter-flash {
+    0% { opacity: 0; }
+    50% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+.capture-frame {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    border: 2px solid var(--primary);
+    box-shadow: 0 0 20px var(--primary);
+    border-radius: 12px;
+    opacity: 0;
+    transform: scale(1.2);
+    transition: all 0.5s ease;
+}
+
+.capture-active .capture-frame {
+    opacity: 0.8;
+    transform: scale(1);
+}
+
+/* --- STAGE 2: Personalized Documents --- */
+.personalized-doc {
+    width: 240px;
+    height: 320px;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+    position: relative;
+    transform-style: preserve-3d;
+}
+
+.doc-recipient-name {
+    font-size: 1rem;
+    font-weight: 850;
+    color: var(--primary);
+    margin-bottom: 5px;
+    border-bottom: 2px solid rgba(255, 122, 0, 0.2);
+    display: inline-block;
+}
+
+.dispatch-plane {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    z-index: 20;
+    transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.dispatched .dispatch-plane {
+    transform: translate(400px, -300px) scale(0.5) rotate(15deg);
+    opacity: 0;
+}
+
+/* --- STAGE 3: Unified Calendar --- */
+.calendar-glass {
+    width: 400px;
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 25px;
+}
+
+.calendar-legend {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+    font-size: 0.75rem;
+}
+
+.legend-item { display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.6); }
+.dot-p { width: 8px; height: 8px; border-radius: 50%; background: #22C55E; }
+.dot-h { width: 8px; height: 8px; border-radius: 50%; background: #3B82F6; }
+.dot-l { width: 8px; height: 8px; border-radius: 50%; background: #EAB308; }
+
+.calendar-grid-detailed {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.day-box {
+    aspect-ratio: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.4);
+    transition: all 0.3s ease;
+}
+
+.day-present { background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); color: #22C55E; }
+.day-holiday { background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); color: #3B82F6; }
+.day-leave { background: rgba(234, 179, 8, 0.2); border: 1px solid rgba(234, 179, 8, 0.4); color: #EAB308; }
+
+/* --- STAGE 4: ID Card Preview --- */
+.id-card-visual {
+    width: 280px;
+    height: 400px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%);
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.4);
+}
+
+.id-photo-placeholder {
+    width: 140px;
+    height: 170px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    margin-bottom: 25px;
+    position: relative;
+    overflow: hidden;
+}
+
+.id-photo-placeholder img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: sepia(0.3) contrast(1.1);
+}
+
+.detail-row-detailed {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.detail-row-detailed span:last-child {
+    color: white;
+    font-weight: 600;
+}
+
+/* --- STAGE 5: AI Analysis Pulse --- */
+.ai-portal {
+    width: 300px;
+    height: 300px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.portal-ring {
+    position: absolute;
+    border: 2px solid var(--violet);
+    border-radius: 50%;
+    opacity: 0;
+}
+
+.analyzing .portal-ring {
+    animation: portal-pulse 2s infinite;
+}
+
+@keyframes portal-pulse {
+    0% { width: 0; height: 0; opacity: 1; }
+    100% { width: 400px; height: 400px; opacity: 0; }
+}
+
+/* Footer & Progress */
+.stage-footer-narrative {
+    text-align: center;
+    max-width: 600px;
+    z-index: 10;
+}
+
+.stage-title-narrative {
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: white;
+    margin-bottom: 10px;
+    letter-spacing: -0.02em;
+}
+
+.stage-desc-narrative {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.6;
+}
+
+.puck-container {
+    position: absolute;
+    bottom: 3rem;
+    display: flex;
+    gap: 12px;
+}
+
+.puck-detailed {
+    width: 45px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.puck-detailed.active::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--main-gradient);
+    animation: puck-sweep 12s linear forwards;
+}
+
+@keyframes puck-sweep {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+}

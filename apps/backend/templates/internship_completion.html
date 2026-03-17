@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Internship Completion Certificate</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .certificate-container {
+            width: 800px;
+            margin: 50px auto;
+            padding: 60px;
+            background: #fff;
+            border: 15px solid #2c3e50;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .title {
+            font-size: 42px;
+            font-weight: 300;
+            color: #2c3e50;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            margin: 20px 0;
+        }
+        .content {
+            text-align: center;
+            font-size: 18px;
+            margin: 40px 0;
+        }
+        .emp-name {
+            font-size: 28px;
+            font-weight: bold;
+            color: #e67e22;
+            border-bottom: 2px solid #e67e22;
+            display: inline-block;
+            margin: 10px 0;
+            padding-bottom: 5px;
+        }
+        .details {
+            margin: 30px 0;
+        }
+        .footer {
+            margin-top: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+        .signature-box {
+            text-align: center;
+            width: 200px;
+            border-top: 1px solid #7f8c8d;
+            padding-top: 10px;
+        }
+        .date-box {
+            text-align: center;
+            width: 200px;
+            border-top: 1px solid #7f8c8d;
+            padding-top: 10px;
+        }
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 100px;
+            color: rgba(44, 62, 80, 0.05);
+            z-index: 0;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="certificate-container">
+        <div class="watermark">COMPLETED</div>
+        
+        <div class="header">
+            <div class="logo">NEUZEN AI</div>
+            <div class="title">Certificate of Completion</div>
+        </div>
+
+        <div class="content">
+            <p>This is to certify that</p>
+            <div class="emp-name">{{ emp_name }}</div>
+            <p>has successfully completed their internship as</p>
+            <div style="font-weight: bold; font-size: 22px; color: #2c3e50; margin: 15px 0;">{{ designation }}</div>
+            <p>for the period from <strong>{{ start_date }}</strong> to <strong>{{ end_date }}</strong>.</p>
+            
+            <div class="details">
+                <p style="font-style: italic; color: #7f8c8d; max-width: 600px; margin: 0 auto;">
+                    {{ performance_summary }}
+                </p>
+            </div>
+            
+            <p style="margin-top: 40px;">
+                We appreciate the dedication and hard work shown during this period and wish them the very best in all future endeavors.
+            </p>
+        </div>
+
+        <div class="footer">
+            <div class="date-box">
+                <div>{{ current_date }}</div>
+                <div style="font-size: 14px; color: #7f8c8d;">Date of Issue</div>
+            </div>
+            <div class="signature-box">
+                <div style="font-weight: bold;">Subba Rami Reddy</div>
+                <div style="font-size: 14px; color: #7f8c8d;">Co-Founder, Neuzen AI</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

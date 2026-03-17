@@ -1,0 +1,30 @@
+﻿
+--- START OF VARIABLES ---
+annual_basic
+annual_gross
+annual_hra
+annual_lta
+annual_personal_allowance
+annual_stat_bonus
+current_date
+designation
+emp_name
+employee_signature_name
+employer_pf_monthly
+fixed_ctc_annual
+fixed_ctc_monthly
+inhand_amount
+monthly_basic
+monthly_gratuity
+monthly_hra
+monthly_lta
+monthly_personal_allowance
+monthly_stat_bonus
+offer_date
+signing_date
+total_ctc_annual
+total_ctc_monthly
+variable_bonus_annual
+variable_bonus_monthly
+--- END OF VARIABLES ---
+

@@ -22,6 +22,10 @@ class MongoDBClient:
             self.kudos = self.db["kudos"]
             self.announcements = self.db["announcements"]
             self.offer_letter_templates = self.db["offer_letter_templates"]
+            self.workday_overrides = self.db["workday_overrides"]
+            self.comp_off_requests = self.db["comp_off_requests"]
+            self.weekend_work_requests = self.db["weekend_work_requests"]
+            self.item_requests = self.db["item_requests"]
             
             print(f"Connected to MongoDB: {self.db_name}")
         except Exception as e:
@@ -36,5 +40,9 @@ class MongoDBClient:
             self.kudos = None
             self.announcements = None
             self.offer_letter_templates = None
+            self.workday_overrides = None
+            self.comp_off_requests = None
+            self.weekend_work_requests = None
+            self.item_requests = None
 
 mongo_db = MongoDBClient()

@@ -8,13 +8,16 @@ const AttendanceScan = ({ userId }) => {
     const [attendanceHistory, setAttendanceHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [livenessStatus, setLivenessStatus] = useState('none'); // none, prompt, left, right, verified
-    const [capturedFaces, setCapturedFaces] = useState({ front: null, left: null, right: null });
+    const [capturedFaces, setCapturedFaces] = useState({ front: null, left: null, right: null, profile: null });
     const [recentCaptures, setRecentCaptures] = useState([]);
     const [selectedAction, setSelectedAction] = useState(null); // 'sign_in' or 'sign_out'
     const [isRequestingWeekend, setIsRequestingWeekend] = useState(false);
     const [weekendReqDate, setWeekendReqDate] = useState('');
     const [weekendReqReason, setWeekendReqReason] = useState('');
     const [weekendReqStatus, setWeekendReqStatus] = useState(null);
+    const [headRotation, setHeadRotation] = useState(0.5);
+    const [eyeBlinkValue, setEyeBlinkValue] = useState(0.03);
+    const [flashActive, setFlashActive] = useState(false);
 
     const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
@@ -67,42 +70,57 @@ const AttendanceScan = ({ userId }) => {
 
         const landmarks = results.multiFaceLandmarks[0];
 
-        // Landmark indices for eyes (approximate EAR calculation)
+        // Liveness Detection Math
         const leftUpper = landmarks[159];
         const leftLower = landmarks[145];
         const eyeDist = Math.sqrt(Math.pow(leftUpper.x - leftLower.x, 2) + Math.pow(leftUpper.y - leftLower.y, 2));
 
-        // Head pose estimation using ratio of nose to cheeks
         const nose = landmarks[1];
         const leftCheek = landmarks[234];
         const rightCheek = landmarks[454];
         const checkDist = rightCheek.x - leftCheek.x;
         const headRatio = checkDist > 0 ? (nose.x - leftCheek.x) / checkDist : 0.5;
 
+        // Visual Feedback Refs for SVG
+        setHeadRotation(headRatio);
+        setEyeBlinkValue(eyeDist);
+
         setLivenessStatus(prev => {
             if (prev === 'prompt') {
-                if (eyeDist < 0.018 && !isClosedRef.current) {
-                    isClosedRef.current = true;
-                } else if (eyeDist > 0.025 && isClosedRef.current) {
-                    isClosedRef.current = false;
+                if (eyeDist < 0.015) { // Blink detected
+                    triggerFlash();
                     captureFrame('front');
                     return 'left';
                 }
             } else if (prev === 'left') {
-                // User looks left (so nose moves towards right edge of camera)
-                if (headRatio > 0.65) {
+                if (headRatio > 0.7) { // Look Left
+                    triggerFlash();
                     captureFrame('left');
                     return 'right';
                 }
             } else if (prev === 'right') {
-                // User looks right (so nose moves towards left edge of camera)
-                if (headRatio < 0.35) {
+                if (headRatio < 0.3) { // Look Right
+                    triggerFlash();
                     captureFrame('right');
-                    return 'verified';
+                    return 'profile_capture';
+                }
+            } else if (prev === 'profile_capture') {
+                // Wait for user to look center
+                if (headRatio > 0.45 && headRatio < 0.55) {
+                    setTimeout(() => {
+                        triggerFlash();
+                        captureFrame('profile');
+                        setLivenessStatus('verified');
+                    }, 1000);
                 }
             }
             return prev;
         });
+    };
+
+    const triggerFlash = () => {
+        setFlashActive(true);
+        setTimeout(() => setFlashActive(false), 200);
     };
 
     const captureFrame = (type) => {
@@ -196,7 +214,7 @@ const AttendanceScan = ({ userId }) => {
             tracks.forEach(track => track.stop());
             setStreamActive(false);
             setLivenessStatus('none');
-            setCapturedFaces({ front: null, left: null, right: null });
+            setCapturedFaces({ front: null, left: null, right: null, profile: null });
         }
     };
 
@@ -213,6 +231,7 @@ const AttendanceScan = ({ userId }) => {
                     image_base64: capturedFaces.front,
                     image_left_base64: capturedFaces.left,
                     image_right_base64: capturedFaces.right,
+                    image_profile_base64: capturedFaces.profile,
                     location: "Office WiFi",
                     action_type: actionType
                 })
@@ -313,58 +332,54 @@ const AttendanceScan = ({ userId }) => {
                             )}
 
                             {scanStatus === 'scanning' && (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: 0, left: 0, right: 0, bottom: 0,
-                                    background: 'rgba(200, 76, 255, 0.2)',
-                                    border: '2px solid var(--violet)',
-                                    animation: 'pulse 1.5s infinite'
-                                }}>
-                                    <div style={{
-                                        position: 'absolute', top: '50%', left: 0, right: 0, height: '2px',
-                                        backgroundColor: 'var(--violet)', boxShadow: '0 0 10px var(--violet)',
-                                        animation: 'scan-line 2s linear infinite'
-                                    }}></div>
+                                <div className="scanning-overlay">
+                                    <div className="scanning-line"></div>
                                 </div>
                             )}
 
-                            {livenessStatus === 'prompt' && scanStatus === 'idle' && (
-                                <div style={{
-                                    position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
-                                    padding: '0.5rem 1rem', background: 'rgba(0,0,0,0.7)', borderRadius: '20px',
-                                    color: 'var(--text-light)', whiteSpace: 'nowrap', fontSize: '0.9rem', border: '1px solid var(--border-color)'
-                                }}>
-                                    👁️ Blink once to verify liveness
+                            {/* Flash Effect */}
+                            {flashActive && <div className="shutter-flash-overlay" />}
+
+                            {/* High-Fidelity SVG Overlay */}
+                            {streamActive && livenessStatus !== 'none' && (
+                                <div className="biometric-svg-overlay">
+                                    <svg viewBox="0 0 200 200" style={{ width: '100%', height: '100%', pointerEvents: 'none' }}>
+                                        <path 
+                                            d="M100,25 c-35,0-55,25-55,60 c0,40,25,90,55,90 s55-45,55-90 C155,50,135,25,100,25" 
+                                            fill="none" 
+                                            stroke={livenessStatus === 'verified' ? '#22C55E' : 'rgba(255,122,0,0.4)'} 
+                                            strokeWidth="1.5"
+                                            strokeDasharray="5,5"
+                                            style={{ transform: `rotateY(${(headRotation - 0.5) * 60}deg)`, transformOrigin: 'center' }}
+                                        />
+                                        <g opacity="0.2">
+                                            <path d="M60,60 Q100,40 140,60" fill="none" stroke="#fff" strokeWidth="0.5" />
+                                            <path d="M50,90 Q100,70 150,90" fill="none" stroke="#fff" strokeWidth="0.5" />
+                                            <path d="M100,25 Q90,100 100,175" fill="none" stroke="#fff" strokeWidth="0.5" />
+                                        </g>
+                                        {/* Status Text on SVG */}
+                                        <text x="50%" y="185" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="bold">
+                                            {livenessStatus === 'prompt' ? 'PLEASE BLINK' : 
+                                             livenessStatus === 'left' ? 'TURN HEAD LEFT' :
+                                             livenessStatus === 'right' ? 'TURN HEAD RIGHT' :
+                                             livenessStatus === 'profile_capture' ? 'LOOK CENTER FOR PHOTO' : 'SECURITY VERIFIED'}
+                                        </text>
+                                    </svg>
                                 </div>
                             )}
 
-                            {livenessStatus === 'left' && scanStatus === 'idle' && (
-                                <div style={{
-                                    position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
-                                    padding: '0.5rem 1rem', background: 'rgba(0,0,0,0.7)', borderRadius: '20px',
-                                    color: 'var(--text-light)', whiteSpace: 'nowrap', fontSize: '0.9rem', border: '1px solid var(--border-color)'
-                                }}>
-                                    ⬅️ Slowly Turn Head Left
-                                </div>
-                            )}
-
-                            {livenessStatus === 'right' && scanStatus === 'idle' && (
-                                <div style={{
-                                    position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
-                                    padding: '0.5rem 1rem', background: 'rgba(0,0,0,0.7)', borderRadius: '20px',
-                                    color: 'var(--text-light)', whiteSpace: 'nowrap', fontSize: '0.9rem', border: '1px solid var(--border-color)'
-                                }}>
-                                    ➡️ Slowly Turn Head Right
+                            {scanStatus === 'idle' && livenessStatus !== 'none' && livenessStatus !== 'verified' && (
+                                <div className="liveness-prompt-toast">
+                                    {livenessStatus === 'prompt' && "👁️ Liveness Check: Please Blink"}
+                                    {livenessStatus === 'left' && "⬅️ Step 1: Turn Head Left"}
+                                    {livenessStatus === 'right' && "➡️ Step 2: Turn Head Right"}
+                                    {livenessStatus === 'profile_capture' && "📸 Final: Look at camera for ID Photo"}
                                 </div>
                             )}
 
                             {livenessStatus === 'verified' && scanStatus === 'idle' && (
-                                <div style={{
-                                    position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
-                                    padding: '0.5rem 1rem', background: 'rgba(10, 102, 194, 0.9)', borderRadius: '20px',
-                                    color: 'var(--text-light)', whiteSpace: 'nowrap', fontSize: '0.9rem', fontWeight: 'bold'
-                                }}>
-                                    ✅ Liveness Verified
+                                <div className="liveness-success-toast">
+                                    🛡️ IDENTITY SECURELY VERIFIED
                                 </div>
                             )}
                         </div>
@@ -586,10 +601,56 @@ const AttendanceScan = ({ userId }) => {
                     50% { top: 100%; transform: translateY(-2px); }
                     100% { top: 0%; transform: translateY(0); }
                 }
-                @keyframes pulse {
-                    0% { opacity: 0.7; }
+                .shutter-flash-overlay {
+                    position: absolute;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    background: white;
+                    z-index: 100;
+                    animation: flash-anim 0.2s ease-out forwards;
+                }
+                @keyframes flash-anim {
+                    0% { opacity: 0; }
                     50% { opacity: 1; }
-                    100% { opacity: 0.7; }
+                    100% { opacity: 0; }
+                }
+                .biometric-svg-overlay {
+                    position: absolute;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    z-index: 10;
+                    background: radial-gradient(circle, transparent 40%, rgba(8, 5, 16, 0.6) 100%);
+                }
+                .liveness-prompt-toast {
+                    position: absolute;
+                    top: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: rgba(255, 122, 0, 0.9);
+                    padding: 8px 20px;
+                    border-radius: 30px;
+                    color: white;
+                    font-size: 0.8rem;
+                    font-weight: 800;
+                    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+                    animation: fadeInDown 0.5s ease forwards;
+                    z-index: 50;
+                }
+                .liveness-success-toast {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: rgba(34, 197, 94, 0.95);
+                    padding: 15px 30px;
+                    border-radius: 12px;
+                    color: white;
+                    font-weight: bold;
+                    text-align: center;
+                    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+                    z-index: 50;
+                }
+                @keyframes fadeInDown {
+                    from { opacity: 0; transform: translate(-50%, -20px); }
+                    to { opacity: 1; transform: translate(-50%, 0); }
                 }
             `}</style>
         </div>

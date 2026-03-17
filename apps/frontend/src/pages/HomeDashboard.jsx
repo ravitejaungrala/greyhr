@@ -14,7 +14,10 @@ const HomeDashboard = ({ user, setUser }) => {
         experience_years: '',
         bank_account: '',
         bank_ifsc: '',
+        bank_name: '',
+        pan_no: '',
         education_degree: '',
+        pf_number: '',
     });
 
     const [bankPhoto, setBankPhoto] = useState(null);
@@ -241,7 +244,8 @@ const HomeDashboard = ({ user, setUser }) => {
                 education_cert_base64: eduCert,
                 image_base64: capturedFaces.front,
                 image_left_base64: capturedFaces.left,
-                image_right_base64: capturedFaces.right
+                image_right_base64: capturedFaces.right,
+                pf_number: formData.pf_number
             };
 
             const response = await fetch(`${apiUrl}/auth/complete-profile`, {
@@ -301,8 +305,11 @@ const HomeDashboard = ({ user, setUser }) => {
                                 <h3 style={{ fontSize: '1rem' }}>Education & Bank</h3>
                                 <div><label>Degree</label><input type="text" name="education_degree" required value={formData.education_degree} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
                                 <div><label>Certificate Photo</label><input type="file" required onChange={e => handleFileUpload(e, setEduCert)} /></div>
+                                <div><label>Bank Name</label><input type="text" name="bank_name" required value={formData.bank_name} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
                                 <div><label>Bank Account</label><input type="text" name="bank_account" required value={formData.bank_account} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
                                 <div><label>IFSC Code</label><input type="text" name="bank_ifsc" required value={formData.bank_ifsc} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
+                                <div><label>PAN Number</label><input type="text" name="pan_no" required value={formData.pan_no} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
+                                <div><label>PF Number (Optional)</label><input type="text" name="pf_number" value={formData.pf_number} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
                                 <div><label>Bank Photo</label><input type="file" required onChange={e => handleFileUpload(e, setBankPhoto)} /></div>
                             </>
                         )}

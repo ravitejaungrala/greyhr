@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import './LoginRegister.css';
+import LoginAnimation from '../components/LoginAnimation';
 const LoginRegister = ({ onLoginSuccess }) => {
     const [mode, setMode] = useState('login'); // 'login' | 'register'
     const [step, setStep] = useState(1);
@@ -137,17 +138,7 @@ const LoginRegister = ({ onLoginSuccess }) => {
     return (
         <div className="login-page-container">
             <div className="login-hero">
-                <div style={{ position: 'relative', zIndex: 1, maxWidth: '600px' }}>
-                    <div style={{ marginBottom: '1rem' }}>
-                        <img src="/icon (2).png" alt="Logo" className="hero-icon-animate" style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '16px', background: 'rgba(255,255,255,0.1)', padding: '0.5rem', backdropFilter: 'blur(10px)' }} />
-                    </div>
-                    <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '1rem', lineHeight: 1.2 }}>
-                        Welcome to<br />HRMS
-                    </h1>
-                    <p style={{ fontSize: '1.125rem', opacity: 0.9 }}>
-                        Empowering your workforce with modern AI-driven tools. Streamline operations, foster engagement, and unlock potential.
-                    </p>
-                </div>
+                <LoginAnimation />
             </div>
 
             <div className="login-form-container">

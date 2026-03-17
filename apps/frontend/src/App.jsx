@@ -13,20 +13,26 @@ import MyWorkLife from './pages/MyWorkLife';
 import SalaryModule from './pages/SalaryModule';
 import DocumentCenter from './pages/DocumentCenter';
 import ChatbotBubble from './components/ChatbotBubble';
+import LandingPage from './pages/LandingPage';
 
 function App() {
   const [user, setUser] = useState(null);
   const [activeMenu, setActiveMenu] = useState('home');
+  const [isManagementExpanded, setIsManagementExpanded] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
 
-  // Set default admin menu if user is admin
+  // Set default admin menu if user is admin or super_admin
   React.useEffect(() => {
-    if (user?.role === 'admin' && activeMenu === 'home') {
+    if ((user?.role === 'admin' || user?.role === 'super_admin') && activeMenu === 'home') {
       setActiveMenu('onboarding');
     }
   }, [user]);
 
   if (!user) {
-    return <LoginRegister onLoginSuccess={setUser} />;
+    if (showLogin) {
+      return <LoginRegister onLoginSuccess={(u) => { setUser(u); setShowLogin(false); }} />;
+    }
+    return <LandingPage onLoginClick={() => setShowLogin(true)} />;
   }
 
   const handleLogout = () => {
@@ -39,20 +45,11 @@ function App() {
       <aside className="sidebar">
         <div className="sidebar-header" style={{ borderBottom: '1px solid var(--border-color)', padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <img src="/icon (2).png" alt="Logo" style={{ width: '36px', height: '36px', objectFit: 'contain', borderRadius: '8px' }} />
-          <span style={{
-            background: 'var(--main-gradient)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            fontWeight: '900',
-            fontSize: '1.5rem'
-          }}>HRMS</span>
+          <span className="logo-text" style={{ fontSize: '1.25rem', fontWeight: '900' }}>Dhanadurga HRMS</span>
         </div>
         <nav className="nav-menu">
-          {user.role === 'admin' ? (
+          {(user.role === 'admin' || user.role === 'super_admin') ? (
             <>
-              <div className="nav-item active" style={{ background: 'var(--main-gradient)', color: 'white', fontWeight: 'bold', borderRight: 'none', borderRadius: '0 8px 8px 0', marginRight: '1rem', marginBottom: '0.5rem' }}>
-                🛡️ Admin Workspace
-              </div>
               <div
                 className={`nav-item ${activeMenu === 'onboarding' ? 'active' : ''}`}
                 onClick={() => setActiveMenu('onboarding')}
@@ -68,12 +65,37 @@ function App() {
                 👥 Employee Directory
               </div>
               <div
-                className={`nav-item ${activeMenu === 'leaves' ? 'active' : ''}`}
-                onClick={() => setActiveMenu('leaves')}
-                style={{ paddingLeft: '2rem', fontSize: '0.9rem' }}
+                className={`nav-item ${activeMenu === 'leaves' || activeMenu === 'items' ? 'active' : ''}`}
+                onClick={() => {
+                  setIsManagementExpanded(!isManagementExpanded);
+                  // If opening and not on a sub-item, default to leaves
+                  if (!isManagementExpanded && activeMenu !== 'leaves' && activeMenu !== 'items') {
+                    setActiveMenu('leaves');
+                  }
+                }}
+                style={{ paddingLeft: '2rem', fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--text-color)', display: 'flex', justifyContent: 'space-between' }}
               >
-                🌴 Leave Management
+                <span>🛠️ Management</span>
+                <span style={{ fontSize: '0.7rem', marginRight: '1rem' }}>{isManagementExpanded ? '▼' : '▶'}</span>
               </div>
+              {isManagementExpanded && (
+                <>
+                  <div
+                    className={`nav-item ${activeMenu === 'leaves' ? 'active' : ''}`}
+                    onClick={() => setActiveMenu('leaves')}
+                    style={{ paddingLeft: '3.5rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', margin: '2px 0' }}
+                  >
+                    ↳ 🌴 Leave Management
+                  </div>
+                  <div
+                    className={`nav-item ${activeMenu === 'items' ? 'active' : ''}`}
+                    onClick={() => setActiveMenu('items')}
+                    style={{ paddingLeft: '3.5rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', margin: '2px 0' }}
+                  >
+                    ↳ 📦 Item Requests
+                  </div>
+                </>
+              )}
               <div
                 className={`nav-item ${activeMenu === 'holidays' ? 'active' : ''}`}
                 onClick={() => setActiveMenu('holidays')}
@@ -115,6 +137,13 @@ function App() {
                 style={{ paddingLeft: '2rem', fontSize: '0.9rem' }}
               >
                 💰 Payslip Release
+              </div>
+              <div
+                className={`nav-item ${activeMenu === 'salary_report' ? 'active' : ''}`}
+                onClick={() => setActiveMenu('salary_report')}
+                style={{ paddingLeft: '2rem', fontSize: '0.9rem' }}
+              >
+                📊 Monthly Salary Report
               </div>
               <div
                 className={`nav-item ${activeMenu === 'templates' ? 'active' : ''}`}
@@ -175,6 +204,12 @@ function App() {
               >
                 📂 Document Center
               </div>
+              <div
+                className={`nav-item ${activeMenu === 'items' ? 'active' : ''}`}
+                onClick={() => setActiveMenu('items')}
+              >
+                📦 Item Requests
+              </div>
             </>
           )}
         </nav>
@@ -193,8 +228,8 @@ function App() {
         </header>
 
         <div className="page-container">
-          {user.role === 'admin' ? (
-            <AdminDashboard activeTab={activeMenu} />
+          {(user.role === 'admin' || user.role === 'super_admin') ? (
+            <AdminDashboard activeTab={activeMenu} user={user} />
           ) : (
             <>
               {activeMenu === 'home' && <HomeDashboard user={user} setUser={setUser} />}
