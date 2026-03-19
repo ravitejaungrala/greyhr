@@ -53,10 +53,13 @@ class ProfileUpdateRequest(BaseModel):
     employee_id: str
     dob: str
     is_experienced: bool
+    employment_type: str  # Added: 'Full-Time' or 'Intern'
     # Bank
     bank_account: str
     bank_ifsc: str
+    bank_name: Optional[str] = None  # Added
     bank_photo_base64: str
+    cif_number: Optional[str] = None  # Added
     # Education
     education_degree: str
     education_cert_base64: str
@@ -64,12 +67,14 @@ class ProfileUpdateRequest(BaseModel):
     prev_company: Optional[str] = None
     prev_role: Optional[str] = None
     experience_years: Optional[str] = None
+    last_company_payslip_base64: Optional[str] = None  # Added
     # Live Photo
     image_base64: str
     image_left_base64: Optional[str] = None
     image_right_base64: Optional[str] = None
     # PF (Optional)
     pf_number: Optional[str] = None
+
 
 def parse_base64(b64_string: str) -> bytes:
     if ',' in b64_string:
@@ -146,14 +151,17 @@ def complete_profile(request: ProfileUpdateRequest):
         live_photo_right_bytes = parse_base64(request.image_right_base64) if request.image_right_base64 else None
         bank_photo_bytes = parse_base64(request.bank_photo_base64)
         edu_cert_bytes = parse_base64(request.education_cert_base64)
+        payslip_bytes = parse_base64(request.last_company_payslip_base64) if request.last_company_payslip_base64 else None
     except Exception as e:
         return {"error": "Invalid base64 image or document upload"}
+
 
     reference_image_key = f"reference_faces/{request.employee_id}.jpg"
     reference_image_left_key = f"reference_faces/{request.employee_id}_left.jpg" if live_photo_left_bytes else None
     reference_image_right_key = f"reference_faces/{request.employee_id}_right.jpg" if live_photo_right_bytes else None
     bank_photo_key = f"documents/{request.employee_id}_bank.jpg"
     edu_cert_key = f"documents/{request.employee_id}_edu.jpg"
+    payslip_key = f"documents/{request.employee_id}_last_payslip.jpg" if payslip_bytes else None
     
     # Save files to S3
     s3_db.save_image(reference_image_key, live_photo_bytes, content_type='image/jpeg')
@@ -161,15 +169,23 @@ def complete_profile(request: ProfileUpdateRequest):
     if live_photo_right_bytes: s3_db.save_image(reference_image_right_key, live_photo_right_bytes, content_type='image/jpeg')
     s3_db.save_image(bank_photo_key, bank_photo_bytes, content_type='image/jpeg')
     s3_db.save_image(edu_cert_key, edu_cert_bytes, content_type='image/jpeg')
+    if payslip_bytes:
+        s3_db.save_image(payslip_key, payslip_bytes, content_type='image/jpeg')
+
     
     # Update Record
+    is_experienced_full_time = request.is_experienced and request.employment_type == "Full-Time"
+    
     update_data = {
         "dob": request.dob,
         "is_experienced": request.is_experienced,
+        "employment_type": request.employment_type,
         "bank_details": {
+            "bank_name": request.bank_name,
             "account_number": request.bank_account,
             "ifsc": request.bank_ifsc,
-            "bank_photo_key": bank_photo_key
+            "bank_photo_key": bank_photo_key,
+            "cif_number": request.cif_number
         },
         "education": {
             "degree": request.education_degree,
@@ -178,9 +194,12 @@ def complete_profile(request: ProfileUpdateRequest):
         "experience": {
             "prev_company": request.prev_company,
             "prev_role": request.prev_role,
-            "years": request.experience_years
+            "years": request.experience_years,
+            "last_payslip_key": payslip_key if is_experienced_full_time else None
         } if request.is_experienced else None,
-        "pf_number": request.pf_number,
+        "pf_number": request.pf_number, # now saves it even for freshers if provided
+        "pan_no": request.pan_no,
+
         "status": "pending_approval",
         "reference_image_key": reference_image_key,
         "reference_image_left_key": reference_image_left_key,
@@ -238,8 +257,10 @@ class EmployeeUpdate(BaseModel):
     pf_no: Optional[str] = None
     esi_no: Optional[str] = None
     pan_no: Optional[str] = None
+    cif_number: Optional[str] = None
     internship_end_date: Optional[str] = None
     internship_completed: Optional[bool] = None
+
 
 @router.post("/auth/admin/approve")
 def admin_approve_employee(request: AdminApprovalRequest):
@@ -289,11 +310,13 @@ def update_employee_details(employee_id: str, update: EmployeeUpdate):
     # Handle nested fields mapping
     set_ops = {}
     for k, v in update_data.items():
-        if k in ["bank_account", "bank_ifsc", "bank_name"]:
+        if k in ["bank_account", "bank_ifsc", "bank_name", "cif_number"]:
             if k == "bank_account": set_ops["bank_details.account_number"] = v
             elif k == "bank_ifsc": set_ops["bank_details.ifsc"] = v
             elif k == "bank_name": set_ops["bank_details.bank_name"] = v
+            elif k == "cif_number": set_ops["bank_details.cif_number"] = v
         elif k == "internship_end_date" or k == "internship_completed":
+
             set_ops[k] = v
         else:
             set_ops[k] = v
@@ -958,6 +981,27 @@ def get_admin_photo(photo_key: str):
     return Response(content=image_bytes, media_type="image/jpeg")
 
 # --- Attendance ---
+class ProfileUpdateRequest(BaseModel):
+    employee_id: str
+    employment_type: Optional[str] = "Full-Time"
+    dob: str
+    is_experienced: bool
+    bank_name: str
+    bank_account: str
+    bank_ifsc: str
+    cif_number: str
+    education_degree: str
+    prev_company: Optional[str] = None
+    prev_role: Optional[str] = None
+    experience_years: Optional[str] = None
+    pf_number: Optional[str] = None
+    pan_no: Optional[str] = None
+    image_base64: str
+    image_left_base64: Optional[str] = None
+    image_right_base64: Optional[str] = None
+    bank_photo_base64: str
+    education_cert_base64: str
+    last_company_payslip_base64: Optional[str] = None
 class AttendanceScanRequest(BaseModel):
     employee_id: str
     image_base64: str

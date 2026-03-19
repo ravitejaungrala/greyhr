@@ -8,6 +8,7 @@ const HomeDashboard = ({ user, setUser }) => {
     // Form State
     const [formData, setFormData] = useState({
         dob: '',
+        registration_type: 'Full-Time', // New: 'Full-Time' or 'Intern'
         is_experienced: false,
         prev_company: '',
         prev_role: '',
@@ -15,15 +16,19 @@ const HomeDashboard = ({ user, setUser }) => {
         bank_account: '',
         bank_ifsc: '',
         bank_name: '',
+        cif_number: '', // New
         pan_no: '',
         education_degree: '',
         pf_number: '',
     });
 
+
     const [bankPhoto, setBankPhoto] = useState(null);
     const [eduCert, setEduCert] = useState(null);
+    const [payslipPhoto, setPayslipPhoto] = useState(null); // New
     const [referenceFace, setReferenceFace] = useState(null);
     const [capturedFaces, setCapturedFaces] = useState({ front: null, left: null, right: null });
+
 
     // Camera State
     const videoRef = useRef(null);
@@ -210,7 +215,7 @@ const HomeDashboard = ({ user, setUser }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (step < 3) {
+        if (step < 2) {
             setStep(step + 1);
             return;
         }
@@ -224,15 +229,33 @@ const HomeDashboard = ({ user, setUser }) => {
                 setLoading(false);
                 return;
             }
-            if (!eduCert || !bankPhoto) {
-                setMessage({ type: 'error', text: 'Education and Bank documents are required' });
+            if (!referenceFace) {
+                setMessage({ type: 'error', text: 'Identity photo capture is required' });
+                setStep(1);
+                setLoading(false);
+                return;
+            }
+            if (!bankPhoto) {
+                setMessage({ type: 'error', text: 'Bank document is required' });
+                setStep(1);
+                setLoading(false);
+                return;
+            }
+            if (!eduCert) {
+                setMessage({ type: 'error', text: 'Education document is required' });
                 setStep(2);
                 setLoading(false);
                 return;
             }
-            if (!referenceFace) {
-                setMessage({ type: 'error', text: 'Identity photo capture is required' });
-                setStep(3);
+            if (formData.registration_type === 'Full-Time' && formData.is_experienced && !formData.pf_number) {
+                setMessage({ type: 'error', text: 'PF Number is required for experienced Full-Time employees' });
+                setStep(2);
+                setLoading(false);
+                return;
+            }
+            if (formData.registration_type === 'Full-Time' && formData.is_experienced && !payslipPhoto) {
+                setMessage({ type: 'error', text: 'Previous company payslip is required for experienced candidates' });
+                setStep(2);
                 setLoading(false);
                 return;
             }
@@ -240,13 +263,16 @@ const HomeDashboard = ({ user, setUser }) => {
             const payload = {
                 employee_id: user.employee_id,
                 ...formData,
+                employment_type: formData.registration_type,
                 bank_photo_base64: bankPhoto,
                 education_cert_base64: eduCert,
+                last_company_payslip_base64: payslipPhoto,
                 image_base64: capturedFaces.front,
                 image_left_base64: capturedFaces.left,
                 image_right_base64: capturedFaces.right,
                 pf_number: formData.pf_number
             };
+
 
             const response = await fetch(`${apiUrl}/auth/complete-profile`, {
                 method: 'POST',
@@ -273,7 +299,7 @@ const HomeDashboard = ({ user, setUser }) => {
         return (
             <div style={{ maxWidth: '600px', margin: '2rem auto' }}>
                 <div className="card glass-panel">
-                    <h2 className="card-title">🚀 Complete Your Profile (Step {step} of 3)</h2>
+                    <h2 className="card-title">🚀 Complete Your Profile (Step {step} of 2)</h2>
                     <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>Please provide these additional details to activate your account.</p>
 
                     {message && (
@@ -285,89 +311,104 @@ const HomeDashboard = ({ user, setUser }) => {
                     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                         {step === 1 && (
                             <>
+                                <div><label>Registration Type</label><select name="registration_type" value={formData.registration_type} onChange={handleInputChange} className="btn btn-secondary" style={{ width: '100%', textAlign: 'left' }}>
+                                    <option value="Full-Time">Full-Time</option>
+                                    <option value="Intern">Intern</option>
+                                </select></div>
                                 <div><label>Date of Birth</label><input type="date" name="dob" required value={formData.dob} onChange={handleInputChange} className="btn btn-secondary" style={{ width: '100%', textAlign: 'left' }} /></div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <input type="checkbox" name="is_experienced" checked={formData.is_experienced} onChange={handleInputChange} />
-                                    <label>I have previous work experience</label>
+                                
+                                <div style={{ textAlign: 'center', marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                                    <p style={{ marginBottom: '1rem', fontWeight: '500' }}>Live Face Capture (Attendance Identity)</p>
+                                    {!referenceFace ? (
+                                        streamActive ? (
+                                            <div style={{ position: 'relative', width: '100%', maxWidth: '400px', margin: '0 auto', borderRadius: '12px', overflow: 'hidden', background: '#000', border: '2px solid #E5E7EB', aspectRatio: '4/3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                {livenessStatus === 'prompt' && (
+                                                    <div style={{ position: 'absolute', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', padding: '0.5rem 1rem', background: 'rgba(0,0,0,0.7)', borderRadius: '20px', color: '#1f2937', whiteSpace: 'nowrap', fontSize: '0.9rem', border: '1px solid #E5E7EB', zIndex: 10 }}>
+                                                        👁️ Blink once to verify liveness
+                                                    </div>
+                                                )}
+                                                {livenessStatus === 'left' && (
+                                                    <div style={{ position: 'absolute', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', padding: '0.5rem 1rem', background: 'rgba(0,0,0,0.7)', borderRadius: '20px', color: '#1f2937', whiteSpace: 'nowrap', fontSize: '0.9rem', border: '1px solid #E5E7EB', zIndex: 10 }}>
+                                                        ⬅️ Slowly Turn Head Left
+                                                    </div>
+                                                )}
+                                                {livenessStatus === 'right' && (
+                                                    <div style={{ position: 'absolute', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', padding: '0.5rem 1rem', background: 'rgba(0,0,0,0.7)', borderRadius: '20px', color: '#1f2937', whiteSpace: 'nowrap', fontSize: '0.9rem', border: '1px solid #E5E7EB', zIndex: 10 }}>
+                                                        ➡️ Slowly Turn Head Right
+                                                    </div>
+                                                )}
+                                                {livenessStatus === 'verified' && (
+                                                    <div style={{ position: 'absolute', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', padding: '0.5rem 1rem', background: 'rgba(10, 102, 194, 0.9)', borderRadius: '20px', color: '#1f2937', whiteSpace: 'nowrap', fontSize: '0.9rem', fontWeight: 'bold', zIndex: 10 }}>
+                                                        ✅ Liveness Verified
+                                                    </div>
+                                                )}
+                                                <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: 'rgba(239, 68, 68, 0.8)', color: 'white', padding: '0.25rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(255,255,255,0.2)', zIndex: 10 }}>
+                                                    <div style={{ width: '8px', height: '8px', background: 'white', borderRadius: '50%', animation: 'pulse 1.5s infinite' }}></div>
+                                                    LIVE
+                                                    <style>{`
+                                                        @keyframes pulse {
+                                                            0% { transform: scale(0.95); opacity: 1; }
+                                                            50% { transform: scale(1.2); opacity: 0.5; }
+                                                            100% { transform: scale(0.95); opacity: 1; }
+                                                        }
+                                                    `}</style>
+                                                </div>
+                                                <button type="button" onClick={captureFace} disabled={livenessStatus !== 'verified'} className="btn btn-primary" style={{ position: 'absolute', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', zIndex: 10, opacity: livenessStatus === 'verified' ? 1 : 0.5 }}>Capture Photo</button>
+                                            </div>
+                                        ) : (
+                                            <div style={{ padding: '3rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px dashed #E5E7EB' }}>
+                                                <span style={{ fontSize: '2rem', display: 'block', marginBottom: '1rem' }}>📷</span>
+                                                <button type="button" onClick={startCamera} className="btn btn-secondary">Open Camera</button>
+                                            </div>
+                                        )
+                                    ) : (
+                                        <div style={{ position: 'relative', width: '200px', margin: '0 auto' }}>
+                                            <img src={referenceFace} style={{ width: '200px', borderRadius: '12px', border: '2px solid #0a66c2', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }} />
+                                            <div style={{ position: 'absolute', top: '-0.5rem', right: '-0.5rem', background: '#0a66c2', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.7rem' }}>Success</div>
+                                            <button type="button" onClick={() => setReferenceFace(null)} className="btn btn-secondary" style={{ display: 'block', margin: '1rem auto', width: '100%' }}>Retake Photo</button>
+                                        </div>
+                                    )}
                                 </div>
-                                {formData.is_experienced && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
-                                        <div><label style={{ fontSize: '0.75rem' }}>Company</label><input type="text" name="prev_company" required value={formData.prev_company} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: 'transparent', color: '#1f2937' }} /></div>
-                                        <div><label style={{ fontSize: '0.75rem' }}>Role</label><input type="text" name="prev_role" required value={formData.prev_role} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: 'transparent', color: '#1f2937' }} /></div>
-                                        <div><label style={{ fontSize: '0.75rem' }}>Years</label><input type="number" name="experience_years" required value={formData.experience_years} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: 'transparent', color: '#1f2937' }} /></div>
-                                    </div>
-                                )}
+
+                                <h3 style={{ fontSize: '1rem', marginTop: '0.5rem' }}>Bank Details</h3>
+                                <div><label>Bank Name</label><input type="text" name="bank_name" required value={formData.bank_name} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
+                                <div><label>Bank Account</label><input type="text" name="bank_account" required value={formData.bank_account} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
+                                <div><label>IFSC Code</label><input type="text" name="bank_ifsc" required value={formData.bank_ifsc} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
+                                <div><label>CIF Number</label><input type="text" name="cif_number" required value={formData.cif_number} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
+                                <div style={{ marginTop: '0.5rem' }}><label>Bank Passbook/Cheque Photo</label><input type="file" required onChange={e => handleFileUpload(e, setBankPhoto)} /></div>
                             </>
                         )}
 
                         {step === 2 && (
                             <>
-                                <h3 style={{ fontSize: '1rem' }}>Education & Bank</h3>
+                                <h3 style={{ fontSize: '1rem' }}>Education & Official Docs</h3>
                                 <div><label>Degree</label><input type="text" name="education_degree" required value={formData.education_degree} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
                                 <div><label>Certificate Photo</label><input type="file" required onChange={e => handleFileUpload(e, setEduCert)} /></div>
-                                <div><label>Bank Name</label><input type="text" name="bank_name" required value={formData.bank_name} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
-                                <div><label>Bank Account</label><input type="text" name="bank_account" required value={formData.bank_account} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
-                                <div><label>IFSC Code</label><input type="text" name="bank_ifsc" required value={formData.bank_ifsc} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
-                                <div><label>PAN Number</label><input type="text" name="pan_no" required value={formData.pan_no} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
-                                <div><label>PF Number (Optional)</label><input type="text" name="pf_number" value={formData.pf_number} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
-                                <div><label>Bank Photo</label><input type="file" required onChange={e => handleFileUpload(e, setBankPhoto)} /></div>
-                            </>
-                        )}
-
-                        {step === 3 && (
-                            <div style={{ textAlign: 'center' }}>
-                                <p style={{ marginBottom: '1rem', fontWeight: '500' }}>Live Face Capture (Attendance Identity)</p>
-                                {!referenceFace ? (
-                                    streamActive ? (
-                                        <div style={{ position: 'relative', width: '100%', maxWidth: '400px', margin: '0 auto', borderRadius: '12px', overflow: 'hidden', background: '#000', border: '2px solid #E5E7EB', aspectRatio: '4/3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                            {livenessStatus === 'prompt' && (
-                                                <div style={{ position: 'absolute', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', padding: '0.5rem 1rem', background: 'rgba(0,0,0,0.7)', borderRadius: '20px', color: '#1f2937', whiteSpace: 'nowrap', fontSize: '0.9rem', border: '1px solid #E5E7EB', zIndex: 10 }}>
-                                                    👁️ Blink once to verify liveness
-                                                </div>
-                                            )}
-                                            {livenessStatus === 'left' && (
-                                                <div style={{ position: 'absolute', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', padding: '0.5rem 1rem', background: 'rgba(0,0,0,0.7)', borderRadius: '20px', color: '#1f2937', whiteSpace: 'nowrap', fontSize: '0.9rem', border: '1px solid #E5E7EB', zIndex: 10 }}>
-                                                    ⬅️ Slowly Turn Head Left
-                                                </div>
-                                            )}
-                                            {livenessStatus === 'right' && (
-                                                <div style={{ position: 'absolute', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', padding: '0.5rem 1rem', background: 'rgba(0,0,0,0.7)', borderRadius: '20px', color: '#1f2937', whiteSpace: 'nowrap', fontSize: '0.9rem', border: '1px solid #E5E7EB', zIndex: 10 }}>
-                                                    ➡️ Slowly Turn Head Right
-                                                </div>
-                                            )}
-                                            {livenessStatus === 'verified' && (
-                                                <div style={{ position: 'absolute', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', padding: '0.5rem 1rem', background: 'rgba(10, 102, 194, 0.9)', borderRadius: '20px', color: '#1f2937', whiteSpace: 'nowrap', fontSize: '0.9rem', fontWeight: 'bold', zIndex: 10 }}>
-                                                    ✅ Liveness Verified
-                                                </div>
-                                            )}
-                                            <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: 'rgba(239, 68, 68, 0.8)', color: 'white', padding: '0.25rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(255,255,255,0.2)', zIndex: 10 }}>
-                                                <div style={{ width: '8px', height: '8px', background: 'white', borderRadius: '50%', animation: 'pulse 1.5s infinite' }}></div>
-                                                LIVE
-                                                <style>{`
-                                                    @keyframes pulse {
-                                                        0% { transform: scale(0.95); opacity: 1; }
-                                                        50% { transform: scale(1.2); opacity: 0.5; }
-                                                        100% { transform: scale(0.95); opacity: 1; }
-                                                    }
-                                                `}</style>
-                                            </div>
-                                            <button type="button" onClick={captureFace} disabled={livenessStatus !== 'verified'} className="btn btn-primary" style={{ position: 'absolute', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', zIndex: 10, opacity: livenessStatus === 'verified' ? 1 : 0.5 }}>Capture Photo</button>
-                                        </div>
-                                    ) : (
-                                        <div style={{ padding: '3rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px dashed #E5E7EB' }}>
-                                            <span style={{ fontSize: '2rem', display: 'block', marginBottom: '1rem' }}>📷</span>
-                                            <button type="button" onClick={startCamera} className="btn btn-secondary">Open Camera</button>
-                                        </div>
-                                    )
-                                ) : (
-                                    <div style={{ position: 'relative', width: '200px', margin: '0 auto' }}>
-                                        <img src={referenceFace} style={{ width: '200px', borderRadius: '12px', border: '2px solid #0a66c2', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }} />
-                                        <div style={{ position: 'absolute', top: '-0.5rem', right: '-0.5rem', background: '#0a66c2', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.7rem' }}>Success</div>
-                                        <button type="button" onClick={() => setReferenceFace(null)} className="btn btn-secondary" style={{ display: 'block', margin: '1rem auto', width: '100%' }}>Retake Photo</button>
+                                <div style={{ marginBottom: '1rem' }}><label>PAN Number</label><input type="text" name="pan_no" required value={formData.pan_no} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
+                                
+                                <h3 style={{ fontSize: '1rem', borderTop: '1px solid #E5E7EB', paddingTop: '1rem' }}>Experience Details</h3>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                    <input type="checkbox" name="is_experienced" checked={formData.is_experienced} onChange={handleInputChange} />
+                                    <label>I have previous work experience</label>
+                                </div>
+                                {formData.is_experienced && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px', marginTop: '1rem' }}>
+                                        <div><label style={{ fontSize: '0.75rem' }}>Company</label><input type="text" name="prev_company" required value={formData.prev_company} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: 'transparent', color: '#1f2937' }} /></div>
+                                        <div><label style={{ fontSize: '0.75rem' }}>Role</label><input type="text" name="prev_role" required value={formData.prev_role} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: 'transparent', color: '#1f2937' }} /></div>
+                                        <div><label style={{ fontSize: '0.75rem' }}>Years</label><input type="number" name="experience_years" required value={formData.experience_years} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: 'transparent', color: '#1f2937' }} /></div>
                                     </div>
                                 )}
-                            </div>
+
+                                {formData.registration_type === 'Full-Time' && (
+                                    <>
+                                        <div style={{ marginTop: '1rem' }}><label>PF Number {formData.is_experienced ? '' : '(Optional)'}</label><input type="text" name="pf_number" required={formData.is_experienced} value={formData.pf_number} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
+                                        {formData.is_experienced && (
+                                            <div style={{ marginTop: '1rem' }}><label>Last Company Payslip</label><input type="file" required onChange={e => handleFileUpload(e, setPayslipPhoto)} /></div>
+                                        )}
+                                    </>
+                                )}
+                            </>
                         )}
 
                         <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
@@ -375,10 +416,10 @@ const HomeDashboard = ({ user, setUser }) => {
                             <button
                                 type="submit"
                                 className="btn btn-primary"
-                                style={{ flex: 2, opacity: (step === 3 && !referenceFace) ? 0.5 : 1 }}
-                                disabled={loading || (step === 3 && !referenceFace)}
+                                style={{ flex: 2, opacity: (step === 1 && !referenceFace) ? 0.5 : 1 }}
+                                disabled={loading || (step === 1 && !referenceFace)}
                             >
-                                {loading ? 'Processing...' : (step === 3 ? 'Submit Entire Profile' : 'Next Step')}
+                                {loading ? 'Processing...' : (step === 2 ? 'Submit Entire Profile' : 'Next Step')}
                             </button>
                         </div>
                     </form>
