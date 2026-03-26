@@ -7,9 +7,15 @@ on:
     paths:
       - 'apps/backend/**'
 
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: dhanadurga-hrms
+  LAMBDA_FUNCTION: dhanadurga-hrms
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -19,29 +25,43 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-south-1
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build, Tag, and Push Image to Amazon ECR
+        id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: dhanadurga-hrms
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest apps/backend
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+                       -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+                       apps/backend
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Update Lambda Function
-        env:
-          LAMBDA_FUNCTION_NAME: dhanadurga-hrms
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: dhanadurga-hrms
-          IMAGE_TAG: ${{ github.sha }}
+      - name: Update Lambda Function Code
         run: |
           aws lambda update-function-code \
-            --function-name $LAMBDA_FUNCTION_NAME \
-            --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+            --function-name ${{ env.LAMBDA_FUNCTION }} \
+            --image-uri ${{ steps.build-image.outputs.image }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Wait for Lambda Update to Complete
+        run: |
+          aws lambda wait function-updated \
+            --function-name ${{ env.LAMBDA_FUNCTION }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Verify Deployment
+        run: |
+          echo "✅ Lambda deployment complete."
+          aws lambda get-function \
+            --function-name ${{ env.LAMBDA_FUNCTION }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Configuration.[FunctionName,LastModified,State,PackageType]' \
+            --output table
