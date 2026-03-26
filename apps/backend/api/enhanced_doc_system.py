@@ -11,6 +11,7 @@ from api.doc_engine import render_doc_to_html_bytes, render_and_save_doc
 from database.s3_client import s3_db
 import datetime
 import base64
+import os
 
 enhanced_router = APIRouter()
 
@@ -128,6 +129,11 @@ class DocumentPreviewRequest(BaseModel):
     doc_type: str
     roi_data: Dict[str, Any]
 
+class HistoricalDocumentRequest(BaseModel):
+    employee_data: Dict[str, Any]
+    doc_type: str
+    roi_data: Dict[str, Any]
+
 @enhanced_router.get("/enhanced-docs/employees")
 def get_employees_for_docs():
     """Get list of all approved employees for document generation"""
@@ -237,8 +243,8 @@ def get_employee_prefill_data(employee_id: str, doc_type: str):
             prefill_data["income_tax"] = int(monthly_salary * 0.1)
             prefill_data["total_deductions"] = prefill_data["prof_tax"] + prefill_data["pf_deduction"] + prefill_data["income_tax"]
             prefill_data["net_salary"] = monthly_salary - prefill_data["total_deductions"]
-        prefill_data["days_worked"] = 30
-        prefill_data["month_year"] = datetime.datetime.now().strftime("%B %Y")
+            prefill_data["days_worked"] = "30"
+            prefill_data["month_year"] = datetime.datetime.now().strftime("%B %Y")
     
     elif monthly_salary and doc_type == "full_time_offer":
         annual_salary = monthly_salary * 12
@@ -324,7 +330,11 @@ def generate_and_save_document(request: DocumentGenerationRequest):
                 html_bytes = f.read()
             
             # Create S3 key
-            doc_name = DOCUMENT_CONFIGS[request.doc_type]["name"].replace(" ", "_")
+            doc_config = DOCUMENT_CONFIGS[request.doc_type]
+            if isinstance(doc_config, dict):
+                doc_name = str(doc_config.get("name", "Document")).replace(" ", "_")
+            else:
+                doc_name = "Document"
             s3_key = f"generated_docs/{request.employee_id}_{doc_name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
             
             # Save to S3
@@ -425,6 +435,99 @@ def download_employee_document(employee_id: str, doc_type: str):
     # All files are HTML now
     filename = f"{doc_name}_{employee_id}.html".replace(" ", "_")
     
+    return Response(
+        content=file_bytes,
+        media_type="text/html",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+# --- Historical Document Generation Endpoints ---
+
+@enhanced_router.post("/historical-docs/generate")
+def generate_historical_document(request: HistoricalDocumentRequest):
+    """
+    Generate and save document for a historical/external employee.
+    Does NOT require the employee to be in the 'users' collection.
+    Saves metadata to 'historical_employees' collection.
+    """
+    if mongo_db.historical_employees is None:
+        return {"error": "Database error"}
+    
+    if request.doc_type not in DOCUMENT_CONFIGS:
+        return {"error": "Invalid document type"}
+    
+    # Generate and save document
+    roi_data = request.roi_data.copy()
+    
+    # Render using the existing doc engine
+    from api.doc_engine import render_and_save_doc
+    
+    result = render_and_save_doc(roi_data, request.doc_type)
+    if "error" in result:
+        return result
+    
+    output_path = result.get("output_path")
+    if output_path and os.path.exists(output_path):
+        with open(output_path, "rb") as f:
+            html_bytes = f.read()
+        
+        # Create S3 key
+        doc_config = DOCUMENT_CONFIGS[request.doc_type]
+        if isinstance(doc_config, dict):
+            doc_name = str(doc_config.get("name", "Document")).replace(" ", "_")
+        else:
+            doc_name = "Document"
+        emp_id = request.employee_data.get("employee_id") or f"HIST_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+        s3_key = f"historical_docs/{emp_id}_{doc_name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+        
+        # Save to S3
+        s3_db.save_image(s3_key, html_bytes, content_type='text/html')
+        
+        # Record in historical_employees collection
+        historical_record = {
+            "employee_id": emp_id,
+            "name": request.employee_data.get("name", ""),
+            "email": request.employee_data.get("email", ""),
+            "department": request.employee_data.get("department", ""),
+            "position": request.employee_data.get("designation", ""),
+            "doc_type": request.doc_type,
+            "doc_name": DOCUMENT_CONFIGS[request.doc_type]["name"],
+            "s3_key": s3_key,
+            "generated_at": datetime.datetime.now().isoformat(),
+            "roi_data": request.roi_data
+        }
+        
+        mongo_db.historical_employees.insert_one(historical_record)
+        
+        return {
+            "status": "success",
+            "message": "Historical document generated and saved.",
+            "s3_key": s3_key,
+            "emp_id": emp_id,
+            "filename": s3_key.split("/")[-1]
+        }
+    
+    return {"error": "Failed to generate document"}
+
+@enhanced_router.get("/historical-docs/list")
+def list_historical_documents():
+    """List all generated historical documents"""
+    if mongo_db.historical_employees is None:
+        return {"documents": []}
+    
+    docs = list(mongo_db.historical_employees.find({}, {"_id": 0}).sort("generated_at", -1))
+    return {"documents": docs}
+
+@enhanced_router.get("/historical-docs/download/{filename}")
+def download_historical_document(filename: str):
+    """Download a historical document by its filename (part of S3 key)"""
+    s3_key = f"historical_docs/{filename}"
+    file_bytes = s3_db.get_image(s3_key)
+    
+    if not file_bytes:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    from fastapi import Response
     return Response(
         content=file_bytes,
         media_type="text/html",

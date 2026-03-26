@@ -18,6 +18,7 @@ const AttendanceScan = ({ userId }) => {
     const [headRotation, setHeadRotation] = useState(0.5);
     const [eyeBlinkValue, setEyeBlinkValue] = useState(0.03);
     const [flashActive, setFlashActive] = useState(false);
+    const [scanWarning, setScanWarning] = useState('');
 
     const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
@@ -161,6 +162,7 @@ const AttendanceScan = ({ userId }) => {
             setStreamActive(true);
             setScanStatus('idle');
             setLivenessStatus('prompt');
+            setScanWarning('');
             isClosedRef.current = false;
 
             // We set the stream on state or globally if needed, 
@@ -238,6 +240,10 @@ const AttendanceScan = ({ userId }) => {
             });
 
             if (response.ok) {
+                const result = await response.json();
+                if (result.warning) {
+                    setScanWarning(result.warning);
+                }
                 setScanStatus('success');
                 // Refresh data
                 fetchInitialData();
@@ -245,8 +251,10 @@ const AttendanceScan = ({ userId }) => {
                 // Auto-stop camera after successful scan after a few seconds
                 setTimeout(() => {
                     stopCamera();
-                }, 3000);
+                }, result.warning ? 6000 : 3000); // Wait longer if there's a warning
             } else {
+                const errData = await response.json();
+                if (errData.detail) setScanWarning(errData.detail);
                 setScanStatus('error');
             }
         } catch (err) {
@@ -380,6 +388,19 @@ const AttendanceScan = ({ userId }) => {
                             {livenessStatus === 'verified' && scanStatus === 'idle' && (
                                 <div className="liveness-success-toast">
                                     🛡️ IDENTITY SECURELY VERIFIED
+                                </div>
+                            )}
+
+                            {scanWarning && (
+                                <div className={`liveness-prompt-toast ${scanStatus === 'error' ? 'error-toast' : 'warning-toast'}`} style={{ 
+                                    backgroundColor: scanStatus === 'error' ? '#EF4444' : '#F59E0B',
+                                    top: 'auto',
+                                    bottom: '20px',
+                                    textAlign: 'center',
+                                    width: '80%',
+                                    zIndex: 100
+                                }}>
+                                    {scanStatus === 'error' ? '❌ ' : '⚠️ '} {scanWarning}
                                 </div>
                             )}
                         </div>

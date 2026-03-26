@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Response, UploadFile, File
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any, List
+from fpdf import FPDF
 from database.s3_client import s3_db
 from database.mongo_client import mongo_db
 from dotenv import load_dotenv
@@ -8,6 +9,7 @@ load_dotenv(override=True)
 import datetime
 import base64
 import uuid
+import json
 import os
 import tempfile
 import google.generativeai as genai
@@ -28,6 +30,17 @@ from api.doc_engine import (
 from api.enhanced_doc_system import enhanced_router
 
 router = APIRouter()
+
+@router.get("/health")
+def health_check():
+    """System health check endpoint"""
+    status = {
+        "api": "healthy",
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "database": mongo_db.get_status(),
+        "s3": "connected" if s3_db.s3_client else "disconnected"
+    }
+    return status
 
 # Configure Gemini
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
@@ -74,6 +87,7 @@ class ProfileUpdateRequest(BaseModel):
     image_right_base64: Optional[str] = None
     # PF (Optional)
     pf_number: Optional[str] = None
+    pan_no: Optional[str] = None
 
 
 def parse_base64(b64_string: str) -> bytes:
@@ -116,7 +130,8 @@ def register_employee(request: EmployeeRegistrationRequest):
 @router.post("/auth/login")
 def login(request: LoginRequest):
     if mongo_db.users is None:
-        return {"error": "Database error"}
+        db_status = mongo_db.get_status()
+        return {"error": f"Database error: {db_status.get('error', 'Unknown issue')}"}
     
     # 1. Check for Admin credentials first
     if request.email == 'admin@dhanadurga.com' and request.password == 'Dhanadurga@2003':
@@ -139,7 +154,8 @@ def login(request: LoginRequest):
 @router.post("/auth/complete-profile")
 def complete_profile(request: ProfileUpdateRequest):
     if mongo_db.users is None:
-        return {"error": "Database error"}
+        db_status = mongo_db.get_status()
+        return {"error": f"Database error: {db_status.get('error', 'Unknown issue')}"}
         
     user = mongo_db.users.find_one({"employee_id": request.employee_id})
     if not user:
@@ -308,7 +324,7 @@ def update_employee_details(employee_id: str, update: EmployeeUpdate):
         return {"message": "No changes provided"}
         
     # Handle nested fields mapping
-    set_ops = {}
+    set_ops: Dict[str, Any] = {}
     for k, v in update_data.items():
         if k in ["bank_account", "bank_ifsc", "bank_name", "cif_number"]:
             if k == "bank_account": set_ops["bank_details.account_number"] = v
@@ -330,6 +346,19 @@ def update_employee_details(employee_id: str, update: EmployeeUpdate):
         return {"error": "Employee not found"}
         
     return {"message": "Employee updated successfully"}
+
+@router.delete("/admin/employee/{employee_id}")
+def delete_employee(employee_id: str):
+    """Permanently delete an employee record from the database"""
+    if mongo_db.users is None:
+        db_status = mongo_db.get_status()
+        return {"error": f"Database error: {db_status.get('error', 'Unknown issue')}"}
+    
+    result = mongo_db.users.delete_one({"employee_id": employee_id})
+    if result.deleted_count == 0:
+        return {"error": "Employee not found"}
+        
+    return {"message": f"Employee {employee_id} deleted successfully"}
 
 class RoleAssignment(BaseModel):
     employee_id: str
@@ -707,6 +736,13 @@ def get_all_item_requests():
     requests = list(mongo_db.item_requests.find({}, {"_id": 0}))
     return {"requests": requests}
 
+@router.get("/items/my-requests")
+def get_my_item_requests(employee_id: str):
+    if mongo_db.item_requests is None:
+        return {"requests": []}
+    requests = list(mongo_db.item_requests.find({"employee_id": employee_id}, {"_id": 0}))
+    return {"requests": requests}
+
 class ItemStatusUpdate(BaseModel):
     status: str # "Approved", "Rejected"
 
@@ -803,7 +839,7 @@ def get_reports_summary():
 
 @router.get("/admin/salary-report/{month_year}")
 def get_monthly_salary_report(month_year: str):
-    if mongo_db.users is None:
+    if mongo_db.users is None or mongo_db.attendance is None:
         return {"report": []}
     
     try:
@@ -836,7 +872,7 @@ def get_monthly_salary_report(month_year: str):
     
     import calendar as py_calendar
     _, num_days = py_calendar.monthrange(year, month)
-    total_working_days_in_month = 0
+    total_working_days_in_month: int = 0
     for d in range(1, num_days + 1):
         curr_day = datetime.datetime(year, month, d)
         date_str = curr_day.strftime("%Y-%m-%d")
@@ -854,21 +890,23 @@ def get_monthly_salary_report(month_year: str):
     
     for emp in employees:
         emp_id = emp["employee_id"]
+        employment_type = emp.get("employment_type", "Full-Time")
+        is_intern = employment_type == "Intern"
         monthly_salary = emp.get("monthly_salary", 0)
         daily_salary = monthly_salary / 30 # Standard daily rate
         
-        # Fetch attendance for this employee in this month
-        # We look for 'sign_in' actions
-        attendance_logs = list(mongo_db.attendance.find({
+        # Fetch all attendance for this employee in this month ONCE
+        emp_month_records = list(mongo_db.attendance.find({
             "employee_id": emp_id,
-            "action": "sign_in",
             "timestamp": {"$regex": f"^{month_prefix}"}
-        }))
-        attended_dates = {log["timestamp"].split("T")[0] for log in attendance_logs}
+        }).sort("timestamp", 1))
+        
+        # Keep the set for legacy counting if needed, but we'll use records directly
+        attended_dates = {log["timestamp"].split("T")[0] for log in emp_month_records if log["action"] == "sign_in"}
         
         # DOJ filtering: count from the next day of approval
         joining_date_str = emp.get("joining_date")
-        joining_date = None
+        joining_date: Optional[datetime.date] = None
         if joining_date_str:
             try:
                 # Handle cases where it might be isoformat or just date
@@ -899,63 +937,126 @@ def get_monthly_salary_report(month_year: str):
                     leave_dates.add(curr_l.strftime("%Y-%m-%d"))
                 curr_l += datetime.timedelta(days=1)
 
-        expected_working_days = 0
-        actual_presence = 0
-        leaves_taken = 0
-        
+        # New Penalty-Aware Attendance Logic
+        absent_days: float = 0 # This will track LOP days
+        actual_presence: int = 0 
+        leaves_taken: int = 0
+        expected_working_days: int = 0
+        ft_grace_5_9_count: int = 0
+        int_grace_5_9_count: int = 0
+        int_grace_2_5_count: int = 0
+
         for d in range(1, num_days + 1):
             curr_day = datetime.datetime(year, month, d)
             curr_date = curr_day.date()
-            
-            # Skip days on or before joining date (approval date)
-            if joining_date and curr_date <= joining_date:
+            if joining_date and curr_date < joining_date:
                 continue
-                
+
             date_str = curr_day.strftime("%Y-%m-%d")
-            weekday = curr_day.weekday() # 0-6 (Mon-Sun)
-            
+            weekday = curr_day.weekday()
             is_working_day = True
-            if weekday >= 5: # Sat or Sun
-                is_working_day = False
-            
-            if date_str in month_holidays:
-                is_working_day = False
-                
-            # Overrides take ultimate precedence
+            if weekday >= 5: is_working_day = False
+            if date_str in month_holidays: is_working_day = False
             if date_str in month_overrides:
-                if month_overrides[date_str] == "forced_working":
-                    is_working_day = True
-                elif month_overrides[date_str] == "forced_holiday":
-                    is_working_day = False
-            
+                if month_overrides[date_str] == "forced_working": is_working_day = True
+                elif month_overrides[date_str] == "forced_holiday": is_working_day = False
+
             if is_working_day:
                 expected_working_days += 1
-                if date_str in attended_dates:
-                    actual_presence += 1
-                elif date_str in leave_dates:
-                    leaves_taken += 1
-        
-        # Calculate LOP
-        # absent_days = max(0, expected_working_days - actual_presence - leaves_taken)
-        # Fixed logic from user: Deduction = (Expected Working Days - Actual Attendance - Approved Paid Leaves) * (Daily Salary)
-        absent_days = expected_working_days - actual_presence - leaves_taken
-        if absent_days < 0: absent_days = 0 # Should not happen if data is perfect
-        
-        is_intern = emp.get("employment_type") == "Intern"
-        
+                
+                # Filter this month's records for this specific day
+                day_records = [r for r in emp_month_records if r["timestamp"].startswith(date_str)]
+
+                is_present = False
+                lop_on_day = 0 # 0, 0.5, or 1.0
+                tot_sec = 0
+                is_forgot_logout = False
+
+                if day_records:
+                    punches = sorted(day_records, key=lambda x: x["timestamp"])
+                    f_in = next((p for p in punches if p["action"] == "sign_in"), None)
+                    l_out = next((p for p in reversed(punches) if p["action"] == "sign_out"), None)
+                    
+                    is_forgot_logout = (f_in and not l_out)
+                    if f_in and l_out:
+                        try:
+                            t1 = datetime.datetime.fromisoformat(f_in["timestamp"].replace('Z', '+00:00'))
+                            t2 = datetime.datetime.fromisoformat(l_out["timestamp"].replace('Z', '+00:00'))
+                            tot_sec = int((t2 - t1).total_seconds())
+                        except: pass
+                
+                # Check for leave on this day
+                has_approved_leave = date_str in leave_dates
+                
+                # Tiered Presence & LOP Logic (v3 Refined)
+                if tot_sec >= 9 * 3600 or is_forgot_logout:
+                    is_present = True
+                    lop_on_day = 0
+                elif day_records:
+                    # Only apply grace/penalties if NOT an approved leave
+                    if not has_approved_leave:
+                        if is_intern:
+                            if tot_sec >= 5 * 3600: # 5-9h range
+                                is_present = True
+                                if int_grace_5_9_count < 3:
+                                    int_grace_5_9_count += 1
+                                    lop_on_day = 0
+                                else:
+                                    lop_on_day = 0.5
+                            elif tot_sec >= 2 * 3600: # 2-5h range
+                                is_present = True
+                                if int_grace_2_5_count < 2:
+                                    int_grace_2_5_count += 1
+                                    lop_on_day = 0
+                                else:
+                                    lop_on_day = 0.5
+                            else: # 0-2h range
+                                is_present = False
+                                lop_on_day = 1.0
+                        else: # Full-Time
+                            if tot_sec >= 5 * 3600: # 5-9h range
+                                is_present = True
+                                if ft_grace_5_9_count < 3:
+                                    ft_grace_5_9_count += 1
+                                    lop_on_day = 0
+                                else:
+                                    lop_on_day = 0.5
+                            elif tot_sec >= 2 * 3600: # 2-5h range
+                                is_present = True
+                                lop_on_day = 0.5 # FT needs permission for 2-5h or it's a cut
+                            else: # 0-2h range
+                                is_present = False
+                                lop_on_day = 1.0
+                    else:
+                        # Has approved leave (acts as permission/sick leave)
+                        if is_intern:
+                            is_present = False
+                            lop_on_day = 1.0 # Interns have no paid leaves
+                        else:
+                            is_present = True
+                            lop_on_day = 0 # Full-Time paid leave/permission
+                
+                # Overwrite LOP if approved leave exists (already handled above but for completeness)
+                # Ensure no redundant overwriting that might conflict
+                
+                # Only count LOP if the day has already passed or is today
+                # This prevents future working days from being marked as 'Absent'
+                absent_days += float(lop_on_day)
+
         # Prorated base calculation for mid-month joiners
+        # They should only be paid for the working days from joining_date to end of month
         if total_working_days_in_month > 0 and expected_working_days < total_working_days_in_month:
-            base_salary = (expected_working_days / total_working_days_in_month) * monthly_salary
+            base_salary = round((expected_working_days / total_working_days_in_month) * monthly_salary, 2)
         else:
             base_salary = monthly_salary
-            
+
         if is_intern:
-            # Intern LOP Deduction: 500 per absent day
+            # Intern LOP: 500 per absent day
             lop_deduction = absent_days * 500
-            net_salary = base_salary - lop_deduction
         else:
             lop_deduction = round(absent_days * daily_salary, 2)
-            net_salary = round(base_salary - lop_deduction, 2)
+        
+        net_salary = round(base_salary - lop_deduction, 2)
         
         report.append({
             "employee_id": emp_id,
@@ -964,7 +1065,8 @@ def get_monthly_salary_report(month_year: str):
             "actual_presence": actual_presence,
             "leaves_taken": leaves_taken,
             "absent_days": absent_days,
-            "monthly_salary": monthly_salary,
+            "gross_salary": base_salary, # Renamed to reflect prorated amount
+            "monthly_salary": monthly_salary, # Original full salary
             "lop_deduction": lop_deduction,
             "net_salary": net_salary
         })
@@ -1023,6 +1125,28 @@ def process_face_scan(request: AttendanceScanRequest):
     if user.get("status") != "approved":
         return {"error": "Your account is pending admin approval. You cannot sign in yet."}
 
+    if mongo_db.attendance is None:
+        return {"error": "Attendance service is currently unavailable."}
+
+    # 0.5 Check for duplicate actions today
+    today_str = datetime.datetime.utcnow().strftime('%Y-%m-%d')
+    existing_today = list(mongo_db.attendance.find({
+        "employee_id": request.employee_id,
+        "timestamp": {"$regex": f"^{today_str}"}
+    }))
+    
+    sign_in_record = next((r for r in existing_today if r["action"] == "sign_in"), None)
+    sign_out_record = next((r for r in existing_today if r["action"] == "sign_out"), None)
+    
+    if request.action_type == "sign_in":
+        if sign_in_record:
+            return {"error": "You have already signed in today."}
+    elif request.action_type == "sign_out":
+        if not sign_in_record:
+            return {"error": "You must sign in before you can sign out."}
+        if sign_out_record:
+            return {"error": "You have already signed out today."}
+
     # 1. Decode Image
     try:
         base64_data = request.image_base64.split(',')[1] if ',' in request.image_base64 else request.image_base64
@@ -1059,25 +1183,73 @@ def process_face_scan(request: AttendanceScanRequest):
         print(f"Face detection internal error: {e}")
         # Continue if OpenCV fails for simple environments, but ideally enforce it
 
-    # 1.5 Simulated Face Comparison
-    # In a production environment, we would use an AI service (like AWS Rekognition)
-    # to compare image_bytes with the reference image in S3.
+    # 1.5 Real AI Face Comparison using Gemini
     reference_image_key = user.get("reference_image_key")
     if not reference_image_key:
-        # Fallback if no reference image was stored (e.g. for older records)
-        face_match_success = True 
-    else:
-        # Simulate retrieval and comparison
-        ref_image = s3_db.get_image(reference_image_key)
-        if not ref_image:
-            return {"error": "Reference identity image not found."}
-        
-        # Simulation: For this demo, we assume the AI verification score is high 
-        # unless some explicit condition is met.
-        face_match_success = True 
+        return {"error": "No registered face found. Please complete your profile with face registration."}
+    
+    ref_image_bytes = s3_db.get_image(reference_image_key)
+    if not ref_image_bytes:
+        return {"error": "Reference identity image not found in storage."}
 
-    if not face_match_success:
-        return {"error": "Face does not match the registered identity."}
+    try:
+        # Use the latest requested model name
+        model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash") # Fallback to 1.5 if 3.1 is not in env
+        if "3.1" in os.environ.get("GEMINI_MODEL", ""):
+             model_name = os.environ.get("GEMINI_MODEL")
+        
+        # User explicitly asked for 3.1 flash
+        model = genai.GenerativeModel(model_name)
+        
+        # Prepare all available images for a deep multi-frame analysis
+        images_to_analyze = [
+            {"mime_type": "image/jpeg", "data": base64.b64encode(ref_image_bytes).decode('utf-8')}, # Reference
+            {"mime_type": "image/jpeg", "data": base64.b64encode(image_bytes).decode('utf-8')}      # Current Front
+        ]
+        
+        if left_bytes:
+            images_to_analyze.append({"mime_type": "image/jpeg", "data": base64.b64encode(left_bytes).decode('utf-8')})
+        if right_bytes:
+            images_to_analyze.append({"mime_type": "image/jpeg", "data": base64.b64encode(right_bytes).decode('utf-8')})
+
+        prompt = """
+        You are a high-security biometric verification system using Gemini 3.1 Flash's advanced vision capabilities.
+        
+        Analyze the provided images:
+        1. Image 1 is the ENROLLED REFERENCE.
+        2. Image 2 is the CURRENT FRONT SCAN.
+        3. (Optional) Subsequent images are LEFT and RIGHT profiles of the current scan.
+        
+        TASKS:
+        1. **Identity Verification**: Confirm if the person in the current scan (and profiles) is the EXACT same person as in the enrolled reference.
+        2. **Pixel & Texture Analysis (Anti-Spoofing)**: Inspect for signs of digital spoofing (screens, moiré patterns), physical spoofing (high-res photos), or masks. Analyze skin texture and light reflections.
+        3. **Multi-Frame Consistency**: If profiles are provided, verify that the head movement is consistent with a 3D human head and that all frames belong to the same session.
+        
+        Return ONLY a JSON object:
+        {
+            "match": true/false,
+            "confidence": 0.0-1.0,
+            "liveness_verified": true/false,
+            "analysis": "Brief technical summary of identity and pixel analysis",
+            "reason": "Clear explanation for user if rejected"
+        }
+        """
+        
+        response = model.generate_content([prompt] + images_to_analyze)
+        # Clean response
+        resp_text = response.text.strip().strip('`').replace('json', '').strip()
+        result = json.loads(resp_text)
+        
+        face_match_success = result.get("match", False) and result.get("liveness_verified", False)
+        verification_score = result.get("confidence", 0.0)
+        
+        if not face_match_success:
+            print(f"Enhanced Verification Failed for {request.employee_id}: {result.get('analysis')}")
+            return {"error": result.get("reason", "Face verification failed. Please try again with clear lighting.")}
+
+    except Exception as e:
+        print(f"AI Enhanced Verification Error: {e}")
+        return {"error": "Deep face analysis service is currently unavailable. Please try again later."}
 
     timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
     timestamp_str = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
@@ -1109,7 +1281,7 @@ def process_face_scan(request: AttendanceScanRequest):
         "s3_image_key": image_key,
         "s3_image_left_key": image_left_key,
         "s3_image_right_key": image_right_key,
-        "ai_verification_score": 0.99
+        "ai_verification_score": verification_score
     }
     mongo_db.attendance.insert_one(attendance_record)
 
@@ -1125,8 +1297,33 @@ def process_face_scan(request: AttendanceScanRequest):
     if "_id" in attendance_record:
         attendance_record["_id"] = str(attendance_record["_id"])
 
+    # 4. Generate Warnings for Sign-out
+    warning = None
+    if request.action_type == "sign_out" and sign_in_record:
+        try:
+            t1 = datetime.datetime.fromisoformat(sign_in_record["timestamp"].replace('Z', '+00:00'))
+            t2 = datetime.datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+            work_sec = int((t2 - t1).total_seconds())
+            
+            is_intern = user.get("employment_type") == "Intern"
+            
+            if work_sec < 2 * 3600:
+                warning = "You are signing out before 2 hours. This is considered a 'full-day type' deduction (1.0 cut)."
+            elif work_sec < 5 * 3600:
+                if is_intern:
+                    warning = "You are signing out before 5 hours. This is a half-day deduction (Interns get 2 grace sessions per month)."
+                else:
+                    warning = "You are signing out before 5 hours. Full-Time employees must take permission from Admin/HR to avoid a half-day deduction."
+            elif work_sec < 7 * 3600:
+                warning = "You are signouting before 9 hours. No salary cut for half-day up to 3 times per month for both Interns and Full-Time."
+            elif work_sec < 9 * 3600:
+                warning = "You are signouting before 9 hours. Please note that 9 hours is required for a full day."
+        except Exception as e:
+            print(f"Warning calculation error: {e}")
+
     return {
         "message": f"Identity verified against reference. Successfully processed {request.action_type}",
+        "warning": warning,
         "record": attendance_record
     }
 
@@ -1272,11 +1469,12 @@ def get_attendance_calendar(employee_id: str):
     overrides = list(mongo_db.workday_overrides.find({"date": {"$regex": f"^{month_prefix}"}}, {"_id": 0}))
     override_map = {o['date']: o for o in overrides}
     
-    early_logout_count = 0
+    
     final_history = []
+    ft_early_count = 0 # Track early signouts for Full-Time (7-9h)
     
     # Parse joining date for comparison
-    joining_date = None
+    joining_date: Optional[datetime.date] = None
     if joining_date_str:
         try:
             joining_date = datetime.datetime.fromisoformat(joining_date_str).date()
@@ -1285,9 +1483,12 @@ def get_attendance_calendar(employee_id: str):
     import calendar
     _, last_day_in_month = calendar.monthrange(year, month)
     
+    ft_grace_5_9_count = 0
+    int_grace_5_9_count = 0
+    int_grace_2_5_count = 0
     # Iterate through every day of the month up to today
     for d in range(1, today.day + 1):
-        current_date = datetime.date(year, month, d)
+        current_date: datetime.date = datetime.date(year, month, d)
         day_str = current_date.isoformat()
         
         # Default day data
@@ -1299,16 +1500,16 @@ def get_attendance_calendar(employee_id: str):
             "status": "Absent",
             "status_char": "A",
             "color": "#EF4444",
-            "deduction": 0,
+            "deduction": 0.0,
             "day_label": "Working Day"
         }
         
-        # Rule: Count from the day after approval (DOJ) only
-        if joining_date and current_date <= joining_date:
+        # Rule: Count from the Joining Date (DOJ) onwards
+        if joining_date and current_date < joining_date:
             data["status"] = "Not Applicable"
             data["status_char"] = "-"
             data["color"] = "var(--text-muted)"
-            data["day_label"] = "Pre-Approval"
+            data["day_label"] = "Pre-Joining"
             final_history.append(data)
             continue
             
@@ -1372,51 +1573,101 @@ def get_attendance_calendar(employee_id: str):
             is_forgot_logout = (first_in != "-" and last_out == "-")
             
             # Status logic for WORKING day with records
-            if is_working_day:
-                if tot_sec >= 9 * 3600:
-                    data["status"] = "Present"
+            if tot_sec >= 9 * 3600 and is_originally_non_working:
+                # Earned Comp-Off Request
+                req_id = f"RL_{employee_id}_{day_str.replace('-', '')}"
+                existing = mongo_db.comp_off_requests.find_one({"request_id": req_id})
+                if not existing:
+                    mongo_db.comp_off_requests.insert_one({
+                        "request_id": req_id,
+                        "employee_id": employee_id,
+                        "date": day_str,
+                        "hours": data["total_work_hrs"],
+                        "status": "Pending",
+                        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+                    })
+                data["status"] = "Present (Earned Comp-Off Request)"
+                data["status_char"] = "P"
+                data["color"] = "var(--secondary)"
+                data["deduction"] = 0.0
+            elif is_working_day:
+                if tot_sec >= 9 * 3600 or is_forgot_logout:
+                    data["status"] = "Present" if tot_sec >= 9 * 3600 else "Present (Forgot Logout)"
                     data["status_char"] = "P"
                     data["color"] = "var(--secondary)"
-                elif is_forgot_logout:
-                    data["status"] = "Present (Forgot Logout)"
-                    data["status_char"] = "P"
+                    data["deduction"] = 0.0
+                else:
+                    # Apply Grace Periods/Penalties if NOT an approved leave
+                    if not approved_leave:
+                        if employment_type == "Intern":
+                            if tot_sec >= 5 * 3600: # 5-9h range
+                                data["status"] = "Half Day"
+                                data["status_char"] = "HD"
+                                if int_grace_5_9_count < 3:
+                                    int_grace_5_9_count += 1
+                                    data["deduction"] = 0.0
+                                    data["color"] = "var(--secondary)"
+                                else:
+                                    data["deduction"] = 0.5
+                                    data["color"] = "#F59E0B"
+                            elif tot_sec >= 2 * 3600: # 2-5h range
+                                data["status"] = "Half Day"
+                                data["status_char"] = "HD"
+                                if int_grace_2_5_count < 2:
+                                    int_grace_2_5_count += 1
+                                    data["deduction"] = 0.0
+                                    data["color"] = "var(--secondary)"
+                                else:
+                                    data["deduction"] = 0.5
+                                    data["color"] = "#F59E0B"
+                            else: # 0-2h range
+                                data["status"] = "Absent"
+                                data["status_char"] = "A"
+                                data["color"] = "#EF4444"
+                                data["deduction"] = 1.0
+                        else: # Full-Time
+                            if tot_sec >= 5 * 3600: # 5-9h range
+                                data["status"] = "Half Day"
+                                data["status_char"] = "HD"
+                                if ft_grace_5_9_count < 3:
+                                    ft_grace_5_9_count += 1
+                                    data["deduction"] = 0.0
+                                    data["color"] = "var(--secondary)"
+                                else:
+                                    data["deduction"] = 0.5
+                                    data["color"] = "#F59E0B"
+                            elif tot_sec >= 2 * 3600: # 2-5h range
+                                data["status"] = "Half Day"
+                                data["status_char"] = "HD"
+                                data["color"] = "#F59E0B"
+                                data["deduction"] = 0.5 # Needs permission
+                            else: # 0-2h range
+                                data["status"] = "Absent"
+                                data["status_char"] = "A"
+                                data["color"] = "#EF4444"
+                                data["deduction"] = 1.0
+                    else:
+                        # Handled below in approved_leave block
+                        pass
+            else:
+                # Worked on holiday but < 9 hours
+                data["status"] = "Worked on Holiday (<9h)"
+                data["status_char"] = "WOH"
+                data["color"] = "#ff7a00"
+                data["deduction"] = 0.0
+
+            # Overwrite with Approved Leave status if applicable (but deduction already set)
+            if approved_leave:
+                if employment_type == "Full-Time":
+                    data["status"] = f"Leave: {approved_leave['leave_type']}"
+                    data["status_char"] = "L"
                     data["color"] = "var(--secondary)"
+                    data["deduction"] = 0
                 else:
-                    early_logout_count += 1
-                    if early_logout_count <= 4:
-                        data["status"] = "Present (Early)"
-                        data["status_char"] = "P"
-                        data["color"] = "var(--secondary)"
-                    else:
-                        data["status"] = "Half Day"
-                        data["status_char"] = "HD"
-                        data["color"] = "#F59E0B"
-                        data["deduction"] = daily_salary * 0.5
-                # Create Comp-Off Request if >= 9 hours AND it was originally a non-working day
-                if tot_sec >= 9 * 3600 and is_originally_non_working:
-                    req_id = f"RL_{employee_id}_{day_str.replace('-', '')}"
-                    existing = mongo_db.comp_off_requests.find_one({"request_id": req_id})
-                    if not existing:
-                        mongo_db.comp_off_requests.insert_one({
-                            "request_id": req_id,
-                            "employee_id": employee_id,
-                            "date": day_str,
-                            "hours": data["total_work_hrs"],
-                            "status": "Pending",
-                            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
-                        })
-                    data["status"] = "Present (Earned Comp-Off Request)"
-                else:
-                    if is_working_day:
-                        # Normal present status
-                        data["status"] = "Present"
-                        data["status_char"] = "P"
-                        data["color"] = "var(--secondary)"
-                    else:
-                        # Worked on holiday but < 9 hours
-                        data["status"] = "Worked on Holiday (<9h)"
-                        data["status_char"] = "WOH"
-                        data["color"] = "#ff7a00"
+                    data["status"] = f"Unpaid Leave: {approved_leave['leave_type']}"
+                    data["status_char"] = "L"
+                    data["color"] = "#F59E0B"
+                    data["deduction"] = daily_salary
         else:
             # No sign-in: check day type
             if is_working_day:

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import DocumentGeneratorModal from '../components/DocumentGeneratorModal';
 import EnhancedDocumentGenerator from '../components/EnhancedDocumentGenerator';
+import HistoricalDocGenerator from '../components/HistoricalDocGenerator';
 import { PLACEHOLDER_IMAGE } from '../utils';
 
 const AdminDashboard = ({ activeTab, user }) => {
@@ -1960,6 +1961,13 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 </form>
                             </div>
                         )}
+
+                    {/* TAB: HISTORICAL DOCS */}
+                    {activeTab === 'historical_docs' && (
+                        <div style={{ gridColumn: 'span 3' }}>
+                            <HistoricalDocGenerator apiUrl={apiUrl} />
+                        </div>
+                    )}
                 </div>
             )}
 

@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { PLACEHOLDER_IMAGE } from '../utils';
 
-const MyWorkLife = ({ userId }) => {
+const MyWorkLife = ({ userId, setActiveMenu }) => {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [isItemModalOpen, setIsItemModalOpen] = useState(false);
-    const [itemRequestData, setItemRequestData] = useState({ item_name: '', quantity: 1, reason: '' });
-    const [isRequesting, setIsRequesting] = useState(false);
 
     const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
@@ -60,33 +57,6 @@ const MyWorkLife = ({ userId }) => {
         reader.readAsDataURL(file);
     };
 
-    const handleItemRequestSubmit = async () => {
-        if (!itemRequestData.item_name || !itemRequestData.reason) {
-            alert("Please fill in all fields");
-            return;
-        }
-
-        setIsRequesting(true);
-        try {
-            const res = await fetch(`${apiUrl}/items/request`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    employee_id: userId,
-                    ...itemRequestData
-                })
-            });
-            if (res.ok) {
-                alert("Item request submitted successfully!");
-                setIsItemModalOpen(false);
-                setItemRequestData({ item_name: '', quantity: 1, reason: '' });
-            }
-        } catch (err) {
-            console.error("Request failed", err);
-        } finally {
-            setIsRequesting(false);
-        }
-    };
 
     const calculateTenure = (joiningDate) => {
         if (!joiningDate) return "New Joinee";
@@ -186,7 +156,7 @@ const MyWorkLife = ({ userId }) => {
                 <div 
                     className="card glass-panel" 
                     style={{ textAlign: 'center', cursor: 'pointer', border: '1px solid var(--primary)', background: 'rgba(79, 70, 229, 0.05)' }}
-                    onClick={() => setIsItemModalOpen(true)}
+                    onClick={() => setActiveMenu('items')}
                 >
                     <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📦</div>
                     <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--primary)' }}>Request Item</div>
@@ -194,61 +164,6 @@ const MyWorkLife = ({ userId }) => {
                 </div>
             </div>
 
-            {/* Item Request Modal */}
-            {isItemModalOpen && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-                    <div className="card glass-panel" style={{ maxWidth: '400px', width: '100%', border: '1px solid var(--primary)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                            <h2 className="card-title" style={{ margin: 0 }}>📦 New Item Request</h2>
-                            <button onClick={() => setIsItemModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
-                        </div>
-                        
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Item Name</label>
-                                <input 
-                                    type="text" 
-                                    placeholder="e.g. Wireless Mouse"
-                                    value={itemRequestData.item_name}
-                                    onChange={(e) => setItemRequestData({...itemRequestData, item_name: e.target.value})}
-                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
-                                />
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Quantity</label>
-                                    <input 
-                                        type="number" 
-                                        min="1"
-                                        value={itemRequestData.quantity}
-                                        onChange={(e) => setItemRequestData({...itemRequestData, quantity: parseInt(e.target.value) || 1})}
-                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Reason</label>
-                                <textarea 
-                                    rows="2"
-                                    placeholder="Why do you need this?"
-                                    value={itemRequestData.reason}
-                                    onChange={(e) => setItemRequestData({...itemRequestData, reason: e.target.value})}
-                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.05)', color: 'white', resize: 'none' }}
-                                ></textarea>
-                            </div>
-                            
-                            <button 
-                                onClick={handleItemRequestSubmit}
-                                disabled={isRequesting}
-                                className="btn btn-primary" 
-                                style={{ height: '2.5rem', fontWeight: 'bold' }}
-                            >
-                                {isRequesting ? 'Submitting...' : 'Submit Request'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {profile?.offer_letter_status === 'final' && (
                 <div className="card glass-panel" style={{ marginTop: '2rem', border: '1px solid var(--secondary)', background: 'rgba(10, 102, 194, 0.05)' }}>

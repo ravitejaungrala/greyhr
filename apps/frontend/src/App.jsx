@@ -12,6 +12,7 @@ import EngageModule from './pages/EngageModule';
 import MyWorkLife from './pages/MyWorkLife';
 import SalaryModule from './pages/SalaryModule';
 import DocumentCenter from './pages/DocumentCenter';
+import ItemRequests from './pages/ItemRequests';
 import ChatbotBubble from './components/ChatbotBubble';
 import LandingPage from './pages/LandingPage';
 
@@ -152,6 +153,13 @@ function App() {
               >
                 📄 Offer Letter Templates
               </div>
+              <div
+                className={`nav-item ${activeMenu === 'historical_docs' ? 'active' : ''}`}
+                onClick={() => setActiveMenu('historical_docs')}
+                style={{ paddingLeft: '2rem', fontSize: '0.9rem' }}
+              >
+                📜 Historical Docs
+              </div>
             </>
           ) : (
             <>
@@ -237,9 +245,10 @@ function App() {
               {activeMenu === 'attendance-info' && <AttendanceInfo userId={user.employee_id} />}
               {activeMenu === 'leaves' && <Leaves userId={user.employee_id} />}
               {activeMenu === 'engage' && <EngageModule />}
-              {activeMenu === 'worklife' && <MyWorkLife userId={user.employee_id} />}
+              {activeMenu === 'worklife' && <MyWorkLife userId={user.employee_id} setActiveMenu={setActiveMenu} />}
               {activeMenu === 'salary' && <SalaryModule userId={user.employee_id} />}
               {activeMenu === 'docs' && <DocumentCenter user={user} />}
+              {activeMenu === 'items' && <ItemRequests userId={user.employee_id} />}
             </>
           )}
         </div>

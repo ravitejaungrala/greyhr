@@ -11,3 +11,4 @@ mediapipe
 pypdf
 jinja2
 xhtml2pdf
+mangum
