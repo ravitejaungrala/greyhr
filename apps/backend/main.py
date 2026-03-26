@@ -15,10 +15,11 @@ app = FastAPI(title="DurgDhana HRMS API")
 # Configure CORS for frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Mount static files for logos, signatures etc.
