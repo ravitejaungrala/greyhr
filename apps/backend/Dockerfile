@@ -1,6 +1,9 @@
 # Use the official AWS Lambda Python base image
 FROM public.ecr.aws/lambda/python:3.12
 
+RUN echo "LOG: Starting build with updated Dockerfile v2"
+
+
 # Copy requirements.txt
 COPY requirements.txt ${LAMBDA_TASK_ROOT}
 
