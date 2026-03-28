@@ -12,15 +12,18 @@ from api.enhanced_doc_system import enhanced_router
 
 app = FastAPI(title="DurgDhana HRMS API")
 
-# Configure CORS for frontend access
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
+# Configure CORS for local development. 
+# In AWS Lambda, we rely on AWS's built-in Function URL CORS configuration
+# to prevent returning duplicate 'Access-Control-Allow-Origin' headers.
+if not os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+    )
 
 # Mount static files for logos, signatures etc.
 app.mount("/static", StaticFiles(directory="static"), name="static")
