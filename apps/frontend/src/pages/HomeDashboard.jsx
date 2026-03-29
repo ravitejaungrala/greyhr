@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { API_URL } from '../config';
 
 const HomeDashboard = ({ user, setUser }) => {
     const [step, setStep] = useState(1);
@@ -8,7 +9,6 @@ const HomeDashboard = ({ user, setUser }) => {
     // Form State
     const [formData, setFormData] = useState({
         dob: '',
-        registration_type: 'Full-Time', // New: 'Full-Time' or 'Intern'
         is_experienced: false,
         prev_company: '',
         prev_role: '',
@@ -16,7 +16,7 @@ const HomeDashboard = ({ user, setUser }) => {
         bank_account: '',
         bank_ifsc: '',
         bank_name: '',
-        cif_number: '', // New
+        cif_number: '',
         pan_no: '',
         education_degree: '',
         pf_number: '',
@@ -42,7 +42,7 @@ const HomeDashboard = ({ user, setUser }) => {
     const [dashboardLoading, setDashboardLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('dashboard');
 
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+    const apiUrl = API_URL;
 
     useEffect(() => {
         if (user.status === 'approved') {
@@ -263,7 +263,7 @@ const HomeDashboard = ({ user, setUser }) => {
             const payload = {
                 employee_id: user.employee_id,
                 ...formData,
-                employment_type: formData.registration_type,
+                employment_type: 'Full-Time', // Defaulted, Admin will fix if needed
                 bank_photo_base64: bankPhoto,
                 education_cert_base64: eduCert,
                 last_company_payslip_base64: payslipPhoto,
@@ -296,130 +296,228 @@ const HomeDashboard = ({ user, setUser }) => {
     };
 
     if (user.status === 'incomplete_profile') {
+        const ProgressIndicator = () => (
+            <div style={{ marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary)' }}>
+                        {step === 1 ? 'Personal & Identity' : 'Financial & Official Docs'}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>Step {step} of 2</span>
+                </div>
+                <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                    <div style={{ 
+                        height: '100%', 
+                        width: step === 1 ? '50%' : '100%', 
+                        background: 'linear-gradient(90deg, var(--primary), var(--secondary))',
+                        transition: 'width 0.4s ease'
+                    }} />
+                </div>
+            </div>
+        );
+
         return (
-            <div style={{ maxWidth: '600px', margin: '2rem auto' }}>
-                <div className="card glass-panel">
-                    <h2 className="card-title">🚀 Complete Your Profile (Step {step} of 2)</h2>
-                    <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>Please provide these additional details to activate your account.</p>
+            <div style={{ maxWidth: '800px', margin: '2rem auto', padding: '0 1rem' }}>
+                <div className="card glass-panel animate-fade-in" style={{ padding: '2.5rem' }}>
+                    <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+                        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '0.5rem' }}>
+                            Complete Your Profile
+                        </h2>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>Please verify your identity and documents to activate your workspace.</p>
+                    </div>
+
+                    <ProgressIndicator />
 
                     {message && (
-                        <div style={{ padding: '1rem', borderRadius: '8px', marginBottom: '1rem', background: message.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(10, 102, 194, 0.1)', color: message.type === 'error' ? '#EF4444' : '#0a66c2' }}>
-                            {message.text}
+                        <div style={{ 
+                            padding: '1rem 1.25rem', 
+                            borderRadius: '12px', 
+                            marginBottom: '1.5rem', 
+                            background: message.type === 'error' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(34, 197, 94, 0.08)', 
+                            border: `1px solid ${message.type === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)'}`,
+                            color: message.type === 'error' ? '#f87171' : '#4ade80',
+                            fontSize: '0.9rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem'
+                        }}>
+                             <span>{message.type === 'error' ? '⚠️' : '✅'}</span>
+                             {message.text}
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                         {step === 1 && (
-                            <>
-                                <div><label>Registration Type</label><select name="registration_type" value={formData.registration_type} onChange={handleInputChange} className="btn btn-secondary" style={{ width: '100%', textAlign: 'left' }}>
-                                    <option value="Full-Time">Full-Time</option>
-                                    <option value="Intern">Intern</option>
-                                </select></div>
-                                <div><label>Date of Birth</label><input type="date" name="dob" required value={formData.dob} onChange={handleInputChange} className="btn btn-secondary" style={{ width: '100%', textAlign: 'left' }} /></div>
-                                
-                                <div style={{ textAlign: 'center', marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-                                    <p style={{ marginBottom: '1rem', fontWeight: '500' }}>Live Face Capture (Attendance Identity)</p>
+                            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                                {/* Personal Section */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+                                    <div className="input-field-group">
+                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Date of Birth</label>
+                                        <input 
+                                            type="date" 
+                                            name="dob" 
+                                            required 
+                                            value={formData.dob} 
+                                            onChange={handleInputChange} 
+                                            style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#fff', outline: 'none' }} 
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Biometric Section */}
+                                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '2rem', borderRadius: '20px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
+                                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem', color: '#fff' }}>Biometric Verification</h3>
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Verify your identity for attendance using a 3D face scan.</p>
+                                    
                                     {!referenceFace ? (
                                         streamActive ? (
-                                            <div style={{ position: 'relative', width: '100%', maxWidth: '400px', margin: '0 auto', borderRadius: '12px', overflow: 'hidden', background: '#000', border: '2px solid #E5E7EB', aspectRatio: '4/3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <div style={{ position: 'relative', width: '100%', maxWidth: '400px', margin: '0 auto', borderRadius: '24px', overflow: 'hidden', background: '#000', border: '2px solid var(--primary)', aspectRatio: '4/3', boxShadow: '0 0 30px rgba(10, 102, 194, 0.2)' }}>
                                                 <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                {livenessStatus === 'prompt' && (
-                                                    <div style={{ position: 'absolute', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', padding: '0.5rem 1rem', background: 'rgba(0,0,0,0.7)', borderRadius: '20px', color: '#1f2937', whiteSpace: 'nowrap', fontSize: '0.9rem', border: '1px solid #E5E7EB', zIndex: 10 }}>
-                                                        👁️ Blink once to verify liveness
-                                                    </div>
-                                                )}
-                                                {livenessStatus === 'left' && (
-                                                    <div style={{ position: 'absolute', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', padding: '0.5rem 1rem', background: 'rgba(0,0,0,0.7)', borderRadius: '20px', color: '#1f2937', whiteSpace: 'nowrap', fontSize: '0.9rem', border: '1px solid #E5E7EB', zIndex: 10 }}>
-                                                        ⬅️ Slowly Turn Head Left
-                                                    </div>
-                                                )}
-                                                {livenessStatus === 'right' && (
-                                                    <div style={{ position: 'absolute', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', padding: '0.5rem 1rem', background: 'rgba(0,0,0,0.7)', borderRadius: '20px', color: '#1f2937', whiteSpace: 'nowrap', fontSize: '0.9rem', border: '1px solid #E5E7EB', zIndex: 10 }}>
-                                                        ➡️ Slowly Turn Head Right
-                                                    </div>
-                                                )}
-                                                {livenessStatus === 'verified' && (
-                                                    <div style={{ position: 'absolute', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', padding: '0.5rem 1rem', background: 'rgba(10, 102, 194, 0.9)', borderRadius: '20px', color: '#1f2937', whiteSpace: 'nowrap', fontSize: '0.9rem', fontWeight: 'bold', zIndex: 10 }}>
-                                                        ✅ Liveness Verified
-                                                    </div>
-                                                )}
-                                                <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: 'rgba(239, 68, 68, 0.8)', color: 'white', padding: '0.25rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(255,255,255,0.2)', zIndex: 10 }}>
-                                                    <div style={{ width: '8px', height: '8px', background: 'white', borderRadius: '50%', animation: 'pulse 1.5s infinite' }}></div>
-                                                    LIVE
-                                                    <style>{`
-                                                        @keyframes pulse {
-                                                            0% { transform: scale(0.95); opacity: 1; }
-                                                            50% { transform: scale(1.2); opacity: 0.5; }
-                                                            100% { transform: scale(0.95); opacity: 1; }
-                                                        }
-                                                    `}</style>
+                                                
+                                                {/* HUD Overlay */}
+                                                <div style={{ position: 'absolute', inset: '0', border: '2px solid rgba(255,255,255,0.1)', margin: '15%', borderRadius: '50%', pointerEvents: 'none', borderStyle: 'dashed' }} />
+
+                                                <div style={{ position: 'absolute', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', padding: '0.6rem 1.2rem', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', borderRadius: '30px', color: '#fff', fontSize: '0.8rem', fontWeight: 600, border: '1px solid rgba(255,255,255,0.1)', zIndex: 10, whiteSpace: 'nowrap' }}>
+                                                    {livenessStatus === 'prompt' && '👁️ Blink once to verify liveness'}
+                                                    {livenessStatus === 'left' && '⬅️ Slowly Turn Head Left'}
+                                                    {livenessStatus === 'right' && '➡️ Slowly Turn Head Right'}
+                                                    {livenessStatus === 'verified' && <span style={{ color: '#4ade80' }}>✅ Liveness Verified</span>}
                                                 </div>
-                                                <button type="button" onClick={captureFace} disabled={livenessStatus !== 'verified'} className="btn btn-primary" style={{ position: 'absolute', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', zIndex: 10, opacity: livenessStatus === 'verified' ? 1 : 0.5 }}>Capture Photo</button>
+
+                                                <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: 'rgba(239, 68, 68, 0.85)', color: 'white', padding: '0.3rem 0.75rem', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid rgba(255,255,255,0.2)', zIndex: 10 }}>
+                                                    <div style={{ width: '6px', height: '6px', background: 'white', borderRadius: '50%', animation: 'pulse 1.5s infinite' }} />
+                                                    LIVE FEED
+                                                </div>
+                                                
+                                                <button type="button" onClick={captureFace} disabled={livenessStatus !== 'verified'} className="btn btn-primary" style={{ position: 'absolute', bottom: '4.5rem', left: '50%', transform: 'translateX(-50%)', opacity: livenessStatus === 'verified' ? 1 : 0, transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)', visibility: livenessStatus === 'verified' ? 'visible' : 'hidden' }}>
+                                                    Finalize Identity
+                                                </button>
                                             </div>
                                         ) : (
-                                            <div style={{ padding: '3rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px dashed #E5E7EB' }}>
-                                                <span style={{ fontSize: '2rem', display: 'block', marginBottom: '1rem' }}>📷</span>
-                                                <button type="button" onClick={startCamera} className="btn btn-secondary">Open Camera</button>
+                                            <div style={{ padding: '4rem 1rem', background: 'rgba(255,255,255,0.01)', borderRadius: '20px', border: '1px dashed var(--border-color)', transition: 'all 0.3s ease' }}>
+                                                <div style={{ width: '64px', height: '64px', background: 'rgba(10, 102, 194, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', fontSize: '1.5rem' }}>📷</div>
+                                                <button type="button" onClick={startCamera} className="btn-submit-premium" style={{ width: 'auto', padding: '0.75rem 2rem' }}>Launch Identity Camera</button>
                                             </div>
                                         )
                                     ) : (
-                                        <div style={{ position: 'relative', width: '200px', margin: '0 auto' }}>
-                                            <img src={referenceFace} style={{ width: '200px', borderRadius: '12px', border: '2px solid #0a66c2', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }} />
-                                            <div style={{ position: 'absolute', top: '-0.5rem', right: '-0.5rem', background: '#0a66c2', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.7rem' }}>Success</div>
-                                            <button type="button" onClick={() => setReferenceFace(null)} className="btn btn-secondary" style={{ display: 'block', margin: '1rem auto', width: '100%' }}>Retake Photo</button>
+                                        <div style={{ position: 'relative', width: '220px', margin: '0 auto' }}>
+                                            <div style={{ position: 'absolute', inset: '-4px', borderRadius: '24px', padding: '2px', background: 'linear-gradient(45deg, var(--primary), var(--secondary))', opacity: 0.5 }} />
+                                            <img src={referenceFace} style={{ position: 'relative', width: '220px', borderRadius: '22px', border: '2px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }} />
+                                            <div style={{ position: 'absolute', bottom: '-10px', right: '-10px', background: '#22c55e', color: 'white', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', border: '4px solid #1a1a1a', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}>✓</div>
+                                            <button type="button" onClick={() => setReferenceFace(null)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, marginTop: '1.5rem', cursor: 'pointer', textDecoration: 'underline' }}>Retake Biometric Scan</button>
                                         </div>
                                     )}
                                 </div>
 
-                                <h3 style={{ fontSize: '1rem', marginTop: '0.5rem' }}>Bank Details</h3>
-                                <div><label>Bank Name</label><input type="text" name="bank_name" required value={formData.bank_name} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
-                                <div><label>Bank Account</label><input type="text" name="bank_account" required value={formData.bank_account} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
-                                <div><label>IFSC Code</label><input type="text" name="bank_ifsc" required value={formData.bank_ifsc} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
-                                <div><label>CIF Number</label><input type="text" name="cif_number" required value={formData.cif_number} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
-                                <div style={{ marginTop: '0.5rem' }}><label>Bank Passbook/Cheque Photo</label><input type="file" required onChange={e => handleFileUpload(e, setBankPhoto)} /></div>
-                            </>
+                                {/* Financial Section */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', borderLeft: '3px solid var(--primary)', paddingLeft: '0.75rem' }}>Financial Information</h3>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                        <div className="input-field-group">
+                                            <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Bank Name</label>
+                                            <input type="text" name="bank_name" required placeholder="State Bank of India" value={formData.bank_name} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#fff' }} />
+                                        </div>
+                                        <div className="input-field-group">
+                                            <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Account Number</label>
+                                            <input type="text" name="bank_account" required placeholder="XXXX XXXX XXXX" value={formData.bank_account} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#fff' }} />
+                                        </div>
+                                        <div className="input-field-group">
+                                            <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>IFSC Code</label>
+                                            <input type="text" name="bank_ifsc" required placeholder="SBIN000XXXX" value={formData.bank_ifsc} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#fff' }} />
+                                        </div>
+                                        <div className="input-field-group">
+                                            <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>CIF Number</label>
+                                            <input type="text" name="cif_number" required placeholder="90XXXXXXXX" value={formData.cif_number} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#fff' }} />
+                                        </div>
+                                    </div>
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.25rem', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', color: '#fff', marginBottom: '1rem', fontWeight: 500 }}>Upload Bank Passbook / Mock Transaction Screenshot</label>
+                                        <input type="file" required onChange={e => handleFileUpload(e, setBankPhoto)} style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }} />
+                                        {bankPhoto && <span style={{ marginLeft: '1rem', color: '#4ade80', fontSize: '0.75rem' }}>✓ Attached</span>}
+                                    </div>
+                                </div>
+                            </div>
                         )}
 
                         {step === 2 && (
-                            <>
-                                <h3 style={{ fontSize: '1rem' }}>Education & Official Docs</h3>
-                                <div><label>Degree</label><input type="text" name="education_degree" required value={formData.education_degree} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
-                                <div><label>Certificate Photo</label><input type="file" required onChange={e => handleFileUpload(e, setEduCert)} /></div>
-                                <div style={{ marginBottom: '1rem' }}><label>PAN Number</label><input type="text" name="pan_no" required value={formData.pan_no} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
-                                
-                                <h3 style={{ fontSize: '1rem', borderTop: '1px solid #E5E7EB', paddingTop: '1rem' }}>Experience Details</h3>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                    <input type="checkbox" name="is_experienced" checked={formData.is_experienced} onChange={handleInputChange} />
-                                    <label>I have previous work experience</label>
-                                </div>
-                                {formData.is_experienced && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px', marginTop: '1rem' }}>
-                                        <div><label style={{ fontSize: '0.75rem' }}>Company</label><input type="text" name="prev_company" required value={formData.prev_company} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: 'transparent', color: '#1f2937' }} /></div>
-                                        <div><label style={{ fontSize: '0.75rem' }}>Role</label><input type="text" name="prev_role" required value={formData.prev_role} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: 'transparent', color: '#1f2937' }} /></div>
-                                        <div><label style={{ fontSize: '0.75rem' }}>Years</label><input type="number" name="experience_years" required value={formData.experience_years} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: 'transparent', color: '#1f2937' }} /></div>
+                            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                                {/* Education */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', borderLeft: '3px solid var(--primary)', paddingLeft: '0.75rem' }}>Official Documents</h3>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                        <div className="input-field-group">
+                                            <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Degree / Highest Qualification</label>
+                                            <input type="text" name="education_degree" required placeholder="B.Tech (Computer Science)" value={formData.education_degree} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#fff' }} />
+                                        </div>
+                                        <div className="input-field-group">
+                                            <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>PAN Card Number</label>
+                                            <input type="text" name="pan_no" required placeholder="ABCDE1234F" value={formData.pan_no} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#fff' }} />
+                                        </div>
                                     </div>
-                                )}
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.25rem', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', color: '#fff', marginBottom: '1rem', fontWeight: 500 }}>Upload Highest Degree Certificate</label>
+                                        <input type="file" required onChange={e => handleFileUpload(e, setEduCert)} style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }} />
+                                        {eduCert && <span style={{ marginLeft: '1rem', color: '#4ade80', fontSize: '0.75rem' }}>✓ Attached</span>}
+                                    </div>
+                                </div>
 
-                                {formData.registration_type === 'Full-Time' && (
-                                    <>
-                                        <div style={{ marginTop: '1rem' }}><label>PF Number {formData.is_experienced ? '' : '(Optional)'}</label><input type="text" name="pf_number" required={formData.is_experienced} value={formData.pf_number} onChange={handleInputChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
-                                        {formData.is_experienced && (
-                                            <div style={{ marginTop: '1rem' }}><label>Last Company Payslip</label><input type="file" required onChange={e => handleFileUpload(e, setPayslipPhoto)} /></div>
-                                        )}
-                                    </>
-                                )}
-                            </>
+                                {/* Experience Detail */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', borderLeft: '3px solid var(--primary)', paddingLeft: '0.75rem', margin: 0 }}>Career History</h3>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                name="is_experienced" 
+                                                checked={formData.is_experienced} 
+                                                onChange={handleInputChange} 
+                                                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }} 
+                                            />
+                                            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', cursor: 'pointer' }}>I have relevant work experience</label>
+                                        </div>
+                                    </div>
+
+                                    {formData.is_experienced && (
+                                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                            <div className="input-field-group">
+                                                <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Company</label>
+                                                <input type="text" name="prev_company" required value={formData.prev_company} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'transparent', color: '#fff' }} />
+                                            </div>
+                                            <div className="input-field-group">
+                                                <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Role</label>
+                                                <input type="text" name="prev_role" required value={formData.prev_role} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'transparent', color: '#fff' }} />
+                                            </div>
+                                            <div className="input-field-group">
+                                                <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Years of Experience</label>
+                                                <input type="number" name="experience_years" required value={formData.experience_years} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'transparent', color: '#fff' }} />
+                                            </div>
+                                            <div className="input-field-group">
+                                                <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>PF Account Number</label>
+                                                <input type="text" name="pf_number" required value={formData.pf_number} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'transparent', color: '#fff' }} />
+                                            </div>
+                                            <div style={{ gridColumn: 'span 2', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '10px', border: '1px dashed var(--border-color)' }}>
+                                                <label style={{ display: 'block', fontSize: '0.8rem', color: '#fff', marginBottom: '0.75rem' }}>Previous Company Payslip (Last 3 Months)</label>
+                                                <input type="file" required onChange={e => handleFileUpload(e, setPayslipPhoto)} style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }} />
+                                                {payslipPhoto && <span style={{ marginLeft: '1rem', color: '#4ade80', fontSize: '0.75rem' }}>✓ Attached</span>}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         )}
 
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                            {step > 1 && <button type="button" onClick={() => setStep(step - 1)} className="btn btn-secondary" style={{ flex: 1 }}>Back</button>}
+                        <div style={{ display: 'flex', gap: '1.5rem', marginTop: '1.5rem' }}>
+                            {step > 1 && (
+                                <button type="button" onClick={() => setStep(step - 1)} className="btn btn-secondary" style={{ flex: 1, padding: '1rem', borderRadius: '12px' }}>
+                                    Back
+                                </button>
+                            )}
                             <button
                                 type="submit"
-                                className="btn btn-primary"
-                                style={{ flex: 2, opacity: (step === 1 && !referenceFace) ? 0.5 : 1 }}
+                                className="btn-submit-premium"
+                                style={{ flex: 2, padding: '1rem', height: 'auto', borderRadius: '12px', opacity: (step === 1 && !referenceFace) ? 0.6 : 1 }}
                                 disabled={loading || (step === 1 && !referenceFace)}
                             >
-                                {loading ? 'Processing...' : (step === 2 ? 'Submit Entire Profile' : 'Next Step')}
+                                {loading ? 'Processing Workspace...' : (step === 2 ? 'Finalize My Membership' : 'Verify & Continue')}
                             </button>
                         </div>
                     </form>
@@ -444,9 +542,16 @@ const HomeDashboard = ({ user, setUser }) => {
         const [leaveHistory, setLeaveHistory] = useState([]);
         const [leaveBalance, setLeaveBalance] = useState(null);
         const [submitting, setSubmitting] = useState(false);
-        const [leaveForm, setLeaveForm] = useState({ type: 'Privilege Leave', start: '', end: '', reason: '' });
+        const [employeeDirectory, setEmployeeDirectory] = useState([]);
+        const [leaveForm, setLeaveForm] = useState({ 
+            employee_id: user.employee_id, 
+            type: 'Annual Leave', 
+            start: '', 
+            end: '', 
+            reason: '' 
+        });
 
-        useEffect(() => {
+        const fetchLeaveData = () => {
             fetch(`${apiUrl}/employee/leaves?employee_id=${user.employee_id}`)
                 .then(res => res.ok ? res.json() : { leaves: [] })
                 .then(data => setLeaveHistory(Array.isArray(data?.leaves) ? data.leaves : []))
@@ -456,6 +561,21 @@ const HomeDashboard = ({ user, setUser }) => {
                 .then(res => res.ok ? res.json() : {})
                 .then(data => setLeaveBalance(data || {}))
                 .catch(() => setLeaveBalance({}));
+        };
+
+        const fetchDirectory = async () => {
+            try {
+                const res = await fetch(`${apiUrl}/employee/directory`);
+                const data = await res.json();
+                setEmployeeDirectory(data.employees || []);
+            } catch (err) {
+                console.error("Error fetching directory:", err);
+            }
+        };
+
+        useEffect(() => {
+            fetchLeaveData();
+            fetchDirectory();
         }, []);
 
         const handleApply = async (e) => {
@@ -466,7 +586,7 @@ const HomeDashboard = ({ user, setUser }) => {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        employee_id: user.employee_id,
+                        employee_id: leaveForm.employee_id,
                         leave_type: leaveForm.type,
                         start_date: leaveForm.start,
                         end_date: leaveForm.end,
@@ -474,9 +594,8 @@ const HomeDashboard = ({ user, setUser }) => {
                     })
                 });
                 if (res.ok) {
-                    const data = await res.json();
-                    setLeaveHistory([data.record, ...leaveHistory]);
-                    setLeaveForm({ type: 'Privilege Leave', start: '', end: '', reason: '' });
+                    fetchLeaveData();
+                    setLeaveForm({ employee_id: user.employee_id, type: 'Annual Leave', start: '', end: '', reason: '' });
                     alert("Leave application submitted!");
                 }
             } finally {
@@ -486,45 +605,110 @@ const HomeDashboard = ({ user, setUser }) => {
 
         return (
             <div className="grid-2" style={{ gap: '2rem' }}>
-                <div className="card glass-panel">
-                    <h2 className="card-title">🌴 Apply for Leave</h2>
-                    <form onSubmit={handleApply} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div><label>Type</label><select className="btn btn-secondary" style={{ width: '100%', textAlign: 'left' }} value={leaveForm.type} onChange={e => setLeaveForm({ ...leaveForm, type: e.target.value })}>
-                            <option>Privilege Leave</option>
-                            <option>Sick Leave</option>
-                            <option>Casual Leave</option>
-                        </select></div>
+                <div className="card glass-panel" style={{ background: 'rgba(255,255,255,0.01)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                        <span style={{ fontSize: '1.5rem' }}>✈️</span>
+                        <h2 className="card-title" style={{ marginBottom: 0 }}>Apply for Leave</h2>
+                    </div>
+                    <form onSubmit={handleApply} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                         <div style={{ display: 'flex', gap: '1rem' }}>
-                            <div style={{ flex: 1 }}><label>Start</label><input type="date" className="btn btn-secondary" style={{ width: '100%' }} value={leaveForm.start} onChange={e => setLeaveForm({ ...leaveForm, start: e.target.value })} required /></div>
-                            <div style={{ flex: 1 }}><label>End</label><input type="date" className="btn btn-secondary" style={{ width: '100%' }} value={leaveForm.end} onChange={e => setLeaveForm({ ...leaveForm, end: e.target.value })} required /></div>
+                            <div style={{ flex: 1 }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>SELECT EMPLOYEE</label>
+                                <select className="btn btn-secondary" style={{ width: '100%', textAlign: 'left', background: 'var(--bg-color)', border: '1px solid var(--border-color)' }} value={leaveForm.employee_id} onChange={e => setLeaveForm({ ...leaveForm, employee_id: e.target.value })}>
+                                    <option value={user.employee_id}>Current User (You)</option>
+                                    {employeeDirectory.filter(emp => emp.employee_id !== user.employee_id).map(emp => (
+                                        <option key={emp.employee_id} value={emp.employee_id}>{emp.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>LEAVE TYPE</label>
+                                <select className="btn btn-secondary" style={{ width: '100%', textAlign: 'left', background: 'var(--bg-color)', border: '1px solid var(--border-color)' }} value={leaveForm.type} onChange={e => setLeaveForm({ ...leaveForm, type: e.target.value })}>
+                                    {leaveBalance?.types?.map(t => <option key={t.name}>{t.name}</option>)}
+                                    <option>Unpaid Leave</option>
+                                </select>
+                            </div>
                         </div>
-                        <div><label>Reason</label><textarea className="btn btn-secondary" style={{ width: '100%', minHeight: '80px', textAlign: 'left' }} value={leaveForm.reason} onChange={e => setLeaveForm({ ...leaveForm, reason: e.target.value })} required /></div>
-                        <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? 'Submitting...' : 'Submit Request'}</button>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ flex: 1 }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>START DATE</label>
+                                <input type="date" className="btn btn-secondary" style={{ width: '100%', background: 'var(--bg-color)', border: '1px solid var(--border-color)' }} value={leaveForm.start} onChange={e => setLeaveForm({ ...leaveForm, start: e.target.value })} required />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>END DATE</label>
+                                <input type="date" className="btn btn-secondary" style={{ width: '100%', background: 'var(--bg-color)', border: '1px solid var(--border-color)' }} value={leaveForm.end} onChange={e => setLeaveForm({ ...leaveForm, end: e.target.value })} required />
+                            </div>
+                        </div>
+                        <div>
+                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>REASON FOR LEAVE</label>
+                            <textarea className="btn btn-secondary" style={{ width: '100%', minHeight: '100px', textAlign: 'left', background: 'var(--bg-color)', border: '1px solid var(--border-color)' }} value={leaveForm.reason} onChange={e => setLeaveForm({ ...leaveForm, reason: e.target.value })} required placeholder="E.g., Medical checkup, Family event..." />
+                        </div>
+                        <button type="submit" className="btn btn-primary" disabled={submitting} style={{ background: 'var(--primary)', fontWeight: 'bold' }}>
+                            {submitting ? 'Processing AI Verification...' : 'Submit Request'}
+                        </button>
                     </form>
                 </div>
-                <div>
-                    <div className="card" style={{ marginBottom: '1.5rem' }}>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div className="card glass-panel">
                         <h2 className="card-title">📊 Leave Balance</h2>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            {leaveBalance?.types.map((t, i) => (
-                                <div key={i} style={{ padding: '0.75rem', background: '#f9fafb', borderRadius: '8px', textAlign: 'center' }}>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#0a66c2' }}>{t.remaining}</div>
-                                    <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>{t.name}</div>
+                            {leaveBalance?.types?.map((t, i) => (
+                                <div key={i} style={{ padding: '1rem', background: 'rgba(10, 102, 194, 0.05)', borderRadius: '12px', textAlign: 'center', border: '1px solid rgba(10, 102, 194, 0.1)' }}>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--primary)' }}>{t.remaining}</div>
+                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>{t.name}</div>
                                 </div>
                             ))}
                         </div>
                     </div>
-                    <div className="card">
-                        <h2 className="card-title">📜 History</h2>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '300px', overflowY: 'auto' }}>
-                            {leaveHistory.length === 0 ? <p style={{ color: '#6b7280' }}>No recent leaves</p> :
+                    
+                    <div className="card glass-card" style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <h2 className="card-title" style={{ marginBottom: 0 }}>📜 History</h2>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Status Tracking</div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                            {leaveHistory.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No recent leave requests found.</p> :
                                 leaveHistory.map((l, i) => (
-                                    <div key={i} style={{ borderBottom: '1px solid #E5E7EB', paddingBottom: '0.5rem' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-                                            <strong>{l.leave_type}</strong>
-                                            <span style={{ color: (l.status && l.status.includes('Approved')) ? '#0a66c2' : '#ff7a00' }}>{l.status}</span>
+                                    <div key={i} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '10px', padding: '1rem', border: '1px solid var(--border-color)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                                            <div>
+                                                <div style={{ fontWeight: '700', fontSize: '0.9rem', color: 'var(--text-light)' }}>
+                                                    <span style={{ 
+                                                        padding: '0.15rem 0.4rem', 
+                                                        borderRadius: '4px', 
+                                                        backgroundColor: 'var(--primary-glow)', 
+                                                        color: 'var(--primary)',
+                                                        fontSize: '0.7rem',
+                                                        marginRight: '0.5rem',
+                                                        border: '1px solid var(--primary)'
+                                                    }}>{l.leave_type_short || 'L'}</span>
+                                                    {l.leave_type}
+                                                </div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                                                    {new Date(l.start_date).toLocaleDateString()} - {new Date(l.end_date).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                            <span style={{ 
+                                                fontSize: '0.65rem', 
+                                                fontWeight: 800, 
+                                                padding: '4px 10px', 
+                                                borderRadius: '20px', 
+                                                background: (l.status && l.status.toLowerCase().includes('approved')) ? 'rgba(34, 197, 94, 0.15)' : 
+                                                           (l.status && l.status.toLowerCase().includes('rejected')) ? 'rgba(239, 68, 68, 0.15)' : 
+                                                           'rgba(245, 158, 11, 0.15)',
+                                                color: (l.status && l.status.toLowerCase().includes('approved')) ? '#22C55E' : 
+                                                       (l.status && l.status.toLowerCase().includes('rejected')) ? '#EF4444' : 
+                                                       '#F59E0B',
+                                                textTransform: 'uppercase',
+                                                border: `1px solid ${(l.status && l.status.toLowerCase().includes('approved')) ? '#22C55E44' : (l.status && l.status.toLowerCase().includes('rejected')) ? '#EF444444' : '#F59E0B44'}`
+                                            }}>
+                                                {l.status}
+                                            </span>
                                         </div>
-                                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{l.start_date} to {l.end_date}</div>
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0, borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem' }}>
+                                            "{l.reason}"
+                                        </p>
                                     </div>
                                 ))
                             }
@@ -614,18 +798,20 @@ const HomeDashboard = ({ user, setUser }) => {
                         <button type="submit" className="btn btn-primary" disabled={sending}>{sending ? 'Sharing...' : 'Share Kudos'}</button>
                     </form>
                 </div>
-                <div className="card">
+                <div className="card glass-card">
                     <h2 className="card-title">🌈 Recent Appreciation</h2>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {kudos.map((k, i) => (
-                            <div key={i} style={{ padding: '1rem', background: 'rgba(255, 122, 0,0.05)', borderLeft: '4px solid #ff7a00', borderRadius: '4px' }}>
-                                <div style={{ fontSize: '0.875rem' }}>
-                                    <strong>{k.sender_name}</strong> appreciated <strong>{k.receiver_name}</strong>
+                        {kudos.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Be the first to share appreciation!</p> :
+                            kudos.map((k, i) => (
+                                <div key={i} style={{ padding: '1.25rem', background: 'rgba(10, 102, 194, 0.04)', borderLeft: '4px solid var(--primary)', borderRadius: '12px' }}>
+                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-light)', marginBottom: '0.5rem' }}>
+                                        <strong>{k.sender_name}</strong> recognized <strong>{k.receiver_name}</strong>
+                                    </div>
+                                    <p style={{ fontStyle: 'italic', margin: '0.5rem 0', fontSize: '0.95rem', color: 'var(--text-light)', lineHeight: '1.5' }}>"{k.message}"</p>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 500, marginTop: '0.5rem' }}>{k.timestamp ? new Date(k.timestamp).toLocaleDateString() : 'Just now'}</div>
                                 </div>
-                                <p style={{ fontStyle: 'italic', margin: '0.5rem 0', fontSize: '0.9rem' }}>"{k.message}"</p>
-                                <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>{k.timestamp ? new Date(k.timestamp).toLocaleDateString() : 'Just now'}</div>
-                            </div>
-                        ))}
+                            ))
+                        }
                     </div>
                 </div>
             </div>
@@ -688,82 +874,120 @@ const HomeDashboard = ({ user, setUser }) => {
             {activeTab === 'dashboard' ? (
                 <div className="grid-3">
                     {/* Daily Assistant Agent */}
-                    <div className="card glass-panel" style={{ borderColor: '#ff7a00' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                            <span style={{ fontSize: '1.5rem' }}>🤖</span>
-                            <h2 className="card-title" style={{ marginBottom: 0 }}>Smart Daily Assistant</h2>
+                    <div className="card glass-card" style={{ borderTop: '4px solid var(--primary)', position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: 'var(--primary)', opacity: 0.05, borderRadius: '50%' }}></div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
+                            <div style={{ width: '40px', height: '40px', background: 'var(--accent-blue)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ fontSize: '1.25rem' }}>🤖</span>
+                            </div>
+                            <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1.15rem' }}>Smart Daily Assistant</h2>
                         </div>
 
-                        <div style={{ backgroundColor: 'rgba(79, 70, 229, 0.1)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-                            <p style={{ fontSize: '0.875rem', color: '#ff7a00' }}>
-                                <strong>Insight:</strong> {dashboardLoading ? 'Analyzing...' : (dashboardData?.insight_message || 'Loading your daily analysis...')}
+                        <div style={{ backgroundColor: 'rgba(10, 102, 194, 0.08)', padding: '1.25rem', borderRadius: '16px', marginBottom: '1.5rem', border: '1px solid rgba(10, 102, 194, 0.1)' }}>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-light)', lineHeight: '1.6' }}>
+                                <strong style={{ color: 'var(--primary)', display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>AI Insight</strong>
+                                {dashboardLoading ? 'Analyzing your workspace...' : (dashboardData?.insight_message || 'Loading your daily analysis...')}
                             </p>
                         </div>
 
-                        <h3 style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>Upcoming Highlights</h3>
-                        <ul style={{ listStyle: 'none', fontSize: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <h3 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Upcoming Highlights</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             {dashboardLoading ? (
-                                <li style={{ color: '#6b7280' }}>Loading...</li>
+                                <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Synchronizing...</div>
                             ) : (
                                 dashboardData?.highlights?.map((h, i) => (
-                                    <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <span style={{ color: h.type === 'holiday' ? '#0a66c2' : '#6b7280' }}>
-                                            {h.type === 'holiday' ? '📅' : '•'}
-                                        </span>
-                                        {h.time} - {h.title}
-                                    </li>
-                                )) || <li style={{ color: '#6b7280' }}>No upcoming highlights</li>
+                                    <div key={i} style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '0.75rem', 
+                                        padding: '0.65rem 0.85rem', 
+                                        borderRadius: '12px', 
+                                        backgroundColor: h.type === 'leave' ? (
+                                            h.status === 'success' ? 'rgba(34, 197, 94, 0.08)' : 
+                                            h.status === 'warning' ? 'rgba(245, 158, 11, 0.08)' : 
+                                            'rgba(239, 68, 68, 0.08)'
+                                        ) : 'transparent',
+                                        border: h.type === 'leave' ? `1px solid ${
+                                            h.status === 'success' ? 'rgba(34, 197, 94, 0.1)' : 
+                                            h.status === 'warning' ? 'rgba(245, 158, 11, 0.1)' : 
+                                            'rgba(239, 68, 68, 0.1)'
+                                        }` : 'none'
+                                    }}>
+                                        <div style={{ 
+                                            width: '8px', 
+                                            height: '8px', 
+                                            background: h.type === 'holiday' ? 'var(--primary)' : 
+                                                       h.status === 'success' ? '#22C55E' :
+                                                       h.status === 'warning' ? '#F59E0B' : '#EF4444', 
+                                            borderRadius: '50%',
+                                            boxShadow: h.type === 'leave' ? `0 0 10px ${
+                                                h.status === 'success' ? '#22C55E88' :
+                                                h.status === 'warning' ? '#F59E0B88' : '#EF444488'
+                                            }` : 'none'
+                                        }}></div>
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-light)' }}>{h.title}</span>
+                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{h.time}</span>
+                                        </div>
+                                    </div>
+                                )) || <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No upcoming highlights</div>
                             )}
-                        </ul>
+                        </div>
                     </div>
 
                     {/* AI Workforce Insights */}
-                    <div className="card">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                            <span style={{ fontSize: '1.5rem' }}>📊</span>
-                            <h2 className="card-title" style={{ marginBottom: 0 }}>Workforce Insights</h2>
+                    <div className="card glass-card">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
+                            <div style={{ width: '40px', height: '40px', background: 'rgba(124, 58, 237, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ fontSize: '1.25rem' }}>📊</span>
+                            </div>
+                            <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1.15rem' }}>Workforce Insights</h2>
                         </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                            <div>
-                                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#0a66c2' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.5rem' }}>
+                            <div style={{ padding: '1.25rem', background: 'var(--bg-color)', borderRadius: '20px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '-0.02em' }}>
                                     {dashboardLoading ? '--' : (dashboardData?.productivity_score || 0)}%
                                 </div>
-                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Productivity Score</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginTop: '0.25rem' }}>Productivity</div>
                             </div>
-                            <div>
-                                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ff7a00' }}>
+                            <div style={{ padding: '1.25rem', background: 'var(--bg-color)', borderRadius: '20px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#10b981', letterSpacing: '-0.02em' }}>
                                     {dashboardLoading ? '--' : (dashboardData?.attendance_percentage || 0)}%
                                 </div>
-                                <div style={{ fontSize: '12', color: '#6b7280' }}>Attendance</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginTop: '0.25rem' }}>Attendance</div>
                             </div>
                         </div>
 
-                        <div style={{ marginTop: '1.5rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                                <span>Burnout Risk</span>
-                                <span style={{ color: '#0a66c2' }}>{dashboardLoading ? 'Calculating...' : (dashboardData?.burnout_risk || 'N/A')}</span>
+                        <div style={{ padding: '1rem 0' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.85rem', fontWeight: 600 }}>
+                                <span style={{ color: 'var(--text-light)' }}>Burnout Risk Assessment</span>
+                                <span style={{ color: 'var(--primary)' }}>{dashboardLoading ? 'Calculating...' : (dashboardData?.burnout_risk || 'N/A')}</span>
                             </div>
-                            <div style={{ height: '8px', backgroundColor: '#E5E7EB', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ height: '100%', width: `${dashboardData?.burnout_value || 0}%`, backgroundColor: '#0a66c2', borderRadius: '4px', transition: 'width 0.5s ease' }}></div>
+                            <div style={{ height: '8px', backgroundColor: 'var(--border-color)', borderRadius: '10px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${dashboardData?.burnout_value || 0}%`, background: 'var(--main-gradient)', borderRadius: '10px', transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)' }}></div>
                             </div>
                         </div>
                     </div>
 
                     {/* Policy Notice */}
-                    <div className="card" style={{ borderLeft: '4px solid #ff7a00' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                            <span style={{ fontSize: '1.2rem' }}>📜</span>
-                            <h2 className="card-title" style={{ marginBottom: 0 }}>Company Policy</h2>
+                    <div className="card glass-card" style={{ borderLeft: '4px solid var(--primary)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
+                            <div style={{ width: '40px', height: '40px', background: 'rgba(10, 102, 194, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ fontSize: '1.2rem' }}>📜</span>
+                            </div>
+                            <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1.15rem' }}>Company Policy</h2>
                         </div>
-                        <div style={{ fontSize: '0.85rem', lineHeight: '1.6', color: '#1f2937' }}>
-                            <div style={{ marginBottom: '0.75rem' }}>
-                                <strong>Hours:</strong> 11 AM - 8 PM (Mandatory)
+                        <div style={{ fontSize: '0.9rem', lineHeight: '1.7', color: 'var(--text-light)' }}>
+                            <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ width: '6px', height: '6px', background: 'var(--primary)', borderRadius: '50%' }}></div>
+                                <span><strong>Hours:</strong> 11 AM - 8 PM (Flexible)</span>
                             </div>
-                            <div style={{ marginBottom: '0.75rem' }}>
-                                <strong>Leaves:</strong> 1.5 days/month for FTE. Prior approval mandatory.
+                            <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ width: '6px', height: '6px', background: 'var(--primary)', borderRadius: '50%' }}></div>
+                                <span><strong>Leaves:</strong> 1.5 days/month for FTE.</span>
                             </div>
-                            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                            <div style={{ background: 'var(--bg-color)', padding: '0.75rem', borderRadius: '12px', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>
                                 * Strict adherence required to avoid attendance discrepancies.
                             </div>
                         </div>
@@ -776,8 +1000,11 @@ const HomeDashboard = ({ user, setUser }) => {
                             <button className="btn btn-secondary" style={{ justifyContent: 'flex-start' }} onClick={() => setActiveTab('payslips')}>
                                 📄 View Latest Payslip
                             </button>
-                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start' }} onClick={() => setActiveTab('leave')}>
+                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', position: 'relative' }} onClick={() => setActiveTab('leave')}>
                                 🌴 Apply for Leave
+                                {dashboardData?.highlights?.some(h => h.type === 'leave' && h.status === 'warning') && (
+                                    <span style={{ position: 'absolute', top: '-5px', right: '-5px', width: '10px', height: '10px', background: '#F59E0B', borderRadius: '50%', border: '2px solid white', animation: 'pulse 1.5s infinite' }}></span>
+                                )}
                             </button>
                             <button className="btn btn-secondary" style={{ justifyContent: 'flex-start' }} onClick={() => setActiveTab('kudos')}>
                                 🎉 Give Kudos

@@ -53,9 +53,9 @@ float clouds(vec2 p) {
 }
 
 // Brand colors integrated into shader
-vec3 brandPrimary = vec3(1.0, 0.478, 0.0);    // #ff7a00
-vec3 brandViolet = vec3(0.784, 0.3, 1.0);     // #c84cff
-vec3 brandSecondary = vec3(0.04, 0.4, 0.76);  // #0a66c2
+vec3 brandPrimary = vec3(0.04, 0.4, 0.76);    // #0a66c2
+vec3 brandCyan = vec3(0.0, 0.8, 1.0);        // Bright Cyan
+vec3 brandSecondary = vec3(0.14, 0.23, 0.53); // Deep Indigo
 
 void main(void) {
 	vec2 uv=(FC-.5*R)/MN,st=uv*vec2(2,1);
@@ -71,7 +71,7 @@ void main(void) {
 		col+=.002*b/length(max(p,vec2(b*p.x*.02,p.y)));
 		
     // Mix brand colors based on depth and noise
-    vec3 brandMix = mix(brandPrimary, mix(brandViolet, brandSecondary, bg), d);
+    vec3 brandMix = mix(brandPrimary, mix(brandCyan, brandSecondary, bg), d);
 		col=mix(col, brandMix * bg * 0.5, d);
 	}
 	O=vec4(col,1);

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 const AttendanceInfo = ({ userId }) => {
     const [attendanceData, setAttendanceData] = useState([]);
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [loading, setLoading] = useState(true);
 
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+    const apiUrl = API_URL;
 
     useEffect(() => {
         fetchAttendance();
@@ -185,9 +186,11 @@ const AttendanceInfo = ({ userId }) => {
                                     <>
                                         <div style={{ fontSize: '0.85rem', fontWeight: '500' }}>{String(d.day).padStart(2, '0')}</div>
                                         <div style={{
-                                            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                                            fontSize: '1.2rem', color: d.statusColor,
-                                            fontWeight: 'bold'
+                                            position: 'absolute', top: '55%', left: '50%', transform: 'translate(-50%, -50%)',
+                                            fontSize: d.statusChar.length > 1 ? '0.9rem' : '1.2rem', 
+                                            color: d.statusColor,
+                                            fontWeight: 'bold',
+                                            letterSpacing: '-0.5px'
                                         }}>
                                             {d.statusChar}
                                         </div>
@@ -204,11 +207,12 @@ const AttendanceInfo = ({ userId }) => {
                     {/* Legends Section */}
                     <div style={{ marginTop: '2rem' }}>
                         <h3 style={{ fontSize: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Legends</h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
                             <LegendItem char="P" label="Present" color="var(--secondary)" />
-                            <LegendItem char="HL" label="Half Leave" color="#A855F7" />
-                            <LegendItem char="AD" label="Alert (Deduct)" color="var(--violet)" />
-                            <LegendItem char="HA" label="Half Absent" color="#EF4444" />
+                            <LegendItem char="CL" label="Casual Leave" color="#A855F7" />
+                            <LegendItem char="SL" label="Sick Leave" color="#A855F7" />
+                            <LegendItem char="PL" label="Paid Leave (LOP)" color="#ff7a00" />
+                            <LegendItem char="CO" label="Comp-Off" color="#A855F7" />
                             <LegendItem char="A" label="Absent" color="#EF4444" />
                             <LegendItem char="O" label="Off Day" color="#3B82F6" />
                             <LegendItem char="R" label="Rest Day" color="var(--violet)" />

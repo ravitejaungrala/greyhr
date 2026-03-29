@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 import DocumentGeneratorModal from '../components/DocumentGeneratorModal';
 import EnhancedDocumentGenerator from '../components/EnhancedDocumentGenerator';
 import HistoricalDocGenerator from '../components/HistoricalDocGenerator';
@@ -108,13 +109,20 @@ const AdminDashboard = ({ activeTab, user }) => {
     const [weekendWorkRequests, setWeekendWorkRequests] = useState([]);
     const [isProcessingCompOff, setIsProcessingCompOff] = useState(false);
     const [previewDoc, setPreviewDoc] = useState(null);
+    const [salarySettings, setSalarySettings] = useState({ enable_tax: true, enable_pf: true, tax_rate: 8.0, pf_rate: 5.0 });
+    const [isSavingSalarySettings, setIsSavingSalarySettings] = useState(false);
+    const [overviewData, setOverviewData] = useState(null);
 
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+    const apiUrl = API_URL;
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            if (activeTab === 'onboarding') {
+            if (activeTab === 'overview') {
+                const res = await fetch(`${apiUrl}/admin/overview`);
+                const data = await res.json();
+                setOverviewData(data);
+            } else if (activeTab === 'onboarding') {
                 const res = await fetch(`${apiUrl}/auth/admin/pending`);
                 const data = await res.json();
                 setPendingEmployees(data.employees || []);
@@ -162,6 +170,11 @@ const AdminDashboard = ({ activeTab, user }) => {
                 const res = await fetch(`${apiUrl}/admin/payslips/status`);
                 const data = await res.json();
                 setPayrollStatus(data.releases || []);
+                
+                // Fetch Global Salary Settings
+                const sRes = await fetch(`${apiUrl}/admin/salary/settings`);
+                const sData = await sRes.json();
+                setSalarySettings(sData);
             } else if (activeTab === 'announcements') {
                 const res = await fetch(`${apiUrl}/announcement`);
                 const data = await res.json();
@@ -200,6 +213,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                     privilege_leave_rate: parseFloat(empRoleSetup.privilege_leave_rate),
                     sick_leave_rate: parseFloat(empRoleSetup.sick_leave_rate),
                     casual_leave_rate: parseFloat(empRoleSetup.casual_leave_rate),
+                    role: empRoleSetup.role,
                     internship_end_date: empRoleSetup.internship_end_date || null
                 })
             });
@@ -559,17 +573,20 @@ const AdminDashboard = ({ activeTab, user }) => {
         reader.readAsDataURL(file);
     };
 
-    const handleDeleteTemplate = async (type) => {
-        if (!window.confirm(`Delete template for ${type}?`)) return;
+    const handleUpdateSalarySettings = async () => {
+        setIsSavingSalarySettings(true);
         try {
-            const res = await fetch(`${apiUrl}/admin/templates/${type}`, {
-                method: 'DELETE'
+            const res = await fetch(`${apiUrl}/admin/salary/settings?enable_tax=${salarySettings.enable_tax}&enable_pf=${salarySettings.enable_pf}&tax_rate=${salarySettings.tax_rate}&pf_rate=${salarySettings.pf_rate}`, {
+                method: 'POST'
             });
-            const data = await res.json();
-            alert(data.message);
-            fetchData();
+            if (res.ok) {
+                alert("Salary configuration updated successfully!");
+                fetchData();
+            }
         } catch (err) {
             console.error(err);
+        } finally {
+            setIsSavingSalarySettings(false);
         }
     };
 
@@ -596,7 +613,8 @@ const AdminDashboard = ({ activeTab, user }) => {
         <div className="admin-dashboard">
             <DocPreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />
             <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                {isSuperAdmin ? '🛡️ Super Admin' : '🛡️ Admin'} - {activeTab === 'onboarding' && '📋 Pending Approvals'}
+                {isSuperAdmin ? '🛡️ Super Admin' : '🛡️ Admin'} - {activeTab === 'overview' && '📈 Insight Dashboard'}
+                {activeTab === 'onboarding' && '📋 Pending Approvals'}
                 {activeTab === 'employees' && '👥 Employee Directory'}
                 {activeTab === 'leaves' && '🌴 Leave Management'}
                 {activeTab === 'holidays' && '📅 Holiday Calendar'}
@@ -610,219 +628,302 @@ const AdminDashboard = ({ activeTab, user }) => {
             {!loading && (
                 <div className="grid-3">
 
+                    {/* TAB: OVERVIEW */}
+                    {activeTab === 'overview' && overviewData && (
+                        <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                            <div className="grid-3" style={{ gap: '1.5rem' }}>
+                                {/* Stat Cards */}
+                                <div className="card glass-panel" style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: 'white', cursor: 'pointer' }}>
+                                    <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>Total Employees</div>
+                                    <div style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0.5rem 0' }}>{overviewData.metrics.total_employees}</div>
+                                    <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>Active workforce</div>
+                                </div>
+                                
+                                <div className="card glass-panel" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: 'white', cursor: 'pointer' }}>
+                                    <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>Pending Approvals</div>
+                                    <div style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0.5rem 0' }}>{overviewData.metrics.pending_approvals}</div>
+                                    <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>Onboarding candidates</div>
+                                </div>
+
+                                <div className="card glass-panel" style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: 'white', cursor: 'pointer' }}>
+                                    <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>Leaves (Today)</div>
+                                    <div style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0.5rem 0' }}>{overviewData.metrics.active_leaves_today}</div>
+                                    <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>Out of office</div>
+                                </div>
+                            </div>
+
+                            <div className="grid-2" style={{ gap: '1.5rem' }}>
+                                {/* Recent Activity */}
+                                <div className="card glass-panel">
+                                    <h2 className="card-title" style={{ fontSize: '1.1rem' }}>🔔 Recent Activity</h2>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        {overviewData.recent_activity.map((act, i) => (
+                                            <div key={i} style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.02)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div>
+                                                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{act.name}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>ID: {act.employee_id}</div>
+                                                </div>
+                                                <span style={{ 
+                                                    fontSize: '0.7rem', 
+                                                    padding: '0.2rem 0.5rem', 
+                                                    borderRadius: '4px',
+                                                    background: act.status === 'approved' ? '#dcfce7' : '#fef3c7',
+                                                    color: act.status === 'approved' ? '#166534' : '#92400e'
+                                                }}>
+                                                    {act.status}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Active Announcement */}
+                                <div className="card glass-panel">
+                                    <h2 className="card-title" style={{ fontSize: '1.1rem' }}>📢 Current Announcement</h2>
+                                    {overviewData.announcement ? (
+                                        <div style={{ padding: '1rem', background: 'rgba(10, 102, 194, 0.05)', borderRadius: '12px', borderLeft: '4px solid var(--primary)' }}>
+                                            <div style={{ fontWeight: 700, marginBottom: '0.5rem' }}>{overviewData.announcement.title}</div>
+                                            <p style={{ fontSize: '0.85rem', margin: 0 }}>{overviewData.announcement.content}</p>
+                                        </div>
+                                    ) : (
+                                        <p style={{ color: '#6b7280', fontSize: '0.85rem' }}>No active announcement.</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* TAB: ONBOARDING */}
                     {activeTab === 'onboarding' && (
                         <>
-                            <div className="card glass-panel" style={{ gridColumn: 'span 1' }}>
-                                <h2 className="card-title">Pending ({pendingEmployees.length})</h2>
+                            <div className="card glass-card" style={{ gridColumn: 'span 1' }}>
+                                <h2 className="card-title" style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Pending ({pendingEmployees.length})</h2>
                                 {pendingEmployees.length === 0 ? (
-                                    <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: 'rgba(10, 102, 194, 0.05)', borderRadius: '8px', border: '1px dashed #0a66c2' }}>
-                                        <span style={{ fontSize: '2rem' }}>🎉</span><p style={{ color: '#0a66c2', marginTop: '0.5rem' }}>All caught up!</p>
+                                    <div style={{ padding: '3rem 1.5rem', textAlign: 'center', backgroundColor: 'rgba(10, 102, 194, 0.04)', borderRadius: '20px', border: '1px dashed var(--primary)' }}>
+                                        <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>✨</div>
+                                        <p style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.9rem' }}>Workflow Complete</p>
+                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.25rem' }}>All profiles have been reviewed.</p>
                                     </div>
                                 ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '500px', overflowY: 'auto' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '600px', overflowY: 'auto', paddingRight: '0.5rem' }}>
                                         {pendingEmployees.map(emp => (
-                                            <div key={emp.employee_id} onClick={() => setViewedEmp(emp)} style={{ padding: '1rem', backgroundColor: viewedEmp?.employee_id === emp.employee_id ? 'rgba(79, 70, 229, 0.2)' : '#ffffff', border: `1px solid ${viewedEmp?.employee_id === emp.employee_id ? '#ff7a00' : '#E5E7EB'}`, borderRadius: '8px', cursor: 'pointer' }}>
-                                                <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{emp.name}</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{emp.employee_id}</div>
+                                            <div 
+                                                key={emp.employee_id} 
+                                                onClick={() => setViewedEmp(emp)} 
+                                                style={{ 
+                                                    padding: '1.25rem', 
+                                                    backgroundColor: viewedEmp?.employee_id === emp.employee_id ? 'rgba(10, 102, 194, 0.08)' : 'var(--bg-color)', 
+                                                    border: `1px solid ${viewedEmp?.employee_id === emp.employee_id ? 'var(--primary)' : 'var(--border-color)'}`, 
+                                                    borderRadius: '16px', 
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                    transform: viewedEmp?.employee_id === emp.employee_id ? 'translateX(4px)' : 'none'
+                                                }}
+                                            >
+                                                <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-light)' }}>{emp.name}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>ID: {emp.employee_id}</div>
                                             </div>
                                         ))}
                                     </div>
                                 )}
                             </div>
 
-                            <div className="card" style={{ gridColumn: 'span 2' }}>
-                                <h2 className="card-title">Employee Details</h2>
+                            <div className="card glass-card" style={{ gridColumn: 'span 2' }}>
+                                <h2 className="card-title" style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Review Profile</h2>
                                 {viewedEmp ? (
                                     <div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2.5rem', marginBottom: '2.5rem' }}>
                                             <div>
-                                                <h3 style={{ fontSize: '1rem', color: '#6b7280', borderBottom: '1px solid #E5E7EB', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Personal Information</h3>
-                                                <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}><strong>Name:</strong> {viewedEmp.name}</div>
-                                                <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}><strong>Email:</strong> {viewedEmp.email}</div>
-                                                <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}><strong>DOB:</strong> {viewedEmp.dob}</div>
+                                                <h3 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Personal Information</h3>
+                                                <div style={{ display: 'grid', gap: '1rem' }}>
+                                                    <div style={{ fontSize: '0.9rem' }}><strong>Full Name:</strong> <span style={{ color: 'var(--text-light)' }}>{viewedEmp.name}</span></div>
+                                                    <div style={{ fontSize: '0.9rem' }}><strong>Email Address:</strong> <span style={{ color: 'var(--text-light)' }}>{viewedEmp.email}</span></div>
+                                                    <div style={{ fontSize: '0.9rem' }}><strong>Birth Date:</strong> <span style={{ color: 'var(--text-light)' }}>{viewedEmp.dob}</span></div>
+                                                </div>
 
-                                                <h3 style={{ fontSize: '1rem', color: '#6b7280', borderBottom: '1px solid #E5E7EB', paddingBottom: '0.5rem', marginBottom: '1rem', marginTop: '1.5rem' }}>Experience</h3>
+                                                <h3 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem', marginTop: '2rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Professional Background</h3>
                                                 {viewedEmp.is_experienced ? (
-                                                    <>
-                                                        <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}><strong>Prev Company:</strong> {viewedEmp.experience?.prev_company}</div>
-                                                        <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}><strong>Role:</strong> {viewedEmp.experience?.prev_role}</div>
-                                                        <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}><strong>Years:</strong> {viewedEmp.experience?.years}</div>
-                                                    </>
-                                                ) : <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Fresher</div>}
+                                                    <div style={{ display: 'grid', gap: '0.75rem', padding: '1.25rem', background: 'var(--bg-color)', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+                                                        <div style={{ fontSize: '0.85rem' }}><strong>Previous Employer:</strong> {viewedEmp.experience?.prev_company}</div>
+                                                        <div style={{ fontSize: '0.85rem' }}><strong>Last Designation:</strong> {viewedEmp.experience?.prev_role}</div>
+                                                        <div style={{ fontSize: '0.85rem' }}><strong>Experience:</strong> {viewedEmp.experience?.years} Years</div>
+                                                    </div>
+                                                ) : <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', padding: '1rem', background: 'var(--bg-color)', borderRadius: '12px', textAlign: 'center' }}>Fresher Candidate</div>}
                                             </div>
                                             <div>
-                                                <h3 style={{ fontSize: '1rem', color: '#6b7280', borderBottom: '1px solid #E5E7EB', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Documents & Photos</h3>
+                                                <h3 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Identity & Verifications</h3>
 
-                                                <div style={{ marginBottom: '1rem' }}>
-                                                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Live Face Capture:</div>
+                                                <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 600 }}>Biometric Face Capture</div>
                                                     <img
                                                         src={`${apiUrl}/admin/photos/${viewedEmp.reference_image_key}`}
                                                         alt="Face"
-                                                        style={{ width: '120px', height: '120px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #E5E7EB', background: '#ffffff' }}
+                                                        style={{ width: '140px', height: '140px', borderRadius: '24px', objectFit: 'cover', border: '3px solid white', boxShadow: '0 8px 24px rgba(0,0,0,0.1)', background: '#fff' }}
                                                         onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
                                                     />
                                                 </div>
 
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                                                    <div>
-                                                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Bank Photo:</div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                                    <div className="doc-preview-thumb">
+                                                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Bank Record</div>
                                                         <img
                                                             src={`${apiUrl}/admin/photos/${viewedEmp.bank_details?.bank_photo_key}`}
                                                             alt="Bank"
-                                                            style={{ width: '100%', borderRadius: '4px', border: '1px solid #E5E7EB' }}
+                                                            style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', borderRadius: '12px', border: '1px solid var(--border-color)', cursor: 'pointer' }}
+                                                            onClick={() => setPreviewDoc({ title: 'Bank Document', url: `${apiUrl}/admin/photos/${viewedEmp.bank_details?.bank_photo_key}` })}
                                                             onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
                                                         />
                                                     </div>
-                                                    <div>
-                                                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Education Cert:</div>
+                                                    <div className="doc-preview-thumb">
+                                                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Education Qual.</div>
                                                         <img
                                                             src={`${apiUrl}/admin/photos/${viewedEmp.education?.cert_key}`}
                                                             alt="Education"
-                                                            style={{ width: '100%', borderRadius: '4px', border: '1px solid #E5E7EB' }}
-                                                            onError={(e) => { e.target.src = 'https://via.placeholder.com/100?text=No+Image'; }}
+                                                            style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', borderRadius: '12px', border: '1px solid var(--border-color)', cursor: 'pointer' }}
+                                                            onClick={() => setPreviewDoc({ title: 'Education Certificate', url: `${apiUrl}/admin/photos/${viewedEmp.education?.cert_key}` })}
+                                                            onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
                                                         />
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div style={{ backgroundColor: 'rgba(79, 70, 229, 0.05)', padding: '1.5rem', borderRadius: '8px', border: '1px solid #ff7a00', marginBottom: '1.5rem' }}>
-                                            <h3 style={{ fontSize: '1rem', color: '#ff7a00', marginBottom: '1rem' }}>⚙️ Role & Position Setup</h3>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div style={{ backgroundColor: 'rgba(10, 102, 194, 0.04)', padding: '2rem', borderRadius: '24px', border: '1px solid rgba(10, 102, 194, 0.1)', marginBottom: '2rem' }}>
+                                            <h3 style={{ fontSize: '1rem', color: 'var(--primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
+                                                <span style={{ fontSize: '1.25rem' }}>⚙️</span> Administrative Setup
+                                            </h3>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                                                 <div>
-                                                    <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Employment Type</label>
+                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Employment Type</label>
                                                     <select
                                                         value={empRoleSetup.employment_type}
                                                         onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, employment_type: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)', fontWeight: 600 }}
                                                     >
-                                                        <option value="Full-Time">Full-Time</option>
-                                                        <option value="Intern">Intern</option>
+                                                        <option value="Full-Time">Full-Time (Employee)</option>
+                                                        <option value="Intern">Internship (Contract)</option>
                                                     </select>
                                                 </div>
                                                 <div>
-                                                    <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Designation / Position</label>
+                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Designation / Position</label>
                                                     <input
                                                         type="text"
                                                         value={empRoleSetup.position}
                                                         onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, position: e.target.value })}
                                                         placeholder="e.g. Frontend Developer"
-                                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
                                                     />
                                                 </div>
                                                 {empRoleSetup.employment_type === 'Intern' && (
                                                     <div style={{ gridColumn: 'span 2' }}>
-                                                        <label style={{ fontSize: '0.75rem', color: '#ff7a00', display: 'block', marginBottom: '0.25rem' }}>Internship End Date</label>
+                                                        <label style={{ fontSize: '0.75rem', color: 'var(--primary)', display: 'block', marginBottom: '0.5rem', fontWeight: 700 }}>Internship Maturity Date</label>
                                                         <input
                                                             type="date"
                                                             value={empRoleSetup.internship_end_date}
                                                             onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, internship_end_date: e.target.value })}
-                                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ff7a00', background: '#ffffff', color: '#1f2937' }}
+                                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--primary)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
                                                         />
                                                     </div>
                                                 )}
                                                 <div style={{ gridColumn: 'span 2' }}>
-                                                    <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>In-hand Salary (₹) - Priority Display</label>
+                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>In-hand Take Home (₹) - Priority</label>
                                                     <input
                                                         type="number"
                                                         value={empRoleSetup.in_hand_salary}
                                                         onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, in_hand_salary: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937', fontWeight: 'bold', borderColor: '#ff7a00' }}
+                                                        style={{ width: '100%', padding: '1rem', borderRadius: '16px', border: '2px solid var(--primary)', background: 'var(--bg-color)', color: 'var(--primary)', fontWeight: 800, fontSize: '1.25rem' }}
                                                     />
                                                 </div>
                                                 {isSuperAdmin && (
                                                     <div style={{ gridColumn: 'span 2' }}>
-                                                        <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Assign Role (Super Admin Only)</label>
+                                                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Platform Role Allocation</label>
                                                         <select
                                                             value={empRoleSetup.role}
                                                             onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, role: e.target.value })}
-                                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ff7a00', background: '#ffffff', color: '#1f2937' }}
+                                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--primary)', background: 'var(--bg-color)', color: 'var(--text-light)', fontWeight: 600 }}
                                                         >
-                                                            <option value="employee">Employee</option>
-                                                            <option value="admin">Admin</option>
-                                                            <option value="hr_responsible">HR Responsibility</option>
+                                                            <option value="employee">Standard Employee</option>
+                                                            <option value="admin">System Administrator</option>
+                                                            <option value="hr">HR Personnel</option>
                                                         </select>
-                                                        <div style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '0.25rem' }}>* Only Super Admin can promote/demote staff roles.</div>
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontStyle: 'italic' }}>* Elevated permissions should only be granted to authorized stakeholders.</div>
                                                     </div>
                                                 )}
 
-                                                <div style={{ gridColumn: 'span 2', marginTop: '0.5rem' }}>
-                                                    <label style={{ fontSize: '0.85rem', color: '#ff7a00', fontWeight: 'bold', display: 'block', marginBottom: '0.75rem' }}>🎁 Monthly Leave Accrual Rate (days/month)</label>
-                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                                                <div style={{ gridColumn: 'span 2', marginTop: '1rem' }}>
+                                                    <label style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 800, display: 'block', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>🎁 Leave Accrual Engine (days/mo)</label>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.25rem' }}>
                                                         <div>
-                                                            <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>Privilege</label>
+                                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontWeight: 700 }}>Privilege</label>
                                                             <input
                                                                 type="number"
                                                                 step="0.1"
                                                                 disabled={empRoleSetup.employment_type === 'Intern'}
                                                                 value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.privilege_leave_rate}
                                                                 onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, privilege_leave_rate: e.target.value })}
-                                                                style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937', opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }}
+                                                                style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)', opacity: empRoleSetup.employment_type === 'Intern' ? 0.4 : 1 }}
                                                             />
                                                         </div>
                                                         <div>
-                                                            <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>Sick</label>
+                                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontWeight: 700 }}>Sick</label>
                                                             <input
                                                                 type="number"
                                                                 step="0.1"
                                                                 disabled={empRoleSetup.employment_type === 'Intern'}
                                                                 value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.sick_leave_rate}
                                                                 onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, sick_leave_rate: e.target.value })}
-                                                                style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937', opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }}
+                                                                style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)', opacity: empRoleSetup.employment_type === 'Intern' ? 0.4 : 1 }}
                                                             />
                                                         </div>
                                                         <div>
-                                                            <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>Casual</label>
+                                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontWeight: 700 }}>Casual</label>
                                                             <input
                                                                 type="number"
                                                                 step="0.1"
                                                                 disabled={empRoleSetup.employment_type === 'Intern'}
                                                                 value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.casual_leave_rate}
                                                                 onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, casual_leave_rate: e.target.value })}
-                                                                style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937', opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }}
+                                                                style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)', opacity: empRoleSetup.employment_type === 'Intern' ? 0.4 : 1 }}
                                                             />
                                                         </div>
                                                     </div>
-                                            <div style={{ gridColumn: 'span 2' }}>
-                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>PAN Number</label>
-                                                <input
-                                                    type="text"
-                                                    value={empRoleSetup.pan_no}
-                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pan_no: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
-                                                />
-                                            </div>
-                                            <div style={{ gridColumn: 'span 2' }}>
-                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>PF Number</label>
-                                                <input
-                                                    type="text"
-                                                    value={empRoleSetup.pf_no}
-                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_no: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Bank Name</label>
-                                                <input
-                                                    type="text"
-                                                    value={empRoleSetup.bank_name}
-                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_name: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Bank Account Number</label>
-                                                <input
-                                                    type="text"
-                                                    value={empRoleSetup.bank_account}
-                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_account: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
-                                                />
-                                            </div>
-                                                    {empRoleSetup.employment_type === 'Intern' && (
-                                                        <div style={{ fontSize: '0.7rem', color: '#c84cff', marginTop: '0.5rem' }}>* Interns have zero paid leaves as per policy (GreytHR guidelines).</div>
-                                                    )}
+                                                </div>
+
+                                                <div style={{ gridColumn: 'span 2' }}>
+                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>PAN Number</label>
+                                                    <input
+                                                        type="text"
+                                                        value={empRoleSetup.pan_no}
+                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pan_no: e.target.value })}
+                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
+                                                    />
+                                                </div>
+                                                <div style={{ gridColumn: 'span 2' }}>
+                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>PF Number</label>
+                                                    <input
+                                                        type="text"
+                                                        value={empRoleSetup.pf_no}
+                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_no: e.target.value })}
+                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Bank Name</label>
+                                                    <input
+                                                        type="text"
+                                                        value={empRoleSetup.bank_name}
+                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_name: e.target.value })}
+                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Recipient Account No.</label>
+                                                    <input
+                                                        type="text"
+                                                        value={empRoleSetup.bank_account}
+                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_account: e.target.value })}
+                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
+                                                    />
                                                 </div>
                                             </div>
                                         </div>
@@ -921,7 +1022,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         >
                                             <td style={{ padding: '0.5rem 1rem' }}>
                                                 <img
-                                                    src={`${apiUrl}/admin/photos/${emp.reference_image_key}`}
+                                                    src={emp.id_card_photo_key ? `${apiUrl}/admin/photos/${emp.id_card_photo_key}` : (emp.reference_image_key ? `${apiUrl}/admin/photos/${emp.reference_image_key}` : PLACEHOLDER_IMAGE)}
                                                     alt=""
                                                     style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #E5E7EB' }}
                                                     onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
@@ -1035,7 +1136,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             </div>
 
                                         <div>
-                                            <label style={{ fontSize: '0.85rem', color: '#ff7a00', fontWeight: 'bold', display: 'block', marginBottom: '0.75rem' }}>🎁 Monthly Leave Accrual Rate (days/month)</label>
+                                            <label style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 'bold', display: 'block', marginBottom: '0.75rem' }}>🎁 Monthly Leave Accrual Rate (days/month)</label>
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                                                 <div>
                                                     <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>Privilege</label>
@@ -1091,7 +1192,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 setIsDocGenModalOpen(true);
                                             }}
                                             className="btn btn-secondary"
-                                            style={{ color: '#ff7a00', borderColor: '#ff7a00' }}
+                                            style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}
                                         >
                                             ✨ AI Relieving Letter
                                         </button>
@@ -1110,10 +1211,31 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 setIsDocGenModalOpen(true);
                                             }}
                                             className="btn btn-secondary"
-                                            style={{ color: '#ff7a00', borderColor: '#ff7a00' }}
+                                            style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}
                                         >
                                             ✨ AI Experience Cert
                                         </button>
+                                        {selectedApprovedEmp.employment_type === 'Intern' && (
+                                            <button
+                                                onClick={() => {
+                                                    setDocGenType('internship_completion');
+                                                    setDocGenEmployee(selectedApprovedEmp);
+                                                    setDocGenInitialData({
+                                                        emp_name: selectedApprovedEmp.name,
+                                                        employee_id: selectedApprovedEmp.employee_id,
+                                                        designation: selectedApprovedEmp.position || 'Software Engineer',
+                                                        start_date: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : '',
+                                                        end_date: new Date().toISOString().split('T')[0],
+                                                        current_date: new Date().toISOString().split('T')[0]
+                                                    });
+                                                    setIsDocGenModalOpen(true);
+                                                }}
+                                                className="btn btn-secondary"
+                                                style={{ color: '#c84cff', borderColor: '#c84cff' }}
+                                            >
+                                                🎓 AI Intern Cert
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => {
                                                 setDocGenType('payslip');
@@ -1159,10 +1281,34 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     {leaves.map((l, idx) => (
                                         <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: '1rem', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '1rem', background: '#ffffff' }}>
-                                            <div>
-                                                <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{l.leave_type} - {l.employee_id}</div>
-                                                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{l.start_date} to {l.end_date}</div>
-                                                <div style={{ fontSize: '0.875rem', marginTop: '0.5rem', fontStyle: 'italic' }}>{l.reason}</div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
+                                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--primary)' }}>{l.leave_type}</div>
+                                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Request by <b style={{ color: 'var(--text-main)', textTransform: 'capitalize' }}>{l.employee_name || 'Employee'} ({l.employee_id})</b></span>
+                                                </div>
+                                                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>📅 {l.start_date} to {l.end_date}</div>
+                                                
+                                                {/* Balance Context for Admin */}
+                                                {l.employee_balance && (
+                                                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                                                        {l.employee_balance.types?.map((t, idx) => (
+                                                            <div key={idx} style={{ 
+                                                                fontSize: '0.7rem', 
+                                                                padding: '0.15rem 0.4rem', 
+                                                                borderRadius: '4px', 
+                                                                backgroundColor: t.remaining <= 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(10, 102, 194, 0.05)',
+                                                                color: t.remaining <= 0 ? '#EF4444' : 'var(--text-muted)',
+                                                                border: `1px solid ${t.remaining <= 0 ? '#EF444444' : 'var(--border-color)'}`
+                                                            }}>
+                                                                {t.name.split(' ')[0]}: <b>{t.remaining}</b>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <div style={{ fontSize: '0.875rem', p: '0.75rem', background: 'rgba(0,0,0,0.02)', borderRadius: '4px', borderLeft: '3px solid var(--primary)' }}>
+                                                    " {l.reason} "
+                                                </div>
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                                 <span style={{ fontSize: '0.875rem', color: l.status.includes('Approved') ? '#0a66c2' : '#c84cff' }}>{l.status}</span>
@@ -1294,7 +1440,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     <input type="text" id="override-reason" placeholder="Reason (e.g., Ugadi Swap)" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', flex: 1 }} />
                                     <button
                                         className="btn btn-primary"
-                                        style={{ backgroundColor: '#ff7a00' }}
+                                        style={{ backgroundColor: 'var(--primary)' }}
                                         onClick={() => {
                                             const d = document.getElementById('override-date').value;
                                             const t = document.getElementById('override-type').value;
@@ -1329,7 +1475,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                             <h2 className="card-title">Company Health Data</h2>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
                                 <div style={{ padding: '2rem', background: '#ffffff', borderRadius: '8px', textAlign: 'center' }}>
-                                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ff7a00' }}>{reports.total_employees}</div>
+                                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary)' }}>{reports.total_employees}</div>
                                     <div style={{ color: '#6b7280' }}>Total Employees</div>
                                 </div>
                                 <div style={{ padding: '2rem', background: '#ffffff', borderRadius: '8px', textAlign: 'center' }}>
@@ -1341,7 +1487,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     <div style={{ color: '#6b7280' }}>On Leave</div>
                                 </div>
                                 <div style={{ padding: '2rem', background: '#ffffff', borderRadius: '8px', textAlign: 'center' }}>
-                                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ff7a00' }}>{reports.average_engagement_score}%</div>
+                                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary)' }}>{reports.average_engagement_score}%</div>
                                     <div style={{ color: '#6b7280' }}>Engagement</div>
                                 </div>
                             </div>
@@ -1416,7 +1562,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                             </div>
 
                             {/* NEW: Comp-Off Requests Section */}
-                            <div style={{ marginTop: '2.5rem', borderTop: '2px solid #ff7a00', paddingTop: '2rem' }}>
+                            <div style={{ marginTop: '2.5rem', borderTop: '2px solid var(--primary)', paddingTop: '2rem' }}>
                                 <h2 className="card-title">🎁 Pending Comp-Off Requests</h2>
                                 <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
                                     Employees who worked on weekends or holidays for more than 9 hours. Approve to credit 1 day to their balance.
@@ -1425,7 +1571,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 {compOffRequests.length === 0 ? <p style={{ color: '#9CA3AF' }}>No pending requests.</p> : (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem' }}>
                                         {compOffRequests.map((req, i) => (
-                                            <div key={i} style={{ padding: '1.5rem', border: '1px solid #E5E7EB', borderRadius: '12px', background: '#ffffff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                                            <div key={i} className="card glass-panel" style={{ padding: '1.5rem' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                                                     <div>
                                                         <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{req.employee_id}</div>
@@ -1440,7 +1586,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                     <button
                                                         disabled={isProcessingCompOff}
                                                         onClick={() => handleCompOffAction(req.request_id, 'Approved')}
-                                                        className="btn btn-primary" style={{ flex: 1, backgroundColor: '#10B981' }}
+                                                        className="btn btn-primary" style={{ flex: 1, backgroundColor: '#10B981', color: 'white' }}
                                                     >
                                                         {isProcessingCompOff ? '...' : 'Approve Credit'}
                                                     </button>
@@ -1467,7 +1613,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 {weekendWorkRequests.length === 0 ? <p style={{ color: '#9CA3AF' }}>No pending work requests.</p> : (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem' }}>
                                         {weekendWorkRequests.map((req, i) => (
-                                            <div key={i} style={{ padding: '1.5rem', border: '1px solid #E5E7EB', borderRadius: '12px', background: '#ffffff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                                            <div key={i} className="card glass-panel" style={{ padding: '1.5rem' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                                                     <div>
                                                         <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{req.employee_id}</div>
@@ -1504,7 +1650,77 @@ const AdminDashboard = ({ activeTab, user }) => {
                     {activeTab === 'payroll' && (
                         <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
-                            <div className="card">
+                            <div className="card glass-panel" style={{ borderLeft: '4px solid #10b981' }}>
+                                <h2 className="card-title">⚙️ Global Salary Configuration</h2>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                                    Control which deductions are applied company-wide. These settings affect all salary calculations.
+                                </p>
+                                
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '1.5rem' }}>
+                                    <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 'bold', color: '#111827' }}>Enable Tax (TDS)</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Global tax deduction toggle</div>
+                                            </div>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={salarySettings.enable_tax}
+                                                onChange={(e) => setSalarySettings({...salarySettings, enable_tax: e.target.checked})}
+                                                style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <span style={{ fontSize: '0.85rem', color: '#374151' }}>Fixed Rate:</span>
+                                            <input 
+                                                type="number" 
+                                                step="0.1"
+                                                value={salarySettings.tax_rate}
+                                                onChange={(e) => setSalarySettings({...salarySettings, tax_rate: parseFloat(e.target.value)})}
+                                                style={{ width: '70px', padding: '0.4rem', borderRadius: '6px', border: '1px solid #D1D5DB' }}
+                                            />
+                                            <span style={{ fontSize: '0.85rem', color: '#6B7280' }}>%</span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 'bold', color: '#111827' }}>Enable PF & PT</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Global PF deduction toggle</div>
+                                            </div>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={salarySettings.enable_pf}
+                                                onChange={(e) => setSalarySettings({...salarySettings, enable_pf: e.target.checked})}
+                                                style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <span style={{ fontSize: '0.85rem', color: '#374151' }}>Fixed Rate:</span>
+                                            <input 
+                                                type="number" 
+                                                step="0.1"
+                                                value={salarySettings.pf_rate}
+                                                onChange={(e) => setSalarySettings({...salarySettings, pf_rate: parseFloat(e.target.value)})}
+                                                style={{ width: '70px', padding: '0.4rem', borderRadius: '6px', border: '1px solid #D1D5DB' }}
+                                            />
+                                            <span style={{ fontSize: '0.85rem', color: '#6B7280' }}>%</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button 
+                                    className="btn btn-primary" 
+                                    disabled={isSavingSalarySettings}
+                                    onClick={handleUpdateSalarySettings}
+                                    style={{ width: 'fit-content' }}
+                                >
+                                    {isSavingSalarySettings ? 'Saving...' : 'Save Configuration'}
+                                </button>
+                            </div>
+
+                            <div className="card glass-panel">
                                 <h2 className="card-title">🚀 Payslip Release Control</h2>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     {['February 2026', 'March 2026'].map(month => {
@@ -1530,8 +1746,8 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     })}
                                 </div>
                             </div>
-                            <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(79, 70, 229, 0.05)', borderRadius: '8px', borderLeft: '4px solid #ff7a00' }}>
-                                <div style={{ fontWeight: 'bold', color: '#ff7a00', marginBottom: '0.5rem' }}>AI Payroll Note:</div>
+                            <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(10, 102, 194, 0.05)', borderRadius: '12px', borderLeft: '4px solid var(--primary)', backdropFilter: 'blur(8px)' }}>
+                                <div style={{ fontWeight: 'bold', color: 'var(--primary)', marginBottom: '0.5rem' }}>AI Payroll Note:</div>
                                 <p style={{ fontSize: '0.875rem', margin: 0 }}>All LOP (Loss of Pay) deductions are automatically calculated based on attendance and leave records for the selected month.</p>
                             </div>
                         </div>
@@ -1632,7 +1848,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
                                                     {req.status === 'Pending' ? (
-                                                        user?.role === 'hr_responsible' ? (
+                                                        (user?.role === 'hr' || user?.role === 'hr_responsible') ? (
                                                             <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>View Only</span>
                                                         ) : (
                                                             <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -1672,6 +1888,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         >
                                             <option value="Intern">Intern Format</option>
                                             <option value="Full-Time">Full-Time Format</option>
+                                            <option value="Internship Certificate">Internship Certificate</option>
                                         </select>
                                     </div>
 
@@ -1725,6 +1942,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         >
                                             <option value="Relieving">Relieving Letter</option>
                                             <option value="Experience">Experience Certificate</option>
+                                            <option value="Internship Certificate">Internship Certificate</option>
                                         </select>
                                     </div>
 
@@ -1755,7 +1973,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     </div>
                                 ) : (
                                     <div style={{ display: 'grid', gap: '2rem' }}>
-                                        {['Full-Time', 'Intern', 'Payslip', 'Relieving', 'Experience'].map(category => {
+                                        {['Full-Time', 'Intern', 'Payslip', 'Relieving', 'Experience', 'Internship Certificate'].map(category => {
                                             const categoryTemplates = offerLetterTemplates.filter(t => t.employment_type === category);
                                             if (categoryTemplates.length === 0) return null;
 
@@ -2097,7 +2315,7 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                             {/* --- RELIEVING LETTER SECTION --- */}
                             <div style={{ border: '1px solid #E5E7EB', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem', background: 'rgba(255,122,0,0.02)' }}>
-                                <h3 style={{ fontSize: '1.1rem', color: '#ff7a00', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <h3 style={{ fontSize: '1.1rem', color: '#0a66c2', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     📑 1. Relieving Letter
                                 </h3>
                                 <div className="grid-2">
@@ -2127,7 +2345,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             <textarea rows="2" value={relievingLetterParams.reason_for_leaving} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, reason_for_leaving: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
                                         </div>
                                         <div style={{ display: 'flex', gap: '1rem' }}>
-                                            <button className="btn btn-primary" onClick={() => handleGenerateRelievingLetter(selectedApprovedEmp.employee_id)} disabled={isGeneratingRL} style={{ backgroundColor: '#ff7a00', flex: 1 }}>
+                                            <button className="btn btn-primary" onClick={() => handleGenerateRelievingLetter(selectedApprovedEmp.employee_id)} disabled={isGeneratingRL} style={{ backgroundColor: '#10b981', flex: 1 }}>
                                                 {isGeneratingRL ? 'Generating...' : '🔄 Update/Generate Draft'}
                                             </button>
                                             <button

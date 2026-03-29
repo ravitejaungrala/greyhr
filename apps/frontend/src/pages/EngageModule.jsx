@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 const EngageModule = () => {
     const [announcement, setAnnouncement] = useState({ title: 'Loading...', content: '' });
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+    const apiUrl = API_URL;
 
     useEffect(() => {
         fetch(`${apiUrl}/announcement`)

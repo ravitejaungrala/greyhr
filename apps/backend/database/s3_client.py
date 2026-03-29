@@ -12,8 +12,12 @@ class S3Database:
         self.bucket_name = os.getenv("S3_BUCKET_NAME", "ai-workforce-os-mock-bucket")
         self.region = os.getenv("AWS_REGION", "us-east-1")
         
-        # We'll use a local mock mode if no credentials are provided for development
-        self.mock_mode = not os.getenv("AWS_ACCESS_KEY_ID")
+        # Detect if we're on AWS Lambda or have explicit credentials
+        is_lambda = os.getenv("AWS_LAMBDA_FUNCTION_NAME") is not None
+        has_keys = os.getenv("AWS_ACCESS_KEY_ID") is not None
+        
+        # Only use mock mode if NOT on Lambda AND no keys are provided
+        self.mock_mode = not (is_lambda or has_keys)
         self.local_storage = {}
         
         if not self.mock_mode:

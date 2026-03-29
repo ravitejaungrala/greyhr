@@ -1,23 +1,68 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
-const Leaves = ({ userId }) => {
+const Leaves = ({ userId, user }) => {
     const [status, setStatus] = useState('');
     const [leaveData, setLeaveData] = useState({ total: 0, used: 0, remaining: 0, types: [], is_intern: false });
+    const [recentLeaves, setRecentLeaves] = useState([]);
     const [teamAvailability, setTeamAvailability] = useState([]);
     const [loading, setLoading] = useState(true);
     const [formData, setFormData] = useState({
+        employee_id: userId,
         leave_type: 'Annual Leave',
+        subject: '',
         start_date: '',
         end_date: '',
-        reason: ''
+        reason: '',
+        approver_id: '',
+        cc_ids: []
     });
+    const [employeeDirectory, setEmployeeDirectory] = useState([]);
+    const [approvers, setApprovers] = useState([]);
+    const [ccSearch, setCcSearch] = useState('');
 
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+    const apiUrl = API_URL;
 
     useEffect(() => {
         fetchBalance();
         fetchTeam();
+        fetchRecentLeaves();
+        fetchDirectory();
+        fetchApprovers();
     }, [userId]);
+
+    const fetchApprovers = async () => {
+        try {
+            const res = await fetch(`${apiUrl}/employee/approvers`);
+            const data = await res.json();
+            setApprovers(data.approvers || []);
+            if (data.approvers && data.approvers.length > 0) {
+                setFormData(prev => ({ ...prev, approver_id: data.approvers[0].employee_id }));
+            }
+        } catch (err) {
+            console.error("Error fetching approvers:", err);
+        }
+    };
+
+    const fetchDirectory = async () => {
+        try {
+            const res = await fetch(`${apiUrl}/employee/directory`);
+            const data = await res.json();
+            setEmployeeDirectory(data.employees || []);
+        } catch (err) {
+            console.error("Error fetching directory:", err);
+        }
+    };
+
+    const fetchRecentLeaves = async () => {
+        try {
+            const res = await fetch(`${apiUrl}/employee/leaves?employee_id=${userId}`);
+            const data = await res.json();
+            setRecentLeaves(data.leaves || []);
+        } catch (err) {
+            console.error(err);
+        }
+    };
 
     const fetchTeam = async () => {
         try {
@@ -53,7 +98,7 @@ const Leaves = ({ userId }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...formData,
-                    employee_id: userId || 'EMP_UNKNOWN'
+                    cc_ids: formData.cc_ids.filter(id => id && id !== '')
                 })
             });
 
@@ -61,6 +106,7 @@ const Leaves = ({ userId }) => {
                 setTimeout(() => {
                     setStatus('submitted');
                     fetchBalance();
+                    fetchRecentLeaves();
                 }, 1000);
             }
         } catch (err) {
@@ -105,22 +151,114 @@ const Leaves = ({ userId }) => {
                         </div>
                     ) : (
                         <form style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }} onSubmit={submitLeave}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Leave Subject</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    placeholder="Brief summary (e.g. Family Function / Medical Checkup)"
+                                    value={formData.subject} 
+                                    onChange={e => setFormData({ ...formData, subject: e.target.value })} 
+                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }} 
+                                />
+                            </div>
                             <div style={{ display: 'flex', gap: '1rem' }}>
+                                {(user?.role === 'admin' || user?.role === 'super_admin') && (
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Select Employee</label>
+                                        <select value={formData.employee_id} onChange={e => {
+                                            setFormData({ ...formData, employee_id: e.target.value });
+                                            // Refresh balance when employee changes if needed, 
+                                        }} style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }}>
+                                            <option value={userId}>Current User (You)</option>
+                                            {employeeDirectory.filter(emp => emp.employee_id !== userId).map(emp => (
+                                                <option key={emp.employee_id} value={emp.employee_id}>{emp.name} ({emp.employee_id})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                                 <div style={{ flex: 1 }}>
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Leave Type</label>
                                     <select value={formData.leave_type} onChange={e => setFormData({ ...formData, leave_type: e.target.value })} style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }}>
                                         {leaveData.types.filter(t => !leaveData.is_intern || t.name === 'Compensatory Off' || t.remaining > 0).map(t => (
                                             <option key={t.name}>{t.name}</option>
                                         ))}
+                                        <option>Paid Leave</option>
                                         <option>Unpaid Leave</option>
                                     </select>
                                 </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '1rem' }}>
                                 <div style={{ flex: 1 }}>
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Duration</label>
                                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                                         <input type="date" required value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} style={{ flex: 1, padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }} />
                                         <input type="date" required value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} style={{ flex: 1, padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }} />
                                     </div>
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Send Request To (Approver)</label>
+                                    <select 
+                                        required
+                                        value={formData.approver_id} 
+                                        onChange={e => setFormData({ ...formData, approver_id: e.target.value })} 
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }}
+                                    >
+                                        <option value="">Select Approver</option>
+                                        {approvers.map(app => (
+                                            <option key={app.employee_id} value={app.employee_id}>
+                                                {app.name} ({app.role === 'super_admin' ? 'Super Admin' : (app.role === 'hr' ? 'HR' : 'Admin')})
+                                            </option>
+                                        ))}
+                                        {approvers.length === 0 && <option value="">No admins found</option>}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* CC Selection Checklist */}
+                            <div style={{ marginTop: '1rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>
+                                    CC Recipients ({formData.cc_ids.length} selected)
+                                </label>
+                                
+                                <input 
+                                    type="text" 
+                                    placeholder="Search employees to CC..." 
+                                    value={ccSearch}
+                                    onChange={e => setCcSearch(e.target.value)}
+                                    style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.8rem' }}
+                                />
+
+                                <div style={{ 
+                                    height: '120px', 
+                                    overflowY: 'auto', 
+                                    border: '1px solid var(--border-color)', 
+                                    borderRadius: '6px', 
+                                    padding: '0.4rem',
+                                    backgroundColor: 'rgba(0,0,0,0.2)',
+                                    scrollbarWidth: 'thin',
+                                    scrollbarColor: 'var(--primary) transparent'
+                                }}>
+                                    {approvers
+                                        .filter(a => a.employee_id !== formData.approver_id && a.employee_id !== userId)
+                                        .filter(a => a.name.toLowerCase().includes(ccSearch.toLowerCase()))
+                                        .map(app => (
+                                            <label key={app.employee_id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem', borderRadius: '4px', cursor: 'pointer', backgroundColor: formData.cc_ids.includes(app.employee_id) ? 'rgba(10, 102, 194, 0.2)' : 'transparent' }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={formData.cc_ids.includes(app.employee_id)}
+                                                    onChange={() => {
+                                                        const newCcIds = formData.cc_ids.includes(app.employee_id)
+                                                            ? formData.cc_ids.filter(id => id !== app.employee_id)
+                                                            : [...formData.cc_ids, app.employee_id];
+                                                        setFormData({ ...formData, cc_ids: newCcIds });
+                                                    }}
+                                                />
+                                                <span style={{ fontSize: '0.85rem' }}>{app.name} <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>({app.role.replace('_', ' ')})</span></span>
+                                            </label>
+                                        ))
+                                    }
+                                    {approvers.length === 0 && <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '1rem' }}>No recipients available</p>}
                                 </div>
                             </div>
 
@@ -170,6 +308,117 @@ const Leaves = ({ userId }) => {
                             ))
                         }
                     </ul>
+                </div>
+            </div>
+
+            {/* Monthly Summary & History */}
+            <div style={{ marginTop: '2.5rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                
+                <div className="grid-3" style={{ gap: '1.5rem' }}>
+                    <div className="card glass-panel" style={{ textAlign: 'center', padding: '1.5rem' }}>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>LEAVES THIS MONTH</div>
+                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary)' }}>
+                            {recentLeaves.filter(l => {
+                                const isApproved = l.status && l.status.toLowerCase().includes('approved');
+                                const currentMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+                                const startMonth = l.start_date.slice(0, 7);
+                                return isApproved && startMonth === currentMonth;
+                            }).length}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Approved requests</div>
+                    </div>
+                    
+                    <div className="card glass-panel" style={{ textAlign: 'center', padding: '1.5rem' }}>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>PENDING REQUESTS</div>
+                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#F59E0B' }}>
+                            {recentLeaves.filter(l => l.status.includes('Pending')).length}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Awaiting review</div>
+                    </div>
+
+                    <div className="card glass-panel" style={{ textAlign: 'center', padding: '1.5rem' }}>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>UPCOMING LEAVES</div>
+                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--secondary)' }}>
+                            {recentLeaves.filter(l => {
+                                const isApproved = l.status && l.status.toLowerCase().includes('approved');
+                                const isFuture = new Date(l.start_date) > new Date();
+                                return isApproved && isFuture;
+                            }).length}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Future dates</div>
+                    </div>
+                </div>
+
+                <div className="card glass-panel">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <h2 className="card-title" style={{ marginBottom: 0 }}>Recent Applications & Status</h2>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Real-time approval tracking</div>
+                    </div>
+                    
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
+                                    <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Date Range</th>
+                                    <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Type</th>
+                                    <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Reason</th>
+                                    <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {recentLeaves.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="4" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No recent leave applications.</td>
+                                    </tr>
+                                ) : recentLeaves.map((leaf, idx) => (
+                                    <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                        <td style={{ padding: '1rem' }}>
+                                            <div style={{ fontWeight: '600' }}>{new Date(leaf.start_date).toLocaleDateString()} - {new Date(leaf.end_date).toLocaleDateString()}</div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Requested {new Date(leaf.applied_on).toLocaleDateString()}</div>
+                                        </td>
+                                        <td style={{ padding: '1rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <span style={{ 
+                                                    padding: '0.15rem 0.4rem', 
+                                                    borderRadius: '4px', 
+                                                    backgroundColor: 'var(--primary-glow)', 
+                                                    color: 'var(--primary)',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 'bold',
+                                                    border: '1px solid var(--primary)'
+                                                }}>{leaf.leave_type_short || 'L'}</span>
+                                                <span>{leaf.leave_type}</span>
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: '1rem', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={leaf.reason}>
+                                            {leaf.reason}
+                                        </td>
+                                        <td style={{ padding: '1rem' }}>
+                                            <span style={{ 
+                                                padding: '0.4rem 0.8rem', 
+                                                borderRadius: '20px', 
+                                                fontSize: '0.75rem', 
+                                                fontWeight: '600',
+                                                backgroundColor: leaf.status.includes('Approved') ? 'rgba(34, 197, 94, 0.15)' : 
+                                                                leaf.status.includes('Rejected') ? 'rgba(239, 68, 68, 0.15)' : 
+                                                                'rgba(245, 158, 11, 0.15)',
+                                                color: leaf.status.includes('Approved') ? '#22C55E' : 
+                                                       leaf.status.includes('Rejected') ? '#EF4444' : 
+                                                       '#F59E0B',
+                                                border: `1px solid ${
+                                                    leaf.status.includes('Approved') ? '#22C55E44' : 
+                                                    leaf.status.includes('Rejected') ? '#EF444444' : 
+                                                    '#F59E0B44'
+                                                }`
+                                            }}>
+                                                {leaf.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

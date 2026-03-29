@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 const AttendanceScan = ({ userId }) => {
     const videoRef = useRef(null);
@@ -20,7 +21,7 @@ const AttendanceScan = ({ userId }) => {
     const [flashActive, setFlashActive] = useState(false);
     const [scanWarning, setScanWarning] = useState('');
 
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+    const apiUrl = API_URL;
 
     // Mediapipe Refs
     const faceMeshRef = useRef(null);

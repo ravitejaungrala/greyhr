@@ -1,0 +1,15 @@
+{
+    "monthly_salary":  50000.0,
+    "gross_salary":  16666.666666666664,
+    "net_salary":  10796.962962962962,
+    "lop_deduction":  3703.703703703703,
+    "lop_days":  4,
+    "attendance_penalty":  0,
+    "tax":  1333,
+    "pf_pt":  833,
+    "deductions":  5869.703703703703,
+    "settings":  {
+                     "enable_tax":  true,
+                     "enable_pf":  true
+                 }
+}

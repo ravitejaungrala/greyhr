@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Response, UploadFile, File
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 from fpdf import FPDF
@@ -7,6 +8,8 @@ from database.mongo_client import mongo_db
 from dotenv import load_dotenv
 load_dotenv(override=True)
 import datetime
+from dateutil.relativedelta import relativedelta
+import calendar
 import base64
 import uuid
 import json
@@ -28,6 +31,11 @@ from api.doc_engine import (
     save_new_template
 )
 from api.enhanced_doc_system import enhanced_router
+from api.email_utils import (
+    send_leave_notification, 
+    send_item_notification,
+    get_admin_emails
+)
 
 router = APIRouter()
 
@@ -61,6 +69,16 @@ class HolidayRequest(BaseModel):
     name: str
     date: str
     type: str = "Holiday"
+
+class LeaveRequest(BaseModel):
+    employee_id: str
+    leave_type: str
+    subject: str
+    start_date: str
+    end_date: str
+    reason: str
+    approver_id: Optional[str] = None
+    cc_ids: List[str] = []
 
 class ProfileUpdateRequest(BaseModel):
     employee_id: str
@@ -243,6 +261,28 @@ def get_approved_employees():
     employees = list(mongo_db.users.find({"status": "approved"}, {"_id": 0, "password": 0}))
     return {"employees": employees}
 
+@router.get("/employee/directory")
+def get_employee_directory():
+    if mongo_db.users is None:
+        return {"employees": []}
+    # Only return name and ID for security/privacy
+    employees = list(mongo_db.users.find(
+        {"status": "approved"}, 
+        {"_id": 0, "name": 1, "employee_id": 1}
+    ).sort("name", 1))
+    return {"employees": employees}
+
+@router.get("/employee/approvers")
+def get_possible_approvers():
+    """Fetch list of admins/superadmins for the 'Send To' dropdown."""
+    if mongo_db.users is None:
+        return {"approvers": []}
+    approvers = list(mongo_db.users.find(
+        {"role": {"$in": ["admin", "super_admin", "hr", "hr_responsible"]}}, 
+        {"_id": 0, "name": 1, "employee_id": 1, "role": 1}
+    ).sort("name", 1))
+    return {"approvers": approvers}
+
 class AdminApprovalRequest(BaseModel):
     employee_id: str
     action: str # "approve" or "reject"
@@ -254,8 +294,10 @@ class AdminApprovalRequest(BaseModel):
     casual_leave_rate: Optional[float] = 1.0
     in_hand_salary: Optional[int] = 0
     internship_end_date: Optional[str] = None
+    role: Optional[str] = "employee"
 
 class EmployeeUpdate(BaseModel):
+    role: Optional[str] = None
     employment_type: Optional[str] = None
     position: Optional[str] = None
     department: Optional[str] = None
@@ -299,6 +341,7 @@ def admin_approve_employee(request: AdminApprovalRequest):
             "casual_leave_rate": request.casual_leave_rate,
             "in_hand_salary": request.in_hand_salary,
             "internship_end_date": request.internship_end_date,
+            "role": request.role,
             "joining_date": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
     else:
@@ -681,14 +724,34 @@ def finalize_doc_api(request: DocumentFinalizeRequest):
         
     return result
 
+def get_leave_type_short(leave_type: str) -> str:
+    # Mapping for common leave types to 2-letter codes for calendar
+    l_type = str(leave_type).lower()
+    if "sick" in l_type: return "SL"
+    if "casual" in l_type: return "CL"
+    if "paid leave" in l_type: return "PL"
+    if "annual" in l_type or "privilege" in l_type: return "AL" # Annual Leave
+    if "comp" in l_type: return "CO"
+    return "L"
+
 @router.post("/leaves/apply")
 def apply_leave(request: LeaveRequest):
     record = request.dict()
     record["status"] = "Pending Admin Approval"
+    record["leave_type_short"] = get_leave_type_short(record.get("leave_type", ""))
     record["applied_on"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     record["id"] = uuid.uuid4().hex[:8]
     if mongo_db.db is not None:
         mongo_db.leaves.insert_one(record)
+        
+        # Trigger Email Notification
+        try:
+            user = mongo_db.users.find_one({"employee_id": request.employee_id}, {"name": 1})
+            emp_name = user.get("name", "An Employee") if user else "An Employee"
+            send_leave_notification(emp_name, record, record["id"], request.approver_id, request.cc_ids)
+        except Exception as e:
+            print(f"Leave Notification Failed: {e}")
+
     if "_id" in record: del record["_id"]
     return {"message": "Leave submitted pending approval", "record": record}
 
@@ -696,7 +759,31 @@ def apply_leave(request: LeaveRequest):
 def get_all_leaves():
     if mongo_db.db is None:
         return {"leaves": []}
-    leaves = list(mongo_db.leaves.find({}, {"_id": 0}))
+    
+    leaves = list(mongo_db.leaves.find({}, {"_id": 0}).sort("applied_on", -1))
+    
+    # Enrich with employee balance to help admin decide
+    enriched_leaves = []
+    for leaf in leaves:
+        emp_id = leaf.get("employee_id")
+        if emp_id:
+            # 1. Fetch Balance
+            balance = get_leave_balance(emp_id)
+            leaf["employee_balance"] = balance
+            
+            # 2. Fetch Name
+            user_doc = mongo_db.users.find_one({"employee_id": emp_id}, {"name": 1, "_id": 0})
+            if user_doc:
+                leaf["employee_name"] = user_doc.get("name")
+        enriched_leaves.append(leaf)
+        
+    return {"leaves": enriched_leaves}
+
+@router.get("/employee/leaves")
+def get_employee_leaves(employee_id: str):
+    if mongo_db.db is None:
+        return {"leaves": []}
+    leaves = list(mongo_db.leaves.find({"employee_id": employee_id}, {"_id": 0}).sort("applied_on", -1))
     return {"leaves": leaves}
 
 class LeaveStatusUpdate(BaseModel):
@@ -708,12 +795,36 @@ def update_leave(leave_id: str, update: LeaveStatusUpdate):
         mongo_db.leaves.update_one({"id": leave_id}, {"$set": {"status": update.status}})
     return {"message": f"Leave {leave_id} updated to {update.status}"}
 
+@router.get("/admin/leaves/approve-direct")
+def approve_leave_direct(id: str, status: str):
+    """Direct approval from email link."""
+    if mongo_db.db is not None:
+        mongo_db.leaves.update_one({"id": id}, {"$set": {"status": status}})
+    
+    color = "#10B981" if status == "Approved" else "#EF4444"
+    return Response(content=f"""
+    <html>
+    <head><title>Request Updated</title></head>
+    <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f9fafb;">
+        <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; border-top: 5px solid {color};">
+            <h1 style="color: {color}; margin: 0 0 1rem 0;">{status}!</h1>
+            <p style="color: #4b5563; font-size: 1.1rem;">The leave request has been successfully updated.</p>
+            <p style="color: #9ca3af; font-size: 0.875rem; margin-top: 2rem;">You can close this window now.</p>
+        </div>
+    </body>
+    </html>
+    """, media_type="text/html")
+
 # --- Item Requests ---
 class ItemRequest(BaseModel):
     employee_id: str
+    subject: str
     item_name: str
     reason: str
     quantity: int = 1
+    approver_id: Optional[str] = None
+    cc_ids: List[str] = []
+    request_type: str = "item" # "item" or "general"
 
 @router.post("/items/request")
 def request_item(request: ItemRequest):
@@ -726,6 +837,15 @@ def request_item(request: ItemRequest):
     record["applied_on"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     
     mongo_db.item_requests.insert_one(record)
+    
+    # Trigger Email Notification
+    try:
+        user = mongo_db.users.find_one({"employee_id": request.employee_id}, {"name": 1})
+        emp_name = user.get("name", "An Employee") if user else "An Employee"
+        send_item_notification(emp_name, record, record["id"], request.approver_id)
+    except Exception as e:
+        print(f"Item Notification Failed: {e}")
+
     if "_id" in record: del record["_id"]
     return {"message": "Item request submitted", "record": record}
 
@@ -760,6 +880,26 @@ def update_item_request_status(request_id: str, update: ItemStatusUpdate):
         return {"error": "Request not found"}
         
     return {"message": f"Item request {request_id} updated to {update.status}"}
+
+@router.get("/admin/items/approve-direct")
+def approve_item_direct(id: str, status: str):
+    """Direct approval from email link for items."""
+    if mongo_db.item_requests is not None:
+        mongo_db.item_requests.update_one({"id": id}, {"$set": {"status": status}})
+    
+    color = "#3B82F6" if status == "Approved" else "#EF4444"
+    return Response(content=f"""
+    <html>
+    <head><title>Request Updated</title></head>
+    <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f9fafb;">
+        <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; border-top: 5px solid {color};">
+            <h1 style="color: {color}; margin: 0 0 1rem 0;">Item Request {status}!</h1>
+            <p style="color: #4b5563; font-size: 1.1rem;">The request status has been updated successfully.</p>
+            <p style="color: #9ca3af; font-size: 0.875rem; margin-top: 2rem;">You can close this window now.</p>
+        </div>
+    </body>
+    </html>
+    """, media_type="text/html")
 
 # --- Holidays ---
 @router.post("/admin/holidays")
@@ -1213,25 +1353,23 @@ def process_face_scan(request: AttendanceScanRequest):
             images_to_analyze.append({"mime_type": "image/jpeg", "data": base64.b64encode(right_bytes).decode('utf-8')})
 
         prompt = """
-        You are a high-security biometric verification system using Gemini 3.1 Flash's advanced vision capabilities.
+        You are a high-security biometric verification system using Gemini 3.1 Flash's professional vision capabilities.
         
-        Analyze the provided images:
-        1. Image 1 is the ENROLLED REFERENCE.
-        2. Image 2 is the CURRENT FRONT SCAN.
-        3. (Optional) Subsequent images are LEFT and RIGHT profiles of the current scan.
+        Perform an EXTREMELY STRICT facial identity verification. Compare the person in the video frames (Image 2+) with the official ENROLLED REFERENCE (Image 1).
         
-        TASKS:
-        1. **Identity Verification**: Confirm if the person in the current scan (and profiles) is the EXACT same person as in the enrolled reference.
-        2. **Pixel & Texture Analysis (Anti-Spoofing)**: Inspect for signs of digital spoofing (screens, moiré patterns), physical spoofing (high-res photos), or masks. Analyze skin texture and light reflections.
-        3. **Multi-Frame Consistency**: If profiles are provided, verify that the head movement is consistent with a 3D human head and that all frames belong to the same session.
+        Strict Identity Check Requirements:
+        1. Biometric Alignment: Analyze unique facial landmarks: distance between pupils, nose bridge width, jawline contour, and ear position.
+        2. Differentiation: Reject the match if there are ANY significant deviations in facial structure, even if hair or apparel matches.
+        3. Confidence Scoring: The confidence score must be mathematically representative of the similarity. A 0.90+ means near-certain match. Below 0.80 suggests doubt.
+        4. Anti-Spoofing: Ensure the face is a real 3D human. Check for light reflections on skin vs. paper/screens.
         
         Return ONLY a JSON object:
         {
             "match": true/false,
             "confidence": 0.0-1.0,
             "liveness_verified": true/false,
-            "analysis": "Brief technical summary of identity and pixel analysis",
-            "reason": "Clear explanation for user if rejected"
+            "analysis": "Technical biometric analysis summary",
+            "reason": "Clear, professional explanation for the user if rejected"
         }
         """
         
@@ -1243,9 +1381,18 @@ def process_face_scan(request: AttendanceScanRequest):
         face_match_success = result.get("match", False) and result.get("liveness_verified", False)
         verification_score = result.get("confidence", 0.0)
         
-        if not face_match_success:
-            print(f"Enhanced Verification Failed for {request.employee_id}: {result.get('analysis')}")
-            return {"error": result.get("reason", "Face verification failed. Please try again with clear lighting.")}
+        # INCREASED SECURITY: Enforce a strict confidence threshold (0.85)
+        # This prevents unauthorized "look-alikes" from passing.
+        MIN_CONFIDENCE_THRESHOLD = 0.85
+        
+        if not face_match_success or verification_score < MIN_CONFIDENCE_THRESHOLD:
+            # If match is true but confidence is low, it's still a failure
+            fail_reason = result.get("reason", "Face verification failed. Please try again with clear lighting.")
+            if face_match_success and verification_score < MIN_CONFIDENCE_THRESHOLD:
+                fail_reason = f"Identity similarity check was inconclusive ({int(verification_score*100)}%). Please ensure you are looking directly at the camera with clear lighting."
+                
+            print(f"Enhanced Verification REJECTED for {request.employee_id}: Score={verification_score}, Match={face_match_success}, Analysis={result.get('analysis')}")
+            return {"error": fail_reason}
 
     except Exception as e:
         print(f"AI Enhanced Verification Error: {e}")
@@ -1451,16 +1598,13 @@ def get_attendance_calendar(employee_id: str):
             history_map[day] = []
         history_map[day].append(r)
         
-    # 4. Fetch Approved Leaves for the month
+    # 4. Fetch Approved Leaves (all status variants)
     leaves = []
     if mongo_db.leaves is not None:
+        # Match anything starting with 'Approved'
         leaves = list(mongo_db.leaves.find({
             "employee_id": employee_id,
-            "status": "Approved",
-            "$or": [
-                {"start_date": {"$regex": f"^{month_prefix}"}},
-                {"end_date": {"$regex": f"^{month_prefix}"}}
-            ]
+            "status": {"$regex": "^Approved", "$options": "i"}
         }))
 
     # 5. Fetch Global Holidays and Workday Overrides
@@ -1486,20 +1630,22 @@ def get_attendance_calendar(employee_id: str):
     ft_grace_5_9_count = 0
     int_grace_5_9_count = 0
     int_grace_2_5_count = 0
-    # Iterate through every day of the month up to today
-    for d in range(1, today.day + 1):
+    # Iterate through every day of the month
+    for d in range(1, last_day_in_month + 1):
         current_date: datetime.date = datetime.date(year, month, d)
         day_str = current_date.isoformat()
         
         # Default day data
+        is_future = d > today.day
         data = {
             "date": day_str,
             "first_in": "-",
             "last_out": "-",
             "total_work_hrs": "-",
-            "status": "Absent",
-            "status_char": "A",
-            "color": "#EF4444",
+            # Default to 'Scheduled' for future, 'Absent' for past
+            "status": "Scheduled" if is_future else "Absent",
+            "status_char": "-" if is_future else "A",
+            "color": "#9CA3AF" if is_future else "#EF4444",
             "deduction": 0.0,
             "day_label": "Working Day"
         }
@@ -1538,8 +1684,8 @@ def get_attendance_calendar(employee_id: str):
             is_working_day = True
             day_label = "Working Day"
             
-        # Check for approved leaves
-        approved_leave = next((l for l in leaves if l["start_date"] <= day_str <= l["end_date"]), None)
+        # Check for approved leaves (normalize time strings)
+        approved_leave = next((l for l in leaves if l["start_date"].split('T')[0] <= day_str <= l["end_date"].split('T')[0]), None)
         
         # Update day label in data
         data["day_label"] = day_label
@@ -1658,24 +1804,53 @@ def get_attendance_calendar(employee_id: str):
 
             # Overwrite with Approved Leave status if applicable (but deduction already set)
             if approved_leave:
+                l_type = approved_leave.get("leave_type", "")
+                type_map = {
+                    "Casual Leave": "CL",
+                    "Sick Leave": "SL",
+                    "Paid Leave": "PL",
+                    "Comp-Off": "CO",
+                    "Annual Leave": "AL",
+                    "Privilege Leave": "AL"
+                }
+                l_short = type_map.get(l_type, "L")
+                
                 if employment_type == "Full-Time":
-                    data["status"] = f"Leave: {approved_leave['leave_type']}"
-                    data["status_char"] = "L"
-                    data["color"] = "var(--secondary)"
+                    data["status"] = f"Leave: {l_type}"
+                    data["status_char"] = l_short
+                    data["color"] = "#ff7a00" if l_type == "Paid Leave" else "#A855F7"
                     data["deduction"] = 0
                 else:
-                    data["status"] = f"Unpaid Leave: {approved_leave['leave_type']}"
-                    data["status_char"] = "L"
+                    data["status"] = f"Unpaid Leave: {l_type}"
+                    data["status_char"] = l_short
                     data["color"] = "#F59E0B"
                     data["deduction"] = daily_salary
         else:
             # No sign-in: check day type
             if is_working_day:
                 if approved_leave:
-                    data["status"] = f"Leave ({approved_leave['leave_type']})"
-                    data["status_char"] = "L"
-                    data["color"] = "#A855F7"
-                    data["deduction"] = 0
+                    l_type = approved_leave.get("leave_type", "")
+                    # Mapping for display short-codes
+                    type_map = {
+                        "Casual Leave": "CL",
+                        "Sick Leave": "SL",
+                        "Paid Leave": "PL",
+                        "Comp-Off": "CO",
+                        "Annual Leave": "AL",
+                        "Privilege Leave": "AL"
+                    }
+                    l_short = type_map.get(l_type, "L")
+                    
+                    data["status"] = f"Leave ({l_type})"
+                    data["status_char"] = l_short
+                    data["color"] = "#A855F7" # Leave Purple
+                    
+                    # SALARY CUT LOGIC: If 'Paid Leave', deduct daily salary
+                    if l_type == "Paid Leave":
+                        data["deduction"] = daily_salary
+                        data["color"] = "#ff7a00" # Change color slightly for LOP
+                    else:
+                        data["deduction"] = 0
                 else:
                     data["status"] = "Absent"
                     data["status_char"] = "A"
@@ -1845,17 +2020,117 @@ def get_employee_insights(employee_id: str):
         upcoming_holidays = [h for h in all_holidays if h['date'] >= today_str]
         upcoming_holidays = sorted(upcoming_holidays, key=lambda x: x['date'])[:2]
 
-    # 3. Dynamic Insight Message
-    if not checked_in:
-        insight = "You haven't clocked in yet today. Don't forget to sign in!"
-    else:
-        insight = "Excellent! You're clocked in and on track with your schedule."
+    # 3. Get recent leave status for notifications
+    recent_leaves = []
+    if mongo_db.db is not None:
+        recent_leaves = list(mongo_db.leaves.find(
+            {"employee_id": employee_id}, 
+            {"_id": 0}
+        ).sort("applied_on", -1).limit(3))
 
-    # 4. Mocked but served via API metrics
-    productivity_score = 94 if checked_in else 85
-    burnout_risk = "Low (8%)" if not checked_in else "Low (14%)"
+    # 4. Dynamic Insight Message
+    if not checked_in:
+        insight = "Welcome! You haven't clocked in yet today. Don't forget to sign in!"
+    else:
+        # If there's a recently approved leave, mention it
+        approved_recently = next((l for l in recent_leaves if "Approved" in str(l.get("status", ""))), None)
+        if approved_recently:
+            insight = f"Great news! Your request for {approved_recently.get('leave_type')} has been Approved."
+        else:
+            insight = "Excellent! You're clocked in and on track with your schedule."
+
+    # 4. Metrics Calculation (Month-to-Date)
+    month_start = datetime.datetime(datetime.datetime.utcnow().year, datetime.datetime.utcnow().month, 1)
     
+    # Joining date awareness
+    joining_date_str = user.get("joining_date", "")
+    window_start = month_start
+    try:
+        if joining_date_str:
+            join_date = datetime.datetime.fromisoformat(joining_date_str.replace("Z", "+00:00")).replace(tzinfo=None)
+            window_start = max(month_start, join_date)
+        else:
+            # FALLBACK: If joining_date is missing, find the EARLIEST attendance record for this month
+            first_att = mongo_db.attendance.find_one(
+                {"employee_id": employee_id}, 
+                sort=[("timestamp", 1)]
+            )
+            if first_att and "timestamp" in first_att:
+                first_date = datetime.datetime.fromisoformat(first_att["timestamp"][:10])
+                # Only use it if it's in the current month
+                if first_date.year == month_start.year and first_date.month == month_start.month:
+                    window_start = first_date
+    except:
+        window_start = month_start
+        
+    today = datetime.datetime.utcnow()
+    
+    # Calculate working days (Mon-Fri) from window_start to today
+    working_days_so_far = 0
+    curr = window_start
+    while curr.date() <= today.date():
+        if curr.weekday() < 5: # 0-4 is Mon-Fri
+            working_days_so_far += 1
+        curr += datetime.timedelta(days=1)
+    
+    if working_days_so_far == 0: working_days_so_far = 1 # Prevent div by zero
+    
+    # Count unique days present since window_start
+    present_days_count = 0
+    if mongo_db.attendance is not None:
+        # Get unique dates from timestamp regex
+        all_attendance = list(mongo_db.attendance.find({
+            "employee_id": employee_id,
+            "action": "sign_in",
+            "timestamp": {"$gte": window_start.strftime('%Y-%m-%d')}
+        }))
+        unique_dates = len(set(a['timestamp'][:10] for a in all_attendance))
+        present_days_count = unique_dates
+
+    # Count approved leaves as present
+    approved_leave_days = 0
+    if mongo_db.leaves is not None:
+        leaves_this_month = list(mongo_db.leaves.find({
+            "employee_id": employee_id,
+            "status": {"$regex": "Approved", "$options": "i"},
+            "start_date": {"$gte": window_start.strftime('%Y-%m-%d')}
+        }))
+        for l in leaves_this_month:
+            # Simple approximation: individual days in leave range
+            try:
+                s = datetime.datetime.fromisoformat(l['start_date'])
+                e = datetime.datetime.fromisoformat(l['end_date'])
+                # Only count days within the current window
+                leave_curr = max(s, window_start)
+                leave_end = min(e, today)
+                while leave_curr <= leave_end:
+                    if leave_curr.weekday() < 5:
+                        approved_leave_days += 1
+                    leave_curr += datetime.timedelta(days=1)
+            except:
+                continue
+
+    attendance_percentage = min(100, round(((present_days_count + approved_leave_days) / working_days_so_far) * 100))
+    productivity_score = min(100, round(attendance_percentage * 0.95)) if checked_in else max(0, round(attendance_percentage * 0.8))
+    
+    # Burnout Logic
+    burnout_base = 5 if not checked_in else 12
+    burnout_value = min(100, burnout_base + (attendance_percentage // 10))
+    burnout_risk = "Low" if burnout_value < 15 else "Moderate" if burnout_value < 30 else "High"
+    burnout_risk = f"{burnout_risk} ({burnout_value}%)"
+
     highlights = []
+    # Add recent leave status to highlights
+    for leaf in recent_leaves:
+        status_val = str(leaf.get('status', ''))
+        status_color = "success" if "Approved" in status_val else "warning" if "Pending" in status_val else "danger"
+        highlights.append({
+            "time": leaf.get("start_date"), 
+            "title": f"Leave {status_val}", 
+            "type": "leave",
+            "status": status_color
+        })
+
     for h in upcoming_holidays:
         highlights.append({"time": h['date'], "title": h['name'], "type": "holiday"})
     
@@ -1865,9 +2140,9 @@ def get_employee_insights(employee_id: str):
     return {
         "insight_message": insight,
         "productivity_score": productivity_score,
-        "attendance_percentage": 98,
+        "attendance_percentage": attendance_percentage,
         "burnout_risk": burnout_risk,
-        "burnout_value": 14 if checked_in else 8,
+        "burnout_value": burnout_value,
         "highlights": highlights
     }
 
@@ -1903,7 +2178,7 @@ def get_leave_balance(employee_id: str):
         # Fetch approved comp-off usage for interns too
         used_co = 0
         if mongo_db.db is not None:
-             approved_leaves = list(mongo_db.leaves.find({"employee_id": employee_id, "status": "Approved"}))
+             approved_leaves = list(mongo_db.leaves.find({"employee_id": employee_id, "status": {"$regex": "Approved", "$options": "i"}}))
              for leaf in approved_leaves:
                  if "Compensatory" in leaf["leave_type"] or "Comp-Off" in leaf["leave_type"]:
                      try:
@@ -1958,7 +2233,7 @@ def get_leave_balance(employee_id: str):
     if mongo_db.db is not None:
         approved_leaves = list(mongo_db.leaves.find({
             "employee_id": employee_id,
-            "status": "Approved"
+            "status": {"$regex": "Approved", "$options": "i"}
         }))
         
         for leaf in approved_leaves:
@@ -2000,22 +2275,49 @@ def get_leave_balance(employee_id: str):
         }
     }
 
-@router.get("/employee/salary")
-def get_employee_salary(employee_id: str):
-    if mongo_db.users is None:
+@router.get("/admin/salary/settings")
+def get_company_settings():
+    """Fetch global company settings for deductions, etc."""
+    if mongo_db.db is None:
+        return {"enable_tax": True, "enable_pf": True}
+    settings = mongo_db.db.settings.find_one({"key": "company_salary_config"})
+    if not settings:
+        return {"enable_tax": True, "enable_pf": True, "tax_rate": 8.0, "pf_rate": 5.0}
+    return {
+        "enable_tax": settings.get("enable_tax", True),
+        "enable_pf": settings.get("enable_pf", True),
+        "tax_rate": float(settings.get("tax_rate", 8.0)),
+        "pf_rate": float(settings.get("pf_rate", 5.0))
+    }
+
+@router.post("/admin/salary/settings")
+def update_salary_settings(enable_tax: bool, enable_pf: bool, tax_rate: float = 8.0, pf_rate: float = 5.0):
+    """Admin endpoint to toggle and fix global deduction rates."""
+    if mongo_db.db is None:
         return {"error": "Database error"}
-    user = mongo_db.users.find_one({"employee_id": employee_id}, {"_id": 0, "monthly_salary": 1, "employment_type": 1, "in_hand_salary": 1, "joining_date": 1})
-    if not user:
-        return {"error": "Employee not found"}
-    
+    mongo_db.db.settings.update_one(
+        {"key": "company_salary_config"},
+        {"$set": {
+            "enable_tax": enable_tax, 
+            "enable_pf": enable_pf, 
+            "tax_rate": tax_rate,
+            "pf_rate": pf_rate,
+            "updated_at": datetime.datetime.utcnow().isoformat()
+        }},
+        upsert=True
+    )
+    return {"message": "Salary settings updated."}
+
+def calculate_month_salary(user, year, month, settings=None):
+    """Shared engine for all salary calculations (Summary & History)."""
+    if not settings:
+        settings = get_company_settings()
+        
     try:
         monthly_salary = float(user.get("monthly_salary", 0))
     except (ValueError, TypeError):
         monthly_salary = 0.0
         
-    employment_type = user.get("employment_type", "Full-Time")
-    
-    # Calculate expected working days based on joining date for Proration
     joining_date_str = user.get("joining_date")
     joining_date = None
     if joining_date_str:
@@ -2023,9 +2325,6 @@ def get_employee_salary(employee_id: str):
             joining_date = datetime.datetime.fromisoformat(joining_date_str).date()
         except: pass
 
-    now = datetime.datetime.utcnow()
-    year = now.year
-    month = now.month
     month_prefix = f"{year}-{month:02d}"
     
     # Fetch holidays/overrides for calculation
@@ -2056,65 +2355,62 @@ def get_employee_salary(employee_id: str):
             if not joining_date or curr_day >= joining_date:
                 expected_working_days += 1
 
+    # Apply Proration
     if total_working_days_in_month > 0 and expected_working_days < total_working_days_in_month:
         base_salary = (expected_working_days / total_working_days_in_month) * monthly_salary
     else:
         base_salary = monthly_salary
 
-    # NEW: LOP Deduction Logic (₹500 per day) from attendance history
+    # LOP Calculation
     lop_days = 0
     attendance_penalty = 0
-    
     try:
-        calendar_res = get_attendance_calendar(employee_id)
+        # Assuming get_attendance_calendar is available in the same module or imported
+        calendar_res = get_attendance_calendar(user.get("employee_id"))
         if "history" in calendar_res:
-            today_str = datetime.datetime.utcnow().strftime('%Y-%m')
             for record in calendar_res["history"]:
-                if record["date"].startswith(today_str):
-                    if record.get("status_char") == "A":
+                if record["date"].startswith(month_prefix):
+                    if record.get("status_char") in ["A", "PL"]:
                         lop_days += 1
-                    else:
-                        attendance_penalty += record.get("deduction", 0)
-    except Exception as e:
-        print(f"Error calculating attendance penalty/LOP: {e}")
+    except: pass
 
-    lop_deduction = lop_days * 500
-
-    if employment_type == "Intern":
-        attendance_penalty = 0
-        deductions = lop_deduction
-        tax = 0
-        net_salary = base_salary - lop_deduction
-    else:
-        stored_in_hand = user.get("in_hand_salary")
-        try:
-            stored_in_hand = float(stored_in_hand) if stored_in_hand is not None else 0
-        except (ValueError, TypeError):
-            stored_in_hand = 0
-            
-        if stored_in_hand > 0:
-            if total_working_days_in_month > 0 and expected_working_days < total_working_days_in_month:
-                 prorated_in_hand = (expected_working_days / total_working_days_in_month) * stored_in_hand
-            else:
-                 prorated_in_hand = stored_in_hand
-                 
-            net_salary = prorated_in_hand - lop_deduction
-            deductions = base_salary - net_salary
-            tax = 0
-        else:
-            deductions = int(base_salary * 0.05) + lop_deduction + attendance_penalty
-            tax = int(base_salary * 0.08)
-            net_salary = base_salary - deductions - tax
-            
+    # Flat LOP Deduction (1 day worth of salary if day_salary exists, else 500)
+    day_salary = base_salary / (total_working_days_in_month or 30)
+    lop_deduction = lop_days * day_salary if lop_days > 0 else 0
+    
+    # Dynamic Deductions based on Admin Toggles and Fixed Rates
+    tax_rate = settings.get("tax_rate", 8.0)
+    pf_rate = settings.get("pf_rate", 5.0)
+    
+    tax = int(base_salary * (tax_rate / 100)) if settings.get("enable_tax") else 0
+    pf_pt = int(base_salary * (pf_rate / 100)) if settings.get("enable_pf") else 0
+    
+    gross = base_salary
+    net = base_salary - lop_deduction - attendance_penalty - tax - pf_pt
+    
     return {
-        "net_salary": net_salary,
-        "deductions": deductions,
-        "tax": tax,
-        "gross_salary": base_salary,
-        "lop_days": lop_days,
+        "monthly_salary": monthly_salary,
+        "gross_salary": gross,
+        "net_salary": net,
         "lop_deduction": lop_deduction,
-        "attendance_penalty": attendance_penalty
+        "lop_days": lop_days,
+        "attendance_penalty": attendance_penalty,
+        "tax": tax,
+        "pf_pt": pf_pt,
+        "deductions": tax + pf_pt + lop_deduction + attendance_penalty,
+        "settings": settings
     }
+
+@router.get("/employee/salary")
+def get_employee_salary(employee_id: str):
+    if mongo_db.users is None:
+        return {"error": "Database error"}
+    user = mongo_db.users.find_one({"employee_id": employee_id}, {"_id": 0, "employee_id": 1, "monthly_salary": 1, "employment_type": 1, "in_hand_salary": 1, "joining_date": 1})
+    if not user:
+        return {"error": "Employee not found"}
+    
+    now = datetime.datetime.utcnow()
+    return calculate_month_salary(user, now.year, now.month)
 
 def generate_payslip_pdf(employee, salary, month_year, format_info):
     # format_info is a dict with coordinates or descriptions
@@ -2247,6 +2543,185 @@ def download_payslip(month_year: str, employee_id: str):
         media_type="text/html",
         headers={"Content-Disposition": f"attachment; filename=NeuzenAI_Payslip_{month_year}.html"}
     )
+
+def generate_salary_statement_pdf(user, payslips, period_text):
+    """Generates a professional multi-month salary statement (Portfolio)"""
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # --- Professional Header ---
+    pdf.set_fill_color(200, 76, 255) # Violet Theme
+    pdf.rect(0, 0, 210, 45, 'F')
+    
+    # Company Name (Logo Placeholder styled text)
+    pdf.set_font("Arial", 'B', 28)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_xy(15, 12)
+    pdf.cell(0, 15, "NeuZen AI", ln=False)
+    
+    pdf.set_font("Arial", 'B', 14)
+    pdf.set_xy(120, 15)
+    pdf.cell(75, 10, "SALARY PORTFOLIO", align='R', ln=True)
+    
+    pdf.set_font("Arial", '', 10)
+    pdf.set_xy(120, 24)
+    pdf.cell(75, 5, f"Statement Period: {period_text}", align='R', ln=True)
+    pdf.set_xy(120, 29)
+    pdf.cell(75, 5, "Confidential Document", align='R', ln=True)
+    
+    # --- Employee Info Section ---
+    pdf.set_text_color(26, 26, 26)
+    pdf.ln(35)
+    
+    pdf.set_font("Arial", 'B', 12)
+    pdf.set_x(15)
+    pdf.cell(0, 8, "EMPLOYEE IDENTIFICATION", ln=True)
+    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
+    pdf.ln(5)
+    
+    pdf.set_font("Arial", '', 10)
+    pdf.set_x(15)
+    pdf.cell(90, 7, f"Employee Name: {user.get('name')}", ln=False)
+    pdf.cell(0, 7, f"Designation: {user.get('position', 'Not Assigned')}", ln=True)
+    pdf.set_x(15)
+    pdf.cell(90, 7, f"Employee ID: {user.get('employee_id')}", ln=False)
+    pdf.cell(0, 7, f"Employment: {user.get('employment_type', 'Full-Time')}", ln=True)
+    pdf.ln(10)
+    
+    # --- Salary History Table ---
+    pdf.set_font("Arial", 'B', 12)
+    pdf.set_x(15)
+    pdf.cell(0, 8, "DISBURSEMENT HISTORY", ln=True)
+    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
+    pdf.ln(2)
+    
+    # Table Header
+    pdf.set_fill_color(245, 245, 245)
+    pdf.set_font("Arial", 'B', 9)
+    pdf.set_x(15)
+    pdf.cell(35, 10, "Month", border=1, fill=True)
+    pdf.cell(30, 10, "Gross", border=1, fill=True)
+    pdf.cell(25, 10, "LOP", border=1, fill=True)
+    pdf.cell(25, 10, "Penalty", border=1, fill=True)
+    pdf.cell(25, 10, "Tax", border=1, fill=True)
+    pdf.cell(40, 10, "Net Paid (Rs.)", border=1, fill=True, ln=1)
+    
+    # Rows
+    pdf.set_font("Arial", '', 9)
+    total_net = 0
+    for ps in payslips:
+        pdf.set_x(15)
+        pdf.cell(35, 9, ps.get('month'), border=1)
+        pdf.cell(30, 9, f"{ps.get('gross_salary', 0):,.0f}", border=1)
+        pdf.cell(25, 9, f"{ps.get('lop_deduction', 0):,.0f}", border=1)
+        pdf.cell(25, 9, f"{ps.get('attendance_penalty', 0):,.0f}", border=1)
+        pdf.cell(25, 9, f"{ps.get('tax', 0):,.0f}", border=1)
+        
+        net_amt = ps.get('net_salary', 0)
+        pdf.cell(40, 9, f"{net_amt:,.2f}", border=1, ln=True)
+        total_net += net_amt
+    
+    # Total Footer
+    pdf.set_font("Arial", 'B', 10)
+    pdf.set_x(15)
+    pdf.set_fill_color(220, 255, 230)
+    pdf.cell(140, 10, "TOTAL CONSOLIDATED NET DISBURSED", border=1, fill=True)
+    pdf.cell(40, 10, f"Rs. {total_net:,.2f}", border=1, fill=True, ln=1)
+    
+    # --- Closing ---
+    pdf.ln(20)
+    pdf.set_font("Arial", '', 9)
+    pdf.set_x(15)
+    pdf.multi_cell(180, 5, "This document serves as an official summary of salary earnings for the period specified. It is generated by the Dhanadurga HRMS on behalf of NeuZen AI IT Solutions. For any discrepancies or additional verification, please contact the HR Department.")
+    
+    # Footer
+    pdf.set_y(-25)
+    pdf.set_font("Arial", 'I', 8)
+    # Footer
+    pdf.set_y(-25)
+    pdf.set_font("Arial", 'I', 8)
+    pdf.set_text_color(128, 128, 128)
+    pdf.cell(0, 5, "NeuZen AI IT Solutions | Hyderabad, India | www.neuzenai.com", align='C', ln=1)
+    pdf.cell(0, 5, f"Generated on {datetime.datetime.now().strftime('%d %b %Y')}", align='C', ln=1)
+    
+    return bytes(pdf.output())
+
+@router.get("/employee/salary/statement/pdf")
+def download_salary_statement_pdf(employee_id: str, months: Optional[int] = None, selected_months: Optional[str] = None):
+    try:
+        user = mongo_db.users.find_one({"employee_id": employee_id})
+        if not user: return Response(status_code=404, content="Employee not found")
+        
+        all_ps = get_employee_payslips(employee_id)["payslips"]
+        
+        # Filtering logic
+        if selected_months:
+            months_list = [m.strip() for m in selected_months.split(',')]
+            filtered_ps = [ps for ps in all_ps if ps.get('month') in months_list]
+            period_text = f"Custom ({len(filtered_ps)} months)"
+        else:
+            limit = months if months else 12
+            filtered_ps = all_ps[:limit]
+            period_text = f"Last {limit} Months" if limit < 100 else "Full History"
+        
+        pdf_bytes = generate_salary_statement_pdf(user, filtered_ps, period_text)
+        
+        # Ensure we return valid bytes and use a filename
+        filename = f"NeuZenAI_Salary_Statement_{datetime.datetime.now().strftime('%Y%m%d')}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Access-Control-Expose-Headers": "Content-Disposition"
+            }
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response(status_code=500, content=f"Failed to generate PDF: {str(e)}")
+
+@router.get("/employee/salary/statement/excel")
+def download_salary_statement_excel(employee_id: str, months: Optional[int] = None, selected_months: Optional[str] = None):
+    try:
+        all_ps = get_employee_payslips(employee_id)["payslips"]
+        
+        if selected_months:
+            months_list = [m.strip() for m in selected_months.split(',')]
+            filtered_ps = [ps for ps in all_ps if ps.get('month') in months_list]
+        else:
+            limit = months if months else 12
+            filtered_ps = all_ps[:limit]
+            
+        import io
+        import csv
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Month", "Disbursement Date", "Gross Salary", "LOP Deduction", "Attendance Penalty", "Tax (TDS)", "Net Paid (INR)"])
+        
+        total_net = 0
+        for ps in filtered_ps:
+            net_amt = ps.get('net_salary', 0)
+            writer.writerow([
+                ps.get('month'), 
+                ps.get('date'), 
+                ps.get('gross_salary', 0), 
+                ps.get('lop_deduction', 0), 
+                ps.get('attendance_penalty', 0), 
+                ps.get('tax', 0), 
+                net_amt
+            ])
+            total_net += net_amt
+            
+        writer.writerow(["TOTAL", "-", "-", "-", "-", "-", total_net])
+            
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=NeuZenAI_Salary_Portfolio.csv"}
+        )
+    except Exception as e:
+        return Response(status_code=500, content=str(e))
 def analyze_payslip_template(request: PayslipTemplateRequest):
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -2390,26 +2865,101 @@ def get_payslip_release_status():
 
 @router.get("/employee/payslips")
 def get_employee_payslips(employee_id: str):
-    if mongo_db.users is None or mongo_db.payslip_releases is None:
+    if mongo_db.users is None or mongo_db.db is None:
         return {"payslips": []}
     
     user = mongo_db.users.find_one({"employee_id": employee_id})
     if not user:
         return {"payslips": []}
         
-    salary = user.get("monthly_salary", 0)
-    # Filter releases that are set to True
-    releases = list(mongo_db.payslip_releases.find({"released": True}, {"_id": 0}))
+    try:
+        monthly_salary = float(user.get("monthly_salary", 0))
+    except (ValueError, TypeError):
+        monthly_salary = 0.0
+        
+    employment_type = user.get("employment_type", "Full-Time")
+    base_salary = monthly_salary
     
+    if employment_type == "Intern":
+        gross_salary = base_salary
+        net_salary = base_salary
+    else:
+        stored_in_hand = user.get("in_hand_salary")
+        try:
+            stored_in_hand = float(stored_in_hand) if stored_in_hand is not None else 0
+        except:
+            stored_in_hand = 0
+            
+        if stored_in_hand > 0:
+            net_salary = stored_in_hand
+            gross_salary = base_salary
+        else:
+            deductions = int(base_salary * 0.05)
+            tax = int(base_salary * 0.08)
+            gross_salary = base_salary
+            net_salary = base_salary - deductions - tax
+
+    import datetime
+    from dateutil.relativedelta import relativedelta
+    
+    now = datetime.datetime.utcnow()
+    # Find joining date to limit history
+    joining_date_str = user.get("joining_date")
+    joining_date = None
+    if joining_date_str:
+        try:
+            joining_date = datetime.datetime.fromisoformat(joining_date_str).date()
+        except: pass
+        
+    # Fetch released months from the database
+    released_months = {}
+    if mongo_db.payslip_releases is not None:
+        releases = list(mongo_db.payslip_releases.find({}, {"_id": 0}))
+        released_months = {r["month_year"]: r.get("released", False) for r in releases}
+
+    settings = get_company_settings()
     payslips = []
-    for r in releases:
+    
+    # Generate up to 12 months of history dynamically for portfolio demonstration
+    for i in range(0, 13): # Start from current month (0) to history (12)
+        target_date = now - relativedelta(months=i)
+            
+        # 1. Enforce Joining Date logic 
+        target_month_start = target_date.replace(day=1).date()
+        if joining_date and target_month_start < joining_date.replace(day=1):
+            continue 
+
+        month_year_str = target_date.strftime("%B %Y")
+        disbursement_date = (target_date + relativedelta(months=1)).replace(day=5).strftime("%Y-%m-%d")
+        
+        # 2. Check Admin Release status
+        is_released = released_months.get(month_year_str, False)
+        
+        # Consistent Proration & Calculation for every history entry
+        calc_year = target_date.year
+        calc_month = target_date.month
+        
+        # Call the shared engine
+        stats = calculate_month_salary(user, calc_year, calc_month, settings)
+
         payslips.append({
-            "month": r.get("month_year"),
-            "date": r.get("updated_at", "").split('T')[0] if r.get("updated_at") else "2026-03-05",
-            "amount": f"₹{salary:,}"
+            "month": month_year_str,
+            "date": disbursement_date,
+            "amount": stats["net_salary"],
+            "gross_salary": stats["gross_salary"],
+            "net_salary": stats["net_salary"],
+            "lop_deduction": stats["lop_deduction"],
+            "attendance_penalty": stats["attendance_penalty"],
+            "tax": stats["tax"],
+            "released": is_released,
+            "pf_pt": stats["pf_pt"]
         })
         
-    return {"payslips": payslips}
+    return {
+        "payslips": payslips,
+        "joining_date": joining_date_str,
+        "settings": settings
+    }
 
 @router.get("/employee/team-availability")
 def get_team_availability():
@@ -2529,6 +3079,48 @@ def get_all_attendance_logs():
         return {"logs": []}
     logs = list(mongo_db.attendance.find({}, {"_id": 0}).sort("timestamp", -1).limit(100))
     return {"logs": logs}
+
+@router.get("/admin/overview")
+def get_admin_overview():
+    """Aggregates key metrics for the landing dashboard."""
+    if mongo_db.db is None or mongo_db.users is None:
+        return {"error": "Database error"}
+    
+    # Staffing
+    total_employees = mongo_db.users.count_documents({"status": "approved"})
+    pending_approvals = mongo_db.users.count_documents({"status": "pending"})
+    
+    # Leaves (Today)
+    today_str = datetime.date.today().strftime("%Y-%m-%d")
+    active_leaves = mongo_db.db.leaves.count_documents({
+        "status": "Approved",
+        "start_date": {"$lte": today_str},
+        "end_date": {"$gte": today_str}
+    })
+    pending_leaves = mongo_db.db.leaves.count_documents({"status": "Pending"})
+
+    # Requests
+    item_requests = mongo_db.db.item_requests.count_documents({"status": "Pending"})
+    
+    # Recent Activity (Last 5)
+    # We'll pull from notifications or last few users
+    recent_users = list(mongo_db.users.find({}, {"_id": 0, "name": 1, "employee_id": 1, "status": 1, "created_at": 1}).sort("created_at", -1).limit(5))
+    
+    # Announcement
+    announcement = mongo_db.db.announcements.find_one({}, {"_id": 0})
+    
+    return jsonable_encoder({
+        "status": "success",
+        "metrics": {
+            "total_employees": total_employees,
+            "pending_approvals": pending_approvals,
+            "active_leaves_today": active_leaves,
+            "pending_leaves": pending_leaves,
+            "item_requests": item_requests
+        },
+        "recent_activity": recent_users,
+        "announcement": announcement
+    })
 
 @router.post("/admin/copilot")
 def admin_ai_copilot(request: AdminCopilotRequest):

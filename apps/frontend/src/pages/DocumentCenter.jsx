@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 const DocumentCenter = ({ user }) => {
     const [payslips, setPayslips] = useState([]);
@@ -9,7 +10,7 @@ const DocumentCenter = ({ user }) => {
     const [signingDate, setSigningDate] = useState(new Date().toISOString().split('T')[0]);
     const [submitting, setSubmitting] = useState(false);
     
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+    const apiUrl = API_URL;
 
     const fetchDocs = async () => {
         try {

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 import { PLACEHOLDER_IMAGE } from '../utils';
 
 const MyWorkLife = ({ userId, setActiveMenu }) => {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+    const apiUrl = API_URL;
 
     useEffect(() => {
         fetchProfile();

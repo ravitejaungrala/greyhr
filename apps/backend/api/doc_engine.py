@@ -2,7 +2,7 @@ import google.generativeai as genai
 import json
 import base64
 import os
-from jinja2 import Environment, BaseLoader, TemplateNotFound
+from jinja2 import Environment, BaseLoader, FileSystemLoader, ChoiceLoader, TemplateNotFound
 import pdfkit
 from xhtml2pdf import pisa
 from io import BytesIO
@@ -18,6 +18,7 @@ model = genai.GenerativeModel('gemini-2.5-flash')
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 from database.s3_client import s3_db
+from api.doc_config import DOCUMENT_CONFIGS
 
 class S3Loader(BaseLoader):
     """Custom Jinja2 loader that fetches templates from S3."""
@@ -41,14 +42,22 @@ class S3Loader(BaseLoader):
             
         return source, None, lambda: True
 
-# Jinja2 Setup
-env = Environment(loader=S3Loader(s3_db))
+# Join local templates directory
+templates_dir = os.path.join(os.path.dirname(base_dir), 'templates')
+
+# Jinja2 Setup - Hybrid Loader (Local first, then S3)
+env = Environment(
+    loader=ChoiceLoader([
+        FileSystemLoader(templates_dir),
+        S3Loader(s3_db)
+    ])
+)
 static_dir = os.path.join(base_dir, 'static')
 logo_path = os.path.join(static_dir, 'logo.png').replace('\\', '/')
 signature_path = os.path.join(static_dir, 'signature.png').replace('\\', '/')
 
 MASTER_PROMPT = """
-Act as the HR Operations Backend for NeuzenAI. 
+Act as the HR Operations Backend for DHANADURGA. 
 Analyze the input and return a JSON object with ONLY the exact field names listed below.
 
 ### Fields by Document Type:
@@ -62,6 +71,8 @@ Analyze the input and return a JSON object with ONLY the exact field names liste
 - EXPERIENCE fields: emp_name, designation, start_date, end_date
 
 - RELIEVING fields: emp_name, current_date, designation, department, last_working_day, resignation_date
+
+- INTERNSHIP_COMPLETION fields: emp_name, current_date, designation, start_date, end_date, performance_summary
 
 ### Global Rules:
 - Company Name: NEUZENAI IT Solutions Pvt Ltd.
@@ -92,8 +103,11 @@ def render_doc_to_html_bytes(data, doc_type):
     Renders Jinja2 template and returns HTML bytes without saving to disk.
     """
     print(f"Rendering {doc_type} document to HTML...")
+    template_name = f"{doc_type}.html"
+    if doc_type in DOCUMENT_CONFIGS:
+        template_name = DOCUMENT_CONFIGS[doc_type].get("template", template_name)
+        
     try:
-        template_name = f"{doc_type}.html"
         template = env.get_template(template_name)
     except Exception as e:
         return None, f"Template {template_name} not found."
@@ -101,7 +115,7 @@ def render_doc_to_html_bytes(data, doc_type):
     # Data Injection
     # Use the correct filenames as provided by the user
     backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
-    data['logo_path'] = f'{backend_url}/static/chatbot%20icon.png' 
+    data['logo_path'] = f'{backend_url}/static/chatbot%20icon.png' # Using the Dhanadurga Chatbot/Main Icon
     data['signature_path'] = f'{backend_url}/static/signature.png'
     data['signatory_name'] = "B. Subba Rami Reddy"
     data['signatory_designation'] = "Co-Founder"
@@ -124,7 +138,13 @@ def render_and_save_doc(data, doc_type):
     if error:
         return {"error": error}
         
-    output_dir = os.path.join(base_dir, 'generated_docs')
+    # Use /tmp for documents on Lambda/Cloud environments to avoid permission issues
+    is_lambda = os.getenv("AWS_LAMBDA_FUNCTION_NAME") is not None
+    if is_lambda:
+        output_dir = "/tmp/generated_docs"
+    else:
+        output_dir = os.path.join(base_dir, 'generated_docs')
+        
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         

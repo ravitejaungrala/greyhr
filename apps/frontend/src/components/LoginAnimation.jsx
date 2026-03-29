@@ -90,8 +90,8 @@ const LoginAnimation = () => {
                         <svg viewBox="0 0 200 200" width="300" height="300" className={`face-group ${isBlinking ? 'blinking' : ''}`}>
                             <defs>
                                 <radialGradient id="livenessFaceGrad" cx="50%" cy="50%" r="50%">
-                                    <stop offset="0%" stopColor="#ff7a00" stopOpacity="0.3" />
-                                    <stop offset="100%" stopColor="#c84cff" stopOpacity="0.05" />
+                                    <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.3" />
+                                    <stop offset="100%" stopColor="var(--violet)" stopOpacity="0.05" />
                                 </radialGradient>
                             </defs>
                             {/* Main Face Contour */}
@@ -194,8 +194,8 @@ const LoginAnimation = () => {
                     <div className="id-card-visual" style={{opacity: subState === 'visible' ? 1 : 0, transition: 'all 0.8s ease'}}>
                         <div className="id-photo-placeholder">
                              <svg viewBox="0 0 200 200" width="140">
-                                <path d="M100,40 c-20,0-35,15-35,35 c0,25,15,55,35,55 s35-30,35-55 C135,55,120,40,100,40" fill="#ff7a00" opacity="0.3" />
-                                <path d="M50,180 c0-30,20-50,50-50 s50,20,50,50" fill="#ff7a00" opacity="0.2" />
+                                <path d="M100,40 c-20,0-35,15-35,35 c0,25,15,55,35,55 s35-30,35-55 C135,55,120,40,100,40" fill="var(--primary)" opacity="0.3" />
+                                <path d="M50,180 c0-30,20-50,50-50 s50,20,50,50" fill="var(--primary)" opacity="0.2" />
                              </svg>
                         </div>
                         <h3 style={{color: 'white', margin: '0', fontSize: '1.2rem'}}>John Doe</h3>
@@ -222,7 +222,7 @@ const LoginAnimation = () => {
                         {subState === 'saved' ? (
                              <svg width="60" height="60" viewBox="0 0 24 24" fill="#22C55E"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
                         ) : (
-                             <svg width="60" height="60" viewBox="0 0 24 24" fill="rgba(255,122,0,0.4)">
+                             <svg width="60" height="60" viewBox="0 0 24 24" fill="rgba(10,102,194,0.4)">
                                 <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                              </svg>
                         )}
