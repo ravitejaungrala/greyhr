@@ -1034,205 +1034,21 @@ def get_monthly_salary_report(month_year: str):
 
     report = []
     
+    settings = get_company_settings()
     for emp in employees:
-        emp_id = emp["employee_id"]
-        employment_type = emp.get("employment_type", "Full-Time")
-        is_intern = employment_type == "Intern"
-        monthly_salary = emp.get("monthly_salary", 0)
-        daily_salary = monthly_salary / 30 # Standard daily rate
-        
-        # Fetch all attendance for this employee in this month ONCE
-        emp_month_records = list(mongo_db.attendance.find({
-            "employee_id": emp_id,
-            "timestamp": {"$regex": f"^{month_prefix}"}
-        }).sort("timestamp", 1))
-        
-        # Keep the set for legacy counting if needed, but we'll use records directly
-        attended_dates = {log["timestamp"].split("T")[0] for log in emp_month_records if log["action"] == "sign_in"}
-        
-        # DOJ filtering: count from the next day of approval
-        joining_date_str = emp.get("joining_date")
-        joining_date: Optional[datetime.date] = None
-        if joining_date_str:
-            try:
-                # Handle cases where it might be isoformat or just date
-                if 'T' in joining_date_str:
-                    joining_date = datetime.datetime.fromisoformat(joining_date_str).date()
-                else:
-                    joining_date = datetime.datetime.strptime(joining_date_str, "%Y-%m-%d").date()
-            except: pass
-
-        # Fetch approved leaves for this employee
-        emp_leaves = list(mongo_db.leaves.find({
-            "employee_id": emp_id,
-            "status": {"$regex": "Approved"},
-            "$or": [
-                {"start_date": {"$regex": f"^{month_prefix}"}},
-                {"end_date": {"$regex": f"^{month_prefix}"}}
-            ]
-        }))
-        
-        # Helper to check if a date is within an approved leave
-        leave_dates = set()
-        for l in emp_leaves:
-            l_start = datetime.datetime.strptime(l["start_date"], "%Y-%m-%d")
-            l_end = datetime.datetime.strptime(l["end_date"], "%Y-%m-%d")
-            curr_l = l_start
-            while curr_l <= l_end:
-                if curr_l.month == month and curr_l.year == year:
-                    leave_dates.add(curr_l.strftime("%Y-%m-%d"))
-                curr_l += datetime.timedelta(days=1)
-
-        # New Penalty-Aware Attendance Logic
-        absent_days: float = 0 # This will track LOP days
-        actual_presence: int = 0 
-        leaves_taken: int = 0
-        expected_working_days: int = 0
-        ft_grace_5_9_count: int = 0
-        int_grace_5_9_count: int = 0
-        int_grace_2_5_count: int = 0
-
-        for d in range(1, num_days + 1):
-            curr_day = datetime.datetime(year, month, d)
-            curr_date = curr_day.date()
-            if joining_date and curr_date < joining_date:
-                continue
-
-            date_str = curr_day.strftime("%Y-%m-%d")
-            weekday = curr_day.weekday()
-            is_working_day = True
-            if weekday >= 5: is_working_day = False
-            if date_str in month_holidays: is_working_day = False
-            if date_str in month_overrides:
-                if month_overrides[date_str] == "forced_working": is_working_day = True
-                elif month_overrides[date_str] == "forced_holiday": is_working_day = False
-
-            if is_working_day:
-                expected_working_days += 1
-                
-                # Filter this month's records for this specific day
-                day_records = [r for r in emp_month_records if r["timestamp"].startswith(date_str)]
-
-                is_present = False
-                lop_on_day = 0 # 0, 0.5, or 1.0
-                tot_sec = 0
-                is_forgot_logout = False
-
-                if day_records:
-                    punches = sorted(day_records, key=lambda x: x["timestamp"])
-                    f_in = next((p for p in punches if p["action"] == "sign_in"), None)
-                    l_out = next((p for p in reversed(punches) if p["action"] == "sign_out"), None)
-                    
-                    is_forgot_logout = (f_in and not l_out)
-                    if f_in and l_out:
-                        try:
-                            t1 = datetime.datetime.fromisoformat(f_in["timestamp"].replace('Z', '+00:00'))
-                            t2 = datetime.datetime.fromisoformat(l_out["timestamp"].replace('Z', '+00:00'))
-                            tot_sec = int((t2 - t1).total_seconds())
-                        except: pass
-                
-                # Check for leave on this day
-                has_approved_leave = date_str in leave_dates
-                
-                # Default to Absent (1.0 LOP) if it's a working day
-                lop_on_day = 1.0
-
-                # SPECIAL RULE: Joining Day (First Day) exemption
-                if joining_date and curr_date == joining_date:
-                    is_present = True
-                    lop_on_day = 0
-                # Tiered Presence & LOP Logic (v3 Refined)
-                elif tot_sec >= 9 * 3600 or is_forgot_logout:
-                    is_present = True
-                    lop_on_day = 0
-                elif day_records:
-                    # Only apply grace/penalties if NOT an approved leave
-                    if not has_approved_leave:
-                        if is_intern:
-                            if tot_sec >= 5 * 3600: # 5-9h range
-                                is_present = True
-                                if int_grace_5_9_count < 3:
-                                    int_grace_5_9_count += 1
-                                    lop_on_day = 0
-                                else:
-                                    lop_on_day = 0.5
-                            elif tot_sec >= 2 * 3600: # 2-5h range
-                                is_present = True
-                                if int_grace_2_5_count < 2:
-                                    int_grace_2_5_count += 1
-                                    lop_on_day = 0
-                                else:
-                                    lop_on_day = 0.5
-                            else: # 0-2h range
-                                is_present = False
-                                lop_on_day = 1.0
-                        else: # Full-Time
-                            if tot_sec >= 5 * 3600: # 5-9h range
-                                is_present = True
-                                if ft_grace_5_9_count < 3:
-                                    ft_grace_5_9_count += 1
-                                    lop_on_day = 0
-                                else:
-                                    lop_on_day = 0.5
-                            elif tot_sec >= 2 * 3600: # 2-5h range
-                                is_present = True
-                                lop_on_day = 0.5 # FT needs permission for 2-5h or it's a cut
-                            else: # 0-2h range
-                                is_present = False
-                                lop_on_day = 1.0
-                    else:
-                        # Has approved leave (acts as permission/sick leave)
-                        if is_intern:
-                            is_present = False
-                            lop_on_day = 1.0 # Interns have no paid leaves
-                        else:
-                            is_present = True
-                            lop_on_day = 0 # Full-Time paid leave/permission
-                elif has_approved_leave:
-                    # No records but has approved leave
-                    if is_intern:
-                        is_present = False
-                        lop_on_day = 1.0
-                    else:
-                        is_present = True
-                        lop_on_day = 0
-                else:
-                    # No records, no leave, no DOJ exemption -> 1.0 LOP
-                    lop_on_day = 1.0
-                
-                # Overwrite LOP if approved leave exists (already handled above but for completeness)
-                # Ensure no redundant overwriting that might conflict
-                
-                # Only count LOP if the day has already passed or is today
-                # This prevents future working days from being marked as 'Absent'
-                absent_days += float(lop_on_day)
-
-        # Prorated base calculation for mid-month joiners
-        # They should only be paid for the working days from joining_date to end of month
-        if total_working_days_in_month > 0 and expected_working_days < total_working_days_in_month:
-            base_salary = round((expected_working_days / total_working_days_in_month) * monthly_salary, 2)
-        else:
-            base_salary = monthly_salary
-
-        if is_intern:
-            # Intern LOP: 500 per absent day
-            lop_deduction = absent_days * 500
-        else:
-            lop_deduction = round(absent_days * daily_salary, 2)
-        
-        net_salary = round(base_salary - lop_deduction, 2)
+        salary_info = calculate_month_salary(emp, year, month, settings)
         
         report.append({
-            "employee_id": emp_id,
+            "employee_id": emp["employee_id"],
             "name": emp["name"],
-            "expected_working_days": expected_working_days,
-            "actual_presence": actual_presence,
-            "leaves_taken": leaves_taken,
-            "absent_days": absent_days,
-            "gross_salary": base_salary, # Renamed to reflect prorated amount
-            "monthly_salary": monthly_salary, # Original full salary
-            "lop_deduction": lop_deduction,
-            "net_salary": net_salary
+            "expected_working_days": salary_info["expected_working_days"],
+            "actual_presence": salary_info["actual_presence"],
+            "leaves_taken": salary_info["leaves_taken"],
+            "absent_days": salary_info["lop_days"],
+            "gross_salary": salary_info["gross_salary"],
+            "monthly_salary": salary_info["monthly_salary"],
+            "lop_deduction": salary_info["lop_deduction"],
+            "net_salary": salary_info["net_salary"]
         })
         
     return {"month_year": month_year, "report": report}
@@ -1578,7 +1394,7 @@ def get_attendance_status(employee_id: str):
     return {"last_punch": None, "status": "Not Signed In"}
 
 @router.get("/employee/attendance/calendar")
-def get_attendance_calendar(employee_id: str):
+def get_attendance_calendar(employee_id: str, year: Optional[int] = None, month: Optional[int] = None):
     if mongo_db.attendance is None or mongo_db.users is None:
         return {"history": [], "recent_captures": []}
     
@@ -1600,11 +1416,11 @@ def get_attendance_calendar(employee_id: str):
         if monthly_salary > 0:
             daily_salary = monthly_salary / 30
             
-    # 2. Determine Date Range (Current Month)
+    # 2. Determine Date Range
     now = datetime.datetime.utcnow()
-    year = now.year
-    month = now.month
     today = now.date()
+    if year is None: year = now.year
+    if month is None: month = now.month
     
     # 3. Fetch all records for this employee for the current month
     # We use regex to match the year-month prefix
@@ -1660,16 +1476,16 @@ def get_attendance_calendar(employee_id: str):
         day_str = current_date.isoformat()
         
         # Default day data
-        is_future = d > today.day
+        is_future_day = current_date > today
         data = {
             "date": day_str,
             "first_in": "-",
             "last_out": "-",
             "total_work_hrs": "-",
-            # Default to 'Scheduled' for future, 'Absent' for past
-            "status": "Scheduled" if is_future else "Absent",
-            "status_char": "-" if is_future else "A",
-            "color": "#9CA3AF" if is_future else "#EF4444",
+            # Default to 'Scheduled' for future, default placeholder for others
+            "status": "Scheduled" if is_future_day else "Pending",
+            "status_char": "-" if is_future_day else "?",
+            "color": "#9CA3AF" if is_future_day else "#9CA3AF",
             "deduction": 0.0,
             "day_label": "Working Day"
         }
@@ -1875,10 +1691,15 @@ def get_attendance_calendar(employee_id: str):
                     data["status_char"] = l_short
                     data["color"] = "#A855F7" # Leave Purple
                     
-                    # SALARY CUT LOGIC: If 'Paid Leave', deduct daily salary
+                    # SALARY CUT LOGIC
                     if l_type == "Paid Leave":
-                        data["deduction"] = daily_salary
-                        data["color"] = "#ff7a00" # Change color slightly for LOP
+                        if employment_type == "Intern":
+                            data["deduction"] = daily_salary
+                            data["color"] = "#ff7a00"
+                        else:
+                            # Full-Time Paid Leave: no deduction
+                            data["deduction"] = 0
+                            data["color"] = "#ff7a00"
                     else:
                         data["deduction"] = 0
                 else:
@@ -2386,50 +2207,73 @@ def calculate_month_salary(user, year, month, settings=None):
                 expected_working_days += 1
 
     # Apply Proration
+    base_salary = monthly_salary
     if total_working_days_in_month > 0 and expected_working_days < total_working_days_in_month:
         base_salary = (expected_working_days / total_working_days_in_month) * monthly_salary
-    else:
-        base_salary = monthly_salary
 
-    # LOP Calculation
-    lop_days = 0
-    attendance_penalty = 0
+    # LOP Calculation (Match Admin Logic)
+    # We'll use the standardized 30-day divisor for LOP as per requirements
+    daily_salary = 500 if user.get("employment_type") == "Intern" else (monthly_salary / 30.0)
+    
+    lop_days = 0.0
+    actual_presence = 0
+    leaves_taken = 0
+    
     try:
-        # Assuming get_attendance_calendar is available in the same module or imported
-        calendar_res = get_attendance_calendar(user.get("employee_id"))
+        calendar_res = get_attendance_calendar(user.get("employee_id"), year=year, month=month)
         if "history" in calendar_res:
             for record in calendar_res["history"]:
                 if record["date"].startswith(month_prefix):
-                    if record.get("status_char") in ["A", "PL"]:
-                        lop_days += 1
+                    # We need to re-verify if this day is supposed to be working
+                    # to be extra safe against LOP leaks.
+                    r_date = datetime.date.fromisoformat(record["date"])
+                    r_weekday = r_date.weekday()
+                    is_working = True
+                    if r_weekday >= 5: is_working = False
+                    if record["date"] in month_holidays: is_working = False
+                    if record["date"] in month_overrides:
+                        if month_overrides[record["date"]] == "forced_working": is_working = True
+                        elif month_overrides[record["date"]] == "forced_holiday": is_working = False
+                    
+                    status = record.get("status_char")
+                    # ONLY count LOP if it's a working day and on or after joining date
+                    if not is_working or (joining_date and r_date < joining_date):
+                        continue
+
+                    if status == "A":
+                        lop_days += 1.0
+                    elif status == "HD":
+                        lop_days += 0.5
+                    elif status == "P":
+                        actual_presence += 1
+                    elif status in ["CL", "SL", "PL", "AL", "CO"]:
+                        leaves_taken += 1
     except: pass
 
-    # Flat LOP Deduction (1 day worth of salary if day_salary exists, else 500)
-    day_salary = base_salary / (total_working_days_in_month or 30)
-    lop_deduction = lop_days * day_salary if lop_days > 0 else 0
+    lop_deduction = round(lop_days * daily_salary, 2)
     
     # Dynamic Deductions based on Admin Toggles and Fixed Rates
-    # Per-employee deductions (Admin Fixed Rates)
     emp_tax_rate = user.get("tax_deduction_rate")
     emp_pf_rate = user.get("pf_deduction_rate")
     
-    # If admin fixed a rate for this employee, use it. Otherwise, no cutting (0).
     tax = int(base_salary * (float(emp_tax_rate) / 100)) if emp_tax_rate is not None else 0
     pf_pt = int(base_salary * (float(emp_pf_rate) / 100)) if emp_pf_rate is not None else 0
     
-    gross = base_salary
-    net = base_salary - lop_deduction - attendance_penalty - tax - pf_pt
+    net = round(base_salary - lop_deduction - tax - pf_pt, 2)
     
     return {
         "monthly_salary": monthly_salary,
-        "gross_salary": gross,
+        "gross_salary": round(base_salary, 2),
         "net_salary": net,
         "lop_deduction": lop_deduction,
         "lop_days": lop_days,
-        "attendance_penalty": attendance_penalty,
+        "attendance_penalty": 0.0,
+        "expected_working_days": expected_working_days,
+        "actual_presence": actual_presence,
+        "leaves_taken": leaves_taken,
         "tax": tax,
         "pf_pt": pf_pt,
-        "deductions": tax + pf_pt + lop_deduction + attendance_penalty,
+        "deductions": tax + pf_pt + lop_deduction,
         "settings": settings
     }
 
