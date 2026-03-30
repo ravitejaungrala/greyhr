@@ -295,8 +295,8 @@ class AdminApprovalRequest(BaseModel):
     in_hand_salary: Optional[int] = 0
     internship_end_date: Optional[str] = None
     role: Optional[str] = "employee"
-    pf_deduction_rate: Optional[float] = None
     tax_deduction_rate: Optional[float] = None
+    pf_deduction_rate: Optional[float] = None
 
 class EmployeeUpdate(BaseModel):
     role: Optional[str] = None
@@ -320,8 +320,8 @@ class EmployeeUpdate(BaseModel):
     cif_number: Optional[str] = None
     internship_end_date: Optional[str] = None
     internship_completed: Optional[bool] = None
-    pf_deduction_rate: Optional[float] = None
     tax_deduction_rate: Optional[float] = None
+    pf_deduction_rate: Optional[float] = None
 
 
 @router.post("/auth/admin/approve")
@@ -346,8 +346,8 @@ def admin_approve_employee(request: AdminApprovalRequest):
             "in_hand_salary": request.in_hand_salary,
             "internship_end_date": request.internship_end_date,
             "role": request.role,
-            "pf_deduction_rate": request.pf_deduction_rate,
             "tax_deduction_rate": request.tax_deduction_rate,
+            "pf_deduction_rate": request.pf_deduction_rate,
             "joining_date": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
     else:
@@ -1134,8 +1134,15 @@ def get_monthly_salary_report(month_year: str):
                 # Check for leave on this day
                 has_approved_leave = date_str in leave_dates
                 
+                # Default to Absent (1.0 LOP) if it's a working day
+                lop_on_day = 1.0
+
+                # SPECIAL RULE: Joining Day (First Day) exemption
+                if joining_date and curr_date == joining_date:
+                    is_present = True
+                    lop_on_day = 0
                 # Tiered Presence & LOP Logic (v3 Refined)
-                if tot_sec >= 9 * 3600 or is_forgot_logout:
+                elif tot_sec >= 9 * 3600 or is_forgot_logout:
                     is_present = True
                     lop_on_day = 0
                 elif day_records:
@@ -1181,6 +1188,17 @@ def get_monthly_salary_report(month_year: str):
                         else:
                             is_present = True
                             lop_on_day = 0 # Full-Time paid leave/permission
+                elif has_approved_leave:
+                    # No records but has approved leave
+                    if is_intern:
+                        is_present = False
+                        lop_on_day = 1.0
+                    else:
+                        is_present = True
+                        lop_on_day = 0
+                else:
+                    # No records, no leave, no DOJ exemption -> 1.0 LOP
+                    lop_on_day = 1.0
                 
                 # Overwrite LOP if approved leave exists (already handled above but for completeness)
                 # Ensure no redundant overwriting that might conflict
@@ -1834,7 +1852,13 @@ def get_attendance_calendar(employee_id: str):
         else:
             # No sign-in: check day type
             if is_working_day:
-                if approved_leave:
+                # SPECIAL RULE: Joining Day (First Day) exemption
+                if joining_date and current_date == joining_date:
+                    data["status"] = "Joined (First Day)"
+                    data["status_char"] = "P"
+                    data["color"] = "var(--secondary)"
+                    data["deduction"] = 0.0
+                elif approved_leave:
                     l_type = approved_leave.get("leave_type", "")
                     # Mapping for display short-codes
                     type_map = {
@@ -2384,12 +2408,12 @@ def calculate_month_salary(user, year, month, settings=None):
     day_salary = base_salary / (total_working_days_in_month or 30)
     lop_deduction = lop_days * day_salary if lop_days > 0 else 0
     
-    # Dynamic Deductions based on Admin Toggles and per-employee fixed rates
-    # Prioritize individual employee settings if fixed by admin
+    # Dynamic Deductions based on Admin Toggles and Fixed Rates
+    # Per-employee deductions (Admin Fixed Rates)
     emp_tax_rate = user.get("tax_deduction_rate")
     emp_pf_rate = user.get("pf_deduction_rate")
     
-    # As per request: "if admin has fixed... reflect in salary otherwise there is no any tax and pf cutting"
+    # If admin fixed a rate for this employee, use it. Otherwise, no cutting (0).
     tax = int(base_salary * (float(emp_tax_rate) / 100)) if emp_tax_rate is not None else 0
     pf_pt = int(base_salary * (float(emp_pf_rate) / 100)) if emp_pf_rate is not None else 0
     

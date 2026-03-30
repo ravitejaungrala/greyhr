@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import './index.css';
-import './responsive.css';
 import { 
   ClipboardCheck, Users, Settings, Calendar, BarChart3, Bell, Megaphone, 
   Camera, CreditCard, PieChart, FileText, History, Layout, Timer, 
   MessageSquare, Heart, Wallet, Palmtree, Folder, Package, LogOut,
-  ChevronDown, ChevronRight, Activity, Menu, X
+  ChevronDown, ChevronRight, Activity
 } from 'lucide-react';
 
 // Pages
@@ -80,8 +79,6 @@ function AppContent() {
     return sessionStorage.getItem('isReqExpanded') === 'true';
   });
 
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
   // Sync state changes to sessionStorage
   useEffect(() => {
     if (user) {
@@ -123,7 +120,6 @@ function AppContent() {
 
   const navigateTo = (path) => {
     navigate(path);
-    setIsMobileMenuOpen(false); // Close sidebar on mobile after navigation
   };
 
   const NavItem = ({ path, icon: Icon, title, subtitle, isSub = false }) => {
@@ -185,30 +181,8 @@ function AppContent() {
   return (
     <div className="app-container">
       <DynamicTitle />
-
-      {/* Mobile Header */}
-      <header className="mobile-header">
-        <div className="brand-logo-container">
-           <div className="brand-logo-icon" style={{ width: '32px', height: '32px' }}>
-              <img src="/icon (2).png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-           </div>
-           <div className="brand-text-group">
-              <div className="brand-main" style={{ fontSize: '1rem' }}>Dhanadurga</div>
-           </div>
-        </div>
-        <button className="hamburger-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </header>
-
-      {/* Mobile Overlay */}
-      <div 
-        className={`mobile-overlay ${isMobileMenuOpen ? 'visible' : ''}`} 
-        onClick={() => setIsMobileMenuOpen(false)}
-      />
-
       {/* Sidebar */}
-      <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
+      <aside className="sidebar">
         <div className="sidebar-header">
           <div className="brand-logo-container">
              <div className="brand-logo-icon">

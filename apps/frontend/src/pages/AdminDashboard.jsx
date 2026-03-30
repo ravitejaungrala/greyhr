@@ -103,8 +103,8 @@ const AdminDashboard = ({ activeTab, user }) => {
         pf_no: '',
         bank_name: '',
         bank_account: '',
-        pf_deduction_rate: 0,
-        tax_deduction_rate: 0
+        tax_deduction_rate: 0,
+        pf_deduction_rate: 0
     });
     const [workdayOverrides, setWorkdayOverrides] = useState([]);
     const [compOffRequests, setCompOffRequests] = useState([]);
@@ -216,10 +216,9 @@ const AdminDashboard = ({ activeTab, user }) => {
                     sick_leave_rate: parseFloat(empRoleSetup.sick_leave_rate),
                     casual_leave_rate: parseFloat(empRoleSetup.casual_leave_rate),
                     role: empRoleSetup.role,
-                    in_hand_salary: parseInt(empRoleSetup.in_hand_salary || 0),
                     internship_end_date: empRoleSetup.internship_end_date || null,
-                    pf_deduction_rate: parseFloat(empRoleSetup.pf_deduction_rate || 0),
-                    tax_deduction_rate: parseFloat(empRoleSetup.tax_deduction_rate || 0)
+                    tax_deduction_rate: parseFloat(empRoleSetup.tax_deduction_rate || 0),
+                    pf_deduction_rate: parseFloat(empRoleSetup.pf_deduction_rate || 0)
                 })
             });
             if (response.ok) {
@@ -278,10 +277,11 @@ const AdminDashboard = ({ activeTab, user }) => {
                     internship_completed: empRoleSetup.internship_completed,
                     pan_no: empRoleSetup.pan_no,
                     pf_no: empRoleSetup.pf_no,
+                    bank_name: empRoleSetup.bank_name,
                     bank_account: empRoleSetup.bank_account,
                     in_hand_salary: parseInt(empRoleSetup.in_hand_salary || 0),
-                    pf_deduction_rate: parseFloat(empRoleSetup.pf_deduction_rate || 0),
-                    tax_deduction_rate: parseFloat(empRoleSetup.tax_deduction_rate || 0)
+                    tax_deduction_rate: parseFloat(empRoleSetup.tax_deduction_rate || 0),
+                    pf_deduction_rate: parseFloat(empRoleSetup.pf_deduction_rate || 0)
                 })
             });
             if (response.ok) {
@@ -840,27 +840,6 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                         style={{ width: '100%', padding: '1rem', borderRadius: '16px', border: '2px solid var(--primary)', background: 'var(--bg-color)', color: 'var(--primary)', fontWeight: 800, fontSize: '1.25rem' }}
                                                     />
                                                 </div>
-
-                                                <div>
-                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>PF Deduction (%)</label>
-                                                    <input
-                                                        type="number"
-                                                        step="0.1"
-                                                        value={empRoleSetup.pf_deduction_rate}
-                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_deduction_rate: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Tax Deduction (%)</label>
-                                                    <input
-                                                        type="number"
-                                                        step="0.1"
-                                                        value={empRoleSetup.tax_deduction_rate}
-                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, tax_deduction_rate: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
-                                                    />
-                                                </div>
                                                 {isSuperAdmin && (
                                                     <div style={{ gridColumn: 'span 2' }}>
                                                         <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Platform Role Allocation</label>
@@ -949,6 +928,26 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                         type="text"
                                                         value={empRoleSetup.bank_account}
                                                         onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_account: e.target.value })}
+                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Fixed Tax Deduction (%)</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.1"
+                                                        value={empRoleSetup.tax_deduction_rate}
+                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, tax_deduction_rate: e.target.value })}
+                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Fixed PF Deduction (%)</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.1"
+                                                        value={empRoleSetup.pf_deduction_rate}
+                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_deduction_rate: e.target.value })}
                                                         style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
                                                     />
                                                 </div>
@@ -1043,8 +1042,8 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                     pf_no: emp.pf_no || '',
                                                     bank_name: emp.bank_details?.bank_name || '',
                                                     bank_account: emp.bank_details?.account_number || '',
-                                                    pf_deduction_rate: emp.pf_deduction_rate || 0,
-                                                    tax_deduction_rate: emp.tax_deduction_rate || 0
+                                                    tax_deduction_rate: emp.tax_deduction_rate || 0,
+                                                    pf_deduction_rate: emp.pf_deduction_rate || 0
                                                 });
                                             }}
                                             style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', background: selectedApprovedEmp?.employee_id === emp.employee_id ? 'rgba(79, 70, 229, 0.1)' : 'transparent' }}
@@ -1126,24 +1125,23 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                     style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937', fontWeight: 'bold', borderColor: '#ff7a00' }}
                                                 />
                                             </div>
-
                                             <div>
-                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>PF Deduction (%)</label>
-                                                <input
-                                                    type="number"
-                                                    step="0.1"
-                                                    value={empRoleSetup.pf_deduction_rate}
-                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_deduction_rate: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Tax Deduction (%)</label>
+                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Fixed Tax Deduction (%)</label>
                                                 <input
                                                     type="number"
                                                     step="0.1"
                                                     value={empRoleSetup.tax_deduction_rate}
                                                     onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, tax_deduction_rate: e.target.value })}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Fixed PF Deduction (%)</label>
+                                                <input
+                                                    type="number"
+                                                    step="0.1"
+                                                    value={empRoleSetup.pf_deduction_rate}
+                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_deduction_rate: e.target.value })}
                                                     style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
                                                 />
                                             </div>
