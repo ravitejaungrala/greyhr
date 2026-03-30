@@ -295,6 +295,8 @@ class AdminApprovalRequest(BaseModel):
     in_hand_salary: Optional[int] = 0
     internship_end_date: Optional[str] = None
     role: Optional[str] = "employee"
+    pf_deduction_rate: Optional[float] = None
+    tax_deduction_rate: Optional[float] = None
 
 class EmployeeUpdate(BaseModel):
     role: Optional[str] = None
@@ -318,6 +320,8 @@ class EmployeeUpdate(BaseModel):
     cif_number: Optional[str] = None
     internship_end_date: Optional[str] = None
     internship_completed: Optional[bool] = None
+    pf_deduction_rate: Optional[float] = None
+    tax_deduction_rate: Optional[float] = None
 
 
 @router.post("/auth/admin/approve")
@@ -342,6 +346,8 @@ def admin_approve_employee(request: AdminApprovalRequest):
             "in_hand_salary": request.in_hand_salary,
             "internship_end_date": request.internship_end_date,
             "role": request.role,
+            "pf_deduction_rate": request.pf_deduction_rate,
+            "tax_deduction_rate": request.tax_deduction_rate,
             "joining_date": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
     else:
@@ -2378,12 +2384,14 @@ def calculate_month_salary(user, year, month, settings=None):
     day_salary = base_salary / (total_working_days_in_month or 30)
     lop_deduction = lop_days * day_salary if lop_days > 0 else 0
     
-    # Dynamic Deductions based on Admin Toggles and Fixed Rates
-    tax_rate = settings.get("tax_rate", 8.0)
-    pf_rate = settings.get("pf_rate", 5.0)
+    # Dynamic Deductions based on Admin Toggles and per-employee fixed rates
+    # Prioritize individual employee settings if fixed by admin
+    emp_tax_rate = user.get("tax_deduction_rate")
+    emp_pf_rate = user.get("pf_deduction_rate")
     
-    tax = int(base_salary * (tax_rate / 100)) if settings.get("enable_tax") else 0
-    pf_pt = int(base_salary * (pf_rate / 100)) if settings.get("enable_pf") else 0
+    # As per request: "if admin has fixed... reflect in salary otherwise there is no any tax and pf cutting"
+    tax = int(base_salary * (float(emp_tax_rate) / 100)) if emp_tax_rate is not None else 0
+    pf_pt = int(base_salary * (float(emp_pf_rate) / 100)) if emp_pf_rate is not None else 0
     
     gross = base_salary
     net = base_salary - lop_deduction - attendance_penalty - tax - pf_pt
