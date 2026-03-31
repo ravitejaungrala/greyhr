@@ -319,7 +319,7 @@ const HomeDashboard = ({ user, setUser }) => {
             <div style={{ maxWidth: '800px', margin: '2rem auto', padding: '0 1rem' }}>
                 <div className="card glass-panel animate-fade-in" style={{ padding: '2.5rem' }}>
                     <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-                        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '0.5rem' }}>
+                        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-light)', marginBottom: '0.5rem' }}>
                             Complete Your Profile
                         </h2>
                         <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>Please verify your identity and documents to activate your workspace.</p>
@@ -358,14 +358,14 @@ const HomeDashboard = ({ user, setUser }) => {
                                             required 
                                             value={formData.dob} 
                                             onChange={handleInputChange} 
-                                            style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#fff', outline: 'none' }} 
+                                            style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.02)', color: 'var(--text-light)', outline: 'none' }} 
                                         />
                                     </div>
                                 </div>
 
                                 {/* Biometric Section */}
                                 <div style={{ background: 'rgba(255,255,255,0.02)', padding: '2rem', borderRadius: '20px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
-                                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem', color: '#fff' }}>Biometric Verification</h3>
+                                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-light)' }}>Biometric Verification</h3>
                                     <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Verify your identity for attendance using a 3D face scan.</p>
                                     
                                     {!referenceFace ? (
@@ -410,27 +410,27 @@ const HomeDashboard = ({ user, setUser }) => {
 
                                 {/* Financial Section */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', borderLeft: '3px solid var(--primary)', paddingLeft: '0.75rem' }}>Financial Information</h3>
+                                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-light)', borderLeft: '3px solid var(--primary)', paddingLeft: '0.75rem' }}>Financial Information</h3>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                                         <div className="input-field-group">
                                             <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Bank Name</label>
-                                            <input type="text" name="bank_name" required placeholder="State Bank of India" value={formData.bank_name} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#fff' }} />
+                                            <input type="text" name="bank_name" required placeholder="State Bank of India" value={formData.bank_name} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.02)', color: 'var(--text-light)' }} />
                                         </div>
                                         <div className="input-field-group">
                                             <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Account Number</label>
-                                            <input type="text" name="bank_account" required placeholder="XXXX XXXX XXXX" value={formData.bank_account} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#fff' }} />
+                                            <input type="text" name="bank_account" required placeholder="XXXX XXXX XXXX" value={formData.bank_account} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.02)', color: 'var(--text-light)' }} />
                                         </div>
                                         <div className="input-field-group">
                                             <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>IFSC Code</label>
-                                            <input type="text" name="bank_ifsc" required placeholder="SBIN000XXXX" value={formData.bank_ifsc} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#fff' }} />
+                                            <input type="text" name="bank_ifsc" required placeholder="SBIN000XXXX" value={formData.bank_ifsc} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.02)', color: 'var(--text-light)' }} />
                                         </div>
                                         <div className="input-field-group">
                                             <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>CIF Number</label>
-                                            <input type="text" name="cif_number" required placeholder="90XXXXXXXX" value={formData.cif_number} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#fff' }} />
+                                            <input type="text" name="cif_number" required placeholder="90XXXXXXXX" value={formData.cif_number} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.02)', color: 'var(--text-light)' }} />
                                         </div>
                                     </div>
-                                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.25rem', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', color: '#fff', marginBottom: '1rem', fontWeight: 500 }}>Upload Bank Passbook / Mock Transaction Screenshot</label>
+                                    <div style={{ background: 'rgba(0,0,0,0.01)', padding: '1.25rem', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-light)', marginBottom: '1rem', fontWeight: 500 }}>Upload Bank Passbook / Mock Transaction Screenshot</label>
                                         <input type="file" required onChange={e => handleFileUpload(e, setBankPhoto)} style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }} />
                                         {bankPhoto && <span style={{ marginLeft: '1rem', color: '#4ade80', fontSize: '0.75rem' }}>✓ Attached</span>}
                                     </div>
@@ -442,19 +442,19 @@ const HomeDashboard = ({ user, setUser }) => {
                             <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                                 {/* Education */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', borderLeft: '3px solid var(--primary)', paddingLeft: '0.75rem' }}>Official Documents</h3>
+                                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-light)', borderLeft: '3px solid var(--primary)', paddingLeft: '0.75rem' }}>Official Documents</h3>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                                         <div className="input-field-group">
                                             <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Degree / Highest Qualification</label>
-                                            <input type="text" name="education_degree" required placeholder="B.Tech (Computer Science)" value={formData.education_degree} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#fff' }} />
+                                            <input type="text" name="education_degree" required placeholder="B.Tech (Computer Science)" value={formData.education_degree} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.02)', color: 'var(--text-light)' }} />
                                         </div>
                                         <div className="input-field-group">
                                             <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>PAN Card Number</label>
-                                            <input type="text" name="pan_no" required placeholder="ABCDE1234F" value={formData.pan_no} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#fff' }} />
+                                            <input type="text" name="pan_no" required placeholder="ABCDE1234F" value={formData.pan_no} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.02)', color: 'var(--text-light)' }} />
                                         </div>
                                     </div>
-                                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.25rem', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', color: '#fff', marginBottom: '1rem', fontWeight: 500 }}>Upload Highest Degree Certificate</label>
+                                    <div style={{ background: 'rgba(0,0,0,0.01)', padding: '1.25rem', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-light)', marginBottom: '1rem', fontWeight: 500 }}>Upload Highest Degree Certificate</label>
                                         <input type="file" required onChange={e => handleFileUpload(e, setEduCert)} style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }} />
                                         {eduCert && <span style={{ marginLeft: '1rem', color: '#4ade80', fontSize: '0.75rem' }}>✓ Attached</span>}
                                     </div>
@@ -463,7 +463,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                 {/* Experience Detail */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', borderLeft: '3px solid var(--primary)', paddingLeft: '0.75rem', margin: 0 }}>Career History</h3>
+                                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-light)', borderLeft: '3px solid var(--primary)', paddingLeft: '0.75rem', margin: 0 }}>Career History</h3>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             <input 
                                                 type="checkbox" 
@@ -480,22 +480,22 @@ const HomeDashboard = ({ user, setUser }) => {
                                         <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                                             <div className="input-field-group">
                                                 <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Company</label>
-                                                <input type="text" name="prev_company" required value={formData.prev_company} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'transparent', color: '#fff' }} />
+                                                <input type="text" name="prev_company" required value={formData.prev_company} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-light)' }} />
                                             </div>
                                             <div className="input-field-group">
                                                 <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Role</label>
-                                                <input type="text" name="prev_role" required value={formData.prev_role} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'transparent', color: '#fff' }} />
+                                                <input type="text" name="prev_role" required value={formData.prev_role} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-light)' }} />
                                             </div>
                                             <div className="input-field-group">
                                                 <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Years of Experience</label>
-                                                <input type="number" name="experience_years" required value={formData.experience_years} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'transparent', color: '#fff' }} />
+                                                <input type="number" name="experience_years" required value={formData.experience_years} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-light)' }} />
                                             </div>
                                             <div className="input-field-group">
                                                 <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>PF Account Number</label>
-                                                <input type="text" name="pf_number" required value={formData.pf_number} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'transparent', color: '#fff' }} />
+                                                <input type="text" name="pf_number" required value={formData.pf_number} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-light)' }} />
                                             </div>
-                                            <div style={{ gridColumn: 'span 2', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '10px', border: '1px dashed var(--border-color)' }}>
-                                                <label style={{ display: 'block', fontSize: '0.8rem', color: '#fff', marginBottom: '0.75rem' }}>Previous Company Payslip (Last 3 Months)</label>
+                                            <div style={{ gridColumn: 'span 2', background: 'rgba(0,0,0,0.01)', padding: '1rem', borderRadius: '10px', border: '1px dashed var(--border-color)' }}>
+                                                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-light)', marginBottom: '0.75rem' }}>Previous Company Payslip (Last 3 Months)</label>
                                                 <input type="file" required onChange={e => handleFileUpload(e, setPayslipPhoto)} style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }} />
                                                 {payslipPhoto && <span style={{ marginLeft: '1rem', color: '#4ade80', fontSize: '0.75rem' }}>✓ Attached</span>}
                                             </div>
