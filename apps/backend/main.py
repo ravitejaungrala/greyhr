@@ -9,6 +9,8 @@ load_dotenv()  # Load variables from .env
 
 from api.router import router
 from api.enhanced_doc_system import enhanced_router
+from api.admin_agent import sync_all_to_vector_db
+from database.mongo_client import mongo_db
 
 app = FastAPI(title="DurgDhana HRMS API")
 
@@ -30,6 +32,17 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(router, prefix="/api")
 app.include_router(enhanced_router, prefix="/api")
+
+@app.on_event("startup")
+async def startup_event():
+    """
+    On startup, sync all approved employees to ChromaDB.
+    This ensures the VR database is always current.
+    """
+    # Only sync if we're not inside Lambda to avoid excessive cold starts
+    if not os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+        print("Backend starting... performing data synchronization.")
+        sync_all_to_vector_db(mongo_db)
 
 print("Lambda handler invoked")
 handler = Mangum(app, lifespan="off")

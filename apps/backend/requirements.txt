@@ -14,3 +14,4 @@ xhtml2pdf
 mangum
 fpdf2
 pdfkit
+chromadb

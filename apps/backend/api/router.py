@@ -36,6 +36,7 @@ from api.email_utils import (
     send_item_notification,
     get_admin_emails
 )
+from api.admin_agent import process_admin_query, sync_employee_to_vector_db
 
 router = APIRouter()
 
@@ -80,32 +81,44 @@ class LeaveRequest(BaseModel):
     approver_id: Optional[str] = None
     cc_ids: List[str] = []
 
+class EducationDetail(BaseModel):
+    institution_name: str
+    department: str
+    cgpa: float
+    pass_year: int
+    board_university: str
+    certificate_base64: str
+
+class ExperienceDetail(BaseModel):
+    company_name: str
+    designation: str
+    duration_months: int
+    reason_for_leaving: str
+
 class ProfileUpdateRequest(BaseModel):
     employee_id: str
+    full_name: str
     dob: str
-    is_experienced: bool
-    employment_type: str  # Added: 'Full-Time' or 'Intern'
+    father_name: str
+    mother_name: str
+    siblings_details: str
     # Bank
-    bank_account: str
-    bank_ifsc: str
-    bank_name: Optional[str] = None  # Added
-    bank_photo_base64: str
-    cif_number: Optional[str] = None  # Added
+    bank_name: str
+    account_number: str
+    ifsc_code: str
+    cif_number: str
+    bank_passbook_base64: str
     # Education
-    education_degree: str
-    education_cert_base64: str
-    # Experience (Optional)
-    prev_company: Optional[str] = None
-    prev_role: Optional[str] = None
-    experience_years: Optional[str] = None
-    last_company_payslip_base64: Optional[str] = None  # Added
-    # Live Photo
-    image_base64: str
-    image_left_base64: Optional[str] = None
-    image_right_base64: Optional[str] = None
-    # PF (Optional)
+    ug_details: EducationDetail
+    inter_details: EducationDetail
+    ssc_details: EducationDetail
+    # Experience
+    has_experience: bool
+    experience_list: List[ExperienceDetail] = []
     pf_number: Optional[str] = None
-    pan_no: Optional[str] = None
+    uan_number: Optional[str] = None
+    # Files
+    passport_photo_base64: str
 
 
 def parse_base64(b64_string: str) -> bytes:
@@ -359,6 +372,9 @@ def admin_approve_employee(request: AdminApprovalRequest):
         {"$set": update_fields}
     )
     
+    if request.action == "approve":
+        sync_employee_to_vector_db(request.employee_id, mongo_db)
+    
     return {"message": f"Employee {request.employee_id} {status_to_set} successfully."}
 
 @router.patch("/admin/employee/{employee_id}")
@@ -394,6 +410,7 @@ def update_employee_details(employee_id: str, update: EmployeeUpdate):
     if result.matched_count == 0:
         return {"error": "Employee not found"}
         
+    sync_employee_to_vector_db(employee_id, mongo_db)
     return {"message": "Employee updated successfully"}
 
 @router.delete("/admin/employee/{employee_id}")
@@ -441,6 +458,10 @@ class LeaveRequest(BaseModel):
     reason: str
 
 class AdminCopilotRequest(BaseModel):
+    query: str
+
+class EmployeeChatRequest(BaseModel):
+    employee_id: str
     query: str
 
 class Notification(BaseModel):
@@ -1318,6 +1339,98 @@ class IDPhotoUpload(BaseModel):
     employee_id: str
     image_base64: str
 
+@router.post("/employee/complete-onboarding")
+def complete_onboarding(request: ProfileUpdateRequest):
+    if mongo_db.users is None:
+        return {"error": "Database offline"}
+    
+    # 1. Process Files and Save to S3
+    try:
+        # Passport Photo
+        passport_bytes = parse_base64(request.passport_photo_base64)
+        passport_key = f"profile_photos/{request.employee_id}_passport.jpg"
+        s3_db.save_image(passport_key, passport_bytes, content_type='image/jpeg')
+        
+        # Bank Passbook
+        bank_bytes = parse_base64(request.bank_passbook_base64)
+        bank_key = f"onboarding_docs/{request.employee_id}_bank_passbook.pdf"
+        # Using save_image but it handles bytes, so it's fine for PDF too if content_type is set
+        s3_db.save_image(bank_key, bank_bytes, content_type='application/pdf')
+        
+        # Education Certs
+        ug_bytes = parse_base64(request.ug_details.certificate_base64)
+        ug_key = f"onboarding_docs/{request.employee_id}_ug_cert.pdf"
+        s3_db.save_image(ug_key, ug_bytes, content_type='application/pdf')
+        
+        inter_bytes = parse_base64(request.inter_details.certificate_base64)
+        inter_key = f"onboarding_docs/{request.employee_id}_inter_cert.pdf"
+        s3_db.save_image(inter_key, inter_bytes, content_type='application/pdf')
+
+        ssc_bytes = parse_base64(request.ssc_details.certificate_base64)
+        ssc_key = f"onboarding_docs/{request.employee_id}_ssc_cert.pdf"
+        s3_db.save_image(ssc_key, ssc_bytes, content_type='application/pdf')
+        
+    except Exception as e:
+        return {"error": f"Document processing failed: {str(e)}"}
+
+    # 2. Update User Record
+    onboarding_data = {
+        "full_name": request.full_name,
+        "dob": request.dob,
+        "father_name": request.father_name,
+        "mother_name": request.mother_name,
+        "siblings_details": request.siblings_details,
+        "bank_details": {
+            "bank_name": request.bank_name,
+            "account_number": request.account_number,
+            "ifsc_code": request.ifsc_code,
+            "cif_number": request.cif_number,
+            "passbook_url": bank_key
+        },
+        "education": {
+            "ug": {
+                "institution": request.ug_details.institution_name,
+                "department": request.ug_details.department,
+                "cgpa": request.ug_details.cgpa,
+                "pass_year": request.ug_details.pass_year,
+                "university": request.ug_details.board_university,
+                "cert_url": ug_key
+            },
+            "intermediate": {
+                "institution": request.inter_details.institution_name,
+                "department": request.inter_details.department,
+                "cgpa": request.inter_details.cgpa,
+                "pass_year": request.inter_details.pass_year,
+                "board": request.inter_details.board_university,
+                "cert_url": inter_key
+            },
+            "ssc": {
+                "institution": request.ssc_details.institution_name,
+                "department": request.ssc_details.department,
+                "cgpa": request.ssc_details.cgpa,
+                "pass_year": request.ssc_details.pass_year,
+                "board": request.ssc_details.board_university,
+                "cert_url": ssc_key
+            }
+        },
+        "experience": {
+            "has_experience": request.has_experience,
+            "list": [jsonable_encoder(exp) for exp in request.experience_list],
+            "pf_number": request.pf_number,
+            "uan_number": request.uan_number
+        },
+        "passport_photo_url": passport_key,
+        "status": "pending_approval", # Move to pending
+        "onboarding_completed_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+    }
+
+    mongo_db.users.update_one(
+        {"employee_id": request.employee_id},
+        {"$set": onboarding_data}
+    )
+
+    return {"message": "Onboarding information submitted successfully! Pending HR approval.", "status": "success"}
+
 @router.post("/employee/upload-id-photo")
 def upload_id_photo(request: IDPhotoUpload):
     if mongo_db.users is None:
@@ -1347,7 +1460,8 @@ def ask_hr_copilot(query: CopilotQuery):
         return {"agent": "HR Copilot", "response": "AI Copilot is not configured (missing API Key)."}
     
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
+    model = genai.GenerativeModel(model_name)
     
     context = "Company policies retrieval is currently disabled."
 
@@ -1703,10 +1817,16 @@ def get_attendance_calendar(employee_id: str, year: Optional[int] = None, month:
                     else:
                         data["deduction"] = 0
                 else:
-                    data["status"] = "Absent"
-                    data["status_char"] = "A"
-                    data["color"] = "#EF4444"
-                    data["deduction"] = daily_salary
+                    # Only mark as Absent if the day is strictly in the past.
+                    # Current day (today) and future days should not be penalized yet.
+                    if current_date < today:
+                        data["status"] = "Absent"
+                        data["status_char"] = "A"
+                        data["color"] = "#EF4444"
+                        data["deduction"] = daily_salary
+                    else:
+                        # Today or Future days remain as "Scheduled" / "Pending"
+                        pass
             else:
                 # Normal weekend/holiday without work
                 data["status"] = day_label
@@ -2062,25 +2182,25 @@ def get_leave_balance(employee_id: str):
     joining_date = datetime.datetime.fromisoformat(joining_date_str)
     now = datetime.datetime.utcnow()
     
-    # Calculate months passed (Include joining month)
+    # Calculate months passed (Include joining month as month 1)
+    # This logic ensures that if you join in March and it's April 1st, 
+    # you have been through 2 accrual periods (March and April).
     months_passed = (now.year - joining_date.year) * 12 + (now.month - joining_date.month) + 1
     if months_passed < 1: months_passed = 1
     
     # Rates (Default to user's stored rates or system defaults)
-    pl_rate = user.get("privilege_leave_rate", 0.0)
-    sl_rate = user.get("sick_leave_rate", 0.5)
-    cl_rate = user.get("casual_leave_rate", 1.0)
+    pl_rate = float(user.get("privilege_leave_rate", 0.0))
+    sl_rate = float(user.get("sick_leave_rate", 0.5))
+    cl_rate = float(user.get("casual_leave_rate", 1.0))
     
-    accrued_pl = months_passed * pl_rate
-    accrued_sl = months_passed * sl_rate
-    accrued_cl = months_passed * cl_rate
+    # --- Multi-Month Accrual Loop (No Negative Carryover) ---
+    # Logic: For each month from joining beginning to now, add credits and subtract usage.
+    # If the balance reaches 0 at month-end, the next month starts fresh.
     
-    # Fetch Approved Leaves to calculate usage
-    used_pl = 0
-    used_sl = 0
-    used_cl = 0
-    used_co = 0
+    # 1. Group all approved usage by (year, month) based on the start date
+    monthly_usage = {} # {(year, month): {"pl": 0, "sl": 0, "cl": 0, "co": 0}}
     
+    processed_leaves = set()
     if mongo_db.db is not None:
         approved_leaves = list(mongo_db.leaves.find({
             "employee_id": employee_id,
@@ -2089,30 +2209,89 @@ def get_leave_balance(employee_id: str):
         
         for leaf in approved_leaves:
             try:
-                start = datetime.datetime.fromisoformat(leaf["start_date"])
-                end = datetime.datetime.fromisoformat(leaf["end_date"])
-                days = (end - start).days + 1
+                raw_start = str(leaf.get('start_date', ''))
+                raw_end = str(leaf.get('end_date', ''))
+                l_type = str(leaf.get('leave_type', ''))
                 
-                l_type = leaf["leave_type"]
-                if "Privilege" in l_type: used_pl += days
-                elif "Sick" in l_type: used_sl += days
-                elif "Casual" in l_type: used_cl += days
-                elif "Compensatory" in l_type or "Comp-Off" in l_type: used_co += days
-            except:
+                s_date = raw_start[:10] if len(raw_start) >= 10 else raw_start
+                e_date = raw_end[:10] if len(raw_end) >= 10 else raw_end
+                l_id = f"{employee_id}_{l_type}_{s_date}_{e_date}"
+                
+                if l_id in processed_leaves: continue
+                processed_leaves.add(l_id)
+
+                start = datetime.datetime.fromisoformat(raw_start.replace('Z', '+00:00').replace(' ', 'T')[:19] if 'T' in raw_start or ' ' in raw_start else raw_start)
+                
+                # Attribute leave to its month
+                key = (start.year, start.month)
+                if key not in monthly_usage:
+                    monthly_usage[key] = {"pl": 0.0, "sl": 0.0, "cl": 0.0, "co": 0.0}
+                
+                days = (datetime.datetime.fromisoformat(raw_end.replace('Z', '+00:00').replace(' ', 'T')[:19] if 'T' in raw_end or ' ' in raw_end else raw_end).date() - start.date()).days + 1
+                
+                if "Privilege" in l_type: monthly_usage[key]["pl"] += days
+                elif "Sick" in l_type: monthly_usage[key]["sl"] += days
+                elif "Casual" in l_type: monthly_usage[key]["cl"] += days
+                elif "Compensatory" in l_type or "Comp-Off" in l_type: monthly_usage[key]["co"] += days
+            except Exception as e:
+                print(f"Error grouping leaf for iterative calculation: {e}")
                 continue
 
-    rem_pl = max(0, accrued_pl - used_pl)
-    rem_sl = max(0, accrued_sl - used_sl)
-    rem_cl = max(0, accrued_cl - used_cl)
+    # 2. Iterate month-by-month and calculate running balances
+    rem_pl, rem_sl, rem_cl = 0.0, 0.0, 0.0
+    total_used_all = 0.0
     
-    # Comp-Off is stored directly as a balance in user profile (granted by Admin)
-    accrued_co = user.get("comp_off_balance", 0.0)
-    rem_co = max(0, accrued_co - used_co)
+    # Rates
+    pl_rate = float(user.get("privilege_leave_rate", 0.0))
+    sl_rate = float(user.get("sick_leave_rate", 0.5))
+    cl_rate = float(user.get("casual_leave_rate", 1.0))
+    
+    # Generate list of months since joining
+    current_date = datetime.datetime(joining_date.year, joining_date.month, 1)
+    target_date = datetime.datetime(now.year, now.month, 1)
+    
+    months_processed_count = 0
+    while current_date <= target_date:
+        months_processed_count += 1
+        key = (current_date.year, current_date.month)
+        usage = monthly_usage.get(key, {"pl": 0.0, "sl": 0.0, "cl": 0.0, "co": 0.0})
+        
+        # Add monthly credits
+        rem_pl += pl_rate
+        rem_sl += sl_rate
+        rem_cl += cl_rate
+        
+        # Subtract usage
+        rem_pl -= usage["pl"]
+        rem_sl -= usage["sl"]
+        rem_cl -= usage["cl"]
+        
+        # Track aggregate used 
+        total_used_all += usage["pl"] + usage["sl"] + usage["cl"] + usage["co"]
+        
+        # --- NO NEGATIVE CARRYOVER ENGINE ---
+        # Any 'over-leave' is essentially forgiven at month-end.
+        # This month's balance cannot be negative when passing to the next month.
+        rem_pl = max(0.0, rem_pl)
+        rem_sl = max(0.0, rem_sl)
+        rem_cl = max(0.0, rem_cl)
+        
+        if current_date.month == 12:
+            current_date = datetime.datetime(current_date.year + 1, 1, 1)
+        else:
+            current_date = datetime.datetime(current_date.year, current_date.month + 1, 1)
+
+    # Comp-Off is independent balance
+    accrued_co = float(user.get("comp_off_balance", 0.0))
+    used_co_total = sum(u["co"] for u in monthly_usage.values())
+    rem_co = max(0.0, accrued_co - used_co_total)
+    
+    final_remaining = round(rem_pl + rem_sl + rem_cl + rem_co, 1)
     
     return {
-        "total": rem_pl + rem_sl + rem_cl + rem_co,
-        "used": used_pl + used_sl + used_cl + used_co,
-        "remaining": rem_pl + rem_sl + rem_cl + rem_co,
+        "total": final_remaining,
+        "used": total_used_all,
+        "remaining": final_remaining,
         "is_intern": False,
         "types": [
             {"name": "Privilege Leave", "remaining": round(rem_pl, 1)},
@@ -2121,10 +2300,22 @@ def get_leave_balance(employee_id: str):
             {"name": "Compensatory Off", "remaining": round(rem_co, 1)}
         ],
         "accrual_info": {
-            "months_passed": months_passed,
-            "rates": {"PL": pl_rate, "SL": sl_rate, "CL": cl_rate}
+            "months_passed": months_processed_count,
+            "last_sync": datetime.datetime.utcnow().isoformat()
         }
     }
+
+@router.post("/employee/chat")
+async def employee_chat(request: EmployeeChatRequest):
+    """
+    Dedicated endpoint for the Employee Chat Agent.
+    Allows employees to apply for stays, request items, and check status.
+    """
+    from api.employee_agent import EmployeeAgent
+    
+    agent = EmployeeAgent(request.employee_id, mongo_db)
+    response = await agent.get_response(request.query)
+    return {"response": response}
 
 @router.get("/admin/salary/settings")
 def get_company_settings():
@@ -2186,34 +2377,49 @@ def calculate_month_salary(user, year, month, settings=None):
 
     import calendar as py_calendar
     _, num_days = py_calendar.monthrange(year, month)
-    total_working_days_in_month = 0
-    expected_working_days = 0
     
+    # We now use the total calendar days of the month as the denominator for salary
+    # This aligns with the request to include Sat/Sun and handle 28/29/30/31 day months.
+    divisor = float(num_days)
+    
+    # Calculate days since joining for proration
+    days_expected_in_month = divisor
+    if joining_date:
+        # User Rule: If joining on Sat/Sun, pay starts from Monday onwards
+        salary_start_date = joining_date
+        while salary_start_date.weekday() >= 5: # 5=Saturday, 6=Sunday
+            salary_start_date += datetime.timedelta(days=1)
+            
+        if salary_start_date.year == year and salary_start_date.month == month:
+            # Joined this month - calculate remaining calendar days
+            days_expected_in_month = (divisor - salary_start_date.day + 1)
+        elif salary_start_date > datetime.date(year, month, num_days):
+            # Salary start is after this month
+            days_expected_in_month = 0
+        elif salary_start_date < datetime.date(year, month, 1):
+            # Joined before this month
+            days_expected_in_month = divisor
+            
+    # Expected working days (Mon-Fri) for attendance display purposes (not divisor)
+    expected_working_days = 0 
     for d in range(1, num_days + 1):
         curr_day = datetime.date(year, month, d)
         date_str = curr_day.isoformat()
         weekday = curr_day.weekday()
-        
         is_working = True
         if weekday >= 5: is_working = False
         if date_str in month_holidays: is_working = False
         if date_str in month_overrides:
             if month_overrides[date_str] == "forced_working": is_working = True
             elif month_overrides[date_str] == "forced_holiday": is_working = False
-            
-        if is_working:
-            total_working_days_in_month += 1
-            if not joining_date or curr_day >= joining_date:
-                expected_working_days += 1
+        if is_working and (not joining_date or curr_day >= joining_date):
+            expected_working_days += 1
 
-    # Apply Proration
-    base_salary = monthly_salary
-    if total_working_days_in_month > 0 and expected_working_days < total_working_days_in_month:
-        base_salary = (expected_working_days / total_working_days_in_month) * monthly_salary
+    # Base Proration (Calendar-based)
+    base_salary = (days_expected_in_month / divisor) * monthly_salary
 
-    # LOP Calculation (Match Admin Logic)
-    # We'll use the standardized 30-day divisor for LOP as per requirements
-    daily_salary = 500 if user.get("employment_type") == "Intern" else (monthly_salary / 30.0)
+    # LOP Daily Rate (Calendar-based)
+    daily_salary = 500 if user.get("employment_type") == "Intern" else (monthly_salary / divisor)
     
     lop_days = 0.0
     actual_presence = 0
@@ -2604,7 +2810,8 @@ def analyze_payslip_template(request: PayslipTemplateRequest):
         return {"error": "AI not configured (missing API Key)."}
     
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
+    model = genai.GenerativeModel(model_name)
     
     # 1. Decode Image for Gemini
     try:
@@ -2999,41 +3206,13 @@ def get_admin_overview():
     })
 
 @router.post("/admin/copilot")
-def admin_ai_copilot(request: AdminCopilotRequest):
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        return {"answer": "AI Copilot is not configured (missing API Key)."}
-    
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    
-    context = "Company policies retrieval is currently disabled."
-
-    # 2. Context Retrieval from Mongo (Employee/Candidate Info)
-    # Extract names or IDs if possible, for now we can do a broad search
-    # or just assume the AI will ask for specifics if missing.
-    try:
-        if "candidate" in request.query.lower() or "employee" in request.query.lower():
-            # Find recent onboarding requests
-            pendings = list(mongo_db.users.find({"status": "pending_approval"}, {"_id":0, "password":0}).limit(5))
-            context += f"\nRecent Candidate Applications: {pendings}"
-    except:
-        pass
-
-    prompt = f"""
-    You are the Dhanadurga HR Copilot. Use the context below to answer the Admin's query.
-    Context: {context}
-    
-    Admin Query: {request.query}
-    
-    Response (Professional and concise):
+async def admin_ai_copilot(request: AdminCopilotRequest):
     """
-    
-    try:
-        response = model.generate_content(prompt)
-        return {"answer": response.text}
-    except Exception as e:
-        return {"answer": f"AI error: {str(e)}"}
+    Enhanced Admin AI Agent powered by ChromaDB Vector Search.
+    Retrieves real-time employee data (salary, leaves, personal) to answer queries.
+    """
+    answer = await process_admin_query(request.query)
+    return {"answer": answer}
 
 @router.get("/admin/photos/{key:path}")
 def serve_s3_photo(key: str):
@@ -3487,7 +3666,7 @@ def analyze_and_convert_template(content_b64: str, file_type: str, document_type
         # 1. Identify placeholders
         # 2. If PDF, convert to a clean HTML template relative to the content
         
-        model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-image-preview")
+        model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
         model = genai.GenerativeModel(model_name)
         
         # Specialized prompts based on document type

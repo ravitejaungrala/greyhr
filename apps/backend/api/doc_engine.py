@@ -12,8 +12,9 @@ load_dotenv()
 
 # Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-2.5-flash')
+model = genai.GenerativeModel(MODEL_NAME)
 
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
