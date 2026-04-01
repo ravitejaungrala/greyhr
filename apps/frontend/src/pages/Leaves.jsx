@@ -120,12 +120,38 @@ const Leaves = ({ userId, user }) => {
     return (
         <div className="leaves-page">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: 0 }}>✈️ Leave Management</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: 0 }}>✈️ Leave Management</h1>
+                    <button 
+                        onClick={() => { fetchBalance(); fetchRecentLeaves(); }}
+                        className="btn-icon" 
+                        style={{ 
+                            background: 'rgba(10, 102, 194, 0.1)', 
+                            borderRadius: '50%', 
+                            padding: '5px',
+                            cursor: 'pointer',
+                            border: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '32px',
+                            height: '32px'
+                        }}
+                        title="Sync Balance"
+                    >
+                        🔄
+                    </button>
+                    {leaveData?.accrual_info?.last_sync && (
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                            Synced: {new Date(leaveData.accrual_info.last_sync).toLocaleTimeString()}
+                        </span>
+                    )}
+                </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                    {leaveData.types.map((type, idx) => (
-                        <div key={idx} className="glass-panel" style={{ padding: '0.5rem 1rem', borderRadius: '8px', textAlign: 'center' }}>
+                    {Array.isArray(leaveData?.types) && leaveData.types.map((type, idx) => (
+                        <div key={idx} className="glass-panel" style={{ padding: '0.5rem 1rem', borderRadius: '8px', textAlign: 'center', minWidth: '100px' }}>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{type.name}</div>
-                            <div style={{ fontWeight: 'bold', color: idx === 0 ? 'var(--primary)' : 'var(--secondary)' }}>
+                            <div style={{ fontWeight: 'bold', color: 'var(--primary)' }}>
                                 {type.remaining} Days
                             </div>
                         </div>

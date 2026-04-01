@@ -4,6 +4,7 @@ import DocumentGeneratorModal from '../components/DocumentGeneratorModal';
 import EnhancedDocumentGenerator from '../components/EnhancedDocumentGenerator';
 import HistoricalDocGenerator from '../components/HistoricalDocGenerator';
 import { PLACEHOLDER_IMAGE } from '../utils';
+import IntelligenceAgent from './IntelligenceAgent';
 
 const AdminDashboard = ({ activeTab, user }) => {
     const isSuperAdmin = user?.role === 'super_admin';
@@ -627,6 +628,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                 {activeTab === 'reports' && '📊 Company Reports'}
                 {activeTab === 'notifications' && '🔔 Admin Notifications'}
                 {activeTab === 'attendance' && '📸 Attendance Logs'}
+                {activeTab === 'intelligence' && '🧠 HR Intelligence Specialist'}
             </h1>
 
             {loading && <p style={{ color: '#6b7280', textAlign: 'center' }}>Loading data...</p>}
@@ -696,6 +698,13 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     )}
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {/* TAB: INTELLIGENCE */}
+                    {activeTab === 'intelligence' && (
+                        <div style={{ gridColumn: 'span 3' }}>
+                            <IntelligenceAgent user={user} />
                         </div>
                     )}
 

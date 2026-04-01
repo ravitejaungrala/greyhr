@@ -650,8 +650,28 @@ const HomeDashboard = ({ user, setUser }) => {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <div className="card glass-panel">
-                        <h2 className="card-title">📊 Leave Balance</h2>
+                    <div className="card glass-panel" style={{ position: 'relative' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <h2 className="card-title" style={{ marginBottom: 0 }}>📊 Leave Balance</h2>
+                            <button 
+                                onClick={fetchLeaveData}
+                                className="btn-icon" 
+                                style={{ 
+                                    background: 'rgba(10, 102, 194, 0.1)', 
+                                    borderRadius: '50%', 
+                                    padding: '5px',
+                                    cursor: 'pointer',
+                                    border: 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
+                                title="Sync Balance"
+                            >
+                                🔄
+                            </button>
+                        </div>
+                        
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                             {leaveBalance?.types?.map((t, i) => (
                                 <div key={i} style={{ padding: '1rem', background: 'rgba(10, 102, 194, 0.05)', borderRadius: '12px', textAlign: 'center', border: '1px solid rgba(10, 102, 194, 0.1)' }}>
@@ -660,6 +680,12 @@ const HomeDashboard = ({ user, setUser }) => {
                                 </div>
                             ))}
                         </div>
+
+                        {leaveBalance?.accrual_info?.last_sync && (
+                            <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '0.75rem', textAlign: 'right', fontStyle: 'italic' }}>
+                                Last synced: {new Date(leaveBalance.accrual_info.last_sync).toLocaleTimeString()}
+                            </div>
+                        )}
                     </div>
                     
                     <div className="card glass-card" style={{ flex: 1 }}>

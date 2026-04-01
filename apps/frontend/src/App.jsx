@@ -5,7 +5,7 @@ import {
   ClipboardCheck, Users, Settings, Calendar, BarChart3, Bell, Megaphone, 
   Camera, CreditCard, PieChart, FileText, History, Layout, Timer, 
   MessageSquare, Heart, Wallet, Palmtree, Folder, Package, LogOut,
-  ChevronDown, ChevronRight, Activity
+  ChevronDown, ChevronRight, Activity, BrainCircuit
 } from 'lucide-react';
 
 // Pages
@@ -20,7 +20,7 @@ import MyWorkLife from './pages/MyWorkLife';
 import SalaryModule from './pages/SalaryModule';
 import DocumentCenter from './pages/DocumentCenter';
 import ItemRequests from './pages/ItemRequests';
-import ChatbotBubble from './components/ChatbotBubble';
+import EmployeeAssistant from './pages/EmployeeAssistant';
 import LandingPage from './pages/LandingPage';
 
 // Helper component for dynamic document titles
@@ -37,6 +37,7 @@ const DynamicTitle = () => {
     else if (path === '/employee/attendance') title = 'Attendance | Dhanadurga';
     else if (path === '/employee/salary') title = 'Salary | Dhanadurga';
     else if (path === '/employee/leaves') title = 'Leaves | Dhanadurga';
+    else if (path === '/admin/intelligence') title = 'HR Intelligence | Dhanadurga';
     else if (path.includes('admin/')) title = 'Admin | Dhanadurga';
     
     document.title = title;
@@ -241,6 +242,9 @@ function AppContent() {
                 <NavItem path="/admin/monitoring" icon={Camera} title="Monitoring" subtitle="LOGS" isSub />
               </NavGroup>
               
+              <NavItem path="/admin/intelligence" icon={BrainCircuit} title="Intelligence" subtitle="AI SPECIALIST" />
+              
+              
               <NavGroup 
                 id="documents" 
                 icon={Folder} 
@@ -274,7 +278,7 @@ function AppContent() {
               <NavItem path="/employee/wellbeing" icon={Heart} title="Wellbeing" subtitle="WORK LIFE" />
               <NavItem path="/employee/salary" icon={Wallet} title="Earnings" subtitle="SALARY" />
               
-              <NavGroup 
+               <NavGroup 
                 id="requests" 
                 icon={ClipboardCheck} 
                 title="Requests" 
@@ -287,6 +291,7 @@ function AppContent() {
               </NavGroup>
 
               <NavItem path="/employee/docs" icon={Folder} title="Collection" subtitle="DOCUMENTS" />
+              <NavItem path="/employee/assistant" icon={BrainCircuit} title="AI Assistant" subtitle="DHANADURGA SPECIALIST" />
             </>
           )}
         </nav>
@@ -325,6 +330,7 @@ function AppContent() {
             <Route path="/admin/archive" element={<AdminDashboard activeTab="historical_docs" user={user} />} />
             <Route path="/admin/templates" element={<AdminDashboard activeTab="templates" user={user} />} />
             <Route path="/admin/payroll" element={<AdminDashboard activeTab="payroll" user={user} />} />
+            <Route path="/admin/intelligence" element={<AdminDashboard activeTab="intelligence" user={user} />} />
             
             <Route path="/employee/pulse" element={<HomeDashboard user={user} setUser={setUser} />} />
             <Route path="/employee/attendance" element={<AttendanceScan userId={user.employee_id} user={user} />} />
@@ -335,11 +341,11 @@ function AppContent() {
             <Route path="/employee/salary" element={<SalaryModule userId={user.employee_id} user={user} />} />
             <Route path="/employee/docs" element={<DocumentCenter user={user} />} />
             <Route path="/employee/items" element={<ItemRequests userId={user.employee_id} user={user} />} />
+            <Route path="/employee/assistant" element={<EmployeeAssistant user={user} />} />
             <Route path="*" element={<Navigate to={isAdmin ? "/admin/overview" : "/employee/pulse"} replace />} />
           </Routes>
         </div>
       </main>
-      <ChatbotBubble />
     </div>
   );
 }
