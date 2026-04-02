@@ -71,6 +71,14 @@ class HolidayRequest(BaseModel):
     date: str
     type: str = "Holiday"
 
+class AdminEmployeeCreate(BaseModel):
+    name: str
+    email: str
+    password: str
+    employment_type: str
+    position: str
+    monthly_salary: int
+
 class LeaveRequest(BaseModel):
     employee_id: str
     leave_type: str
@@ -425,6 +433,33 @@ def delete_employee(employee_id: str):
         return {"error": "Employee not found"}
         
     return {"message": f"Employee {employee_id} deleted successfully"}
+
+@router.post("/admin/create-employee")
+def admin_create_employee(request: AdminEmployeeCreate):
+    if mongo_db.users is None:
+        return {"error": "Database error"}
+    
+    if mongo_db.users.find_one({"email": request.email}):
+        return {"error": "Email already exists"}
+        
+    emp_id = f"EMP{uuid.uuid4().hex[:6].upper()}"
+    
+    user_record = {
+        "employee_id": emp_id,
+        "name": request.name,
+        "email": request.email,
+        "password": request.password,
+        "role": "employee",
+        "status": "onboarding_pending",
+        "employment_type": request.employment_type,
+        "position": request.position,
+        "monthly_salary": request.monthly_salary,
+        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "joining_date": datetime.datetime.now(datetime.timezone.utc).isoformat()
+    }
+    
+    mongo_db.users.insert_one(user_record)
+    return {"message": "Employee created successfully.", "employee_id": emp_id}
 
 class RoleAssignment(BaseModel):
     employee_id: str
@@ -1344,6 +1379,10 @@ def complete_onboarding(request: ProfileUpdateRequest):
     if mongo_db.users is None:
         return {"error": "Database offline"}
     
+    user = mongo_db.users.find_one({"employee_id": request.employee_id})
+    if not user:
+        return {"error": "User not found"}
+
     # 1. Process Files and Save to S3
     try:
         # Passport Photo
@@ -1354,7 +1393,6 @@ def complete_onboarding(request: ProfileUpdateRequest):
         # Bank Passbook
         bank_bytes = parse_base64(request.bank_passbook_base64)
         bank_key = f"onboarding_docs/{request.employee_id}_bank_passbook.pdf"
-        # Using save_image but it handles bytes, so it's fine for PDF too if content_type is set
         s3_db.save_image(bank_key, bank_bytes, content_type='application/pdf')
         
         # Education Certs
@@ -1374,6 +1412,10 @@ def complete_onboarding(request: ProfileUpdateRequest):
         return {"error": f"Document processing failed: {str(e)}"}
 
     # 2. Update User Record
+    # Logic: If account was pre-created by admin, approve immediately.
+    # Otherwise, set to pending_approval.
+    new_status = "approved" if user.get("status") == "onboarding_pending" else "pending_approval"
+    
     onboarding_data = {
         "full_name": request.full_name,
         "dob": request.dob,
@@ -1420,7 +1462,7 @@ def complete_onboarding(request: ProfileUpdateRequest):
             "uan_number": request.uan_number
         },
         "passport_photo_url": passport_key,
-        "status": "pending_approval", # Move to pending
+        "status": new_status,
         "onboarding_completed_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
     }
 
@@ -1428,8 +1470,12 @@ def complete_onboarding(request: ProfileUpdateRequest):
         {"employee_id": request.employee_id},
         {"$set": onboarding_data}
     )
+    
+    if new_status == "approved":
+        sync_employee_to_vector_db(request.employee_id, mongo_db)
 
-    return {"message": "Onboarding information submitted successfully! Pending HR approval.", "status": "success"}
+    msg = "Onboarding completed! Your account is now active." if new_status == "approved" else "Onboarding information submitted successfully! Pending HR approval."
+    return {"message": msg, "status": "success", "new_status": new_status}
 
 @router.post("/employee/upload-id-photo")
 def upload_id_photo(request: IDPhotoUpload):

@@ -86,6 +86,18 @@ const AdminDashboard = ({ activeTab, user }) => {
     const [selectedPayslipEmployees, setSelectedPayslipEmployees] = useState([]);
     const [isBatchSending, setIsBatchSending] = useState(false);
 
+    // Add Employee Modal State
+    const [isAddEmpModalOpen, setIsAddEmpModalOpen] = useState(false);
+    const [addEmpForm, setAddEmpForm] = useState({
+        name: '',
+        email: '',
+        password: '',
+        employment_type: 'Full-Time',
+        position: '',
+        monthly_salary: ''
+    });
+    const [addEmpLoading, setAddEmpLoading] = useState(false);
+
     // Form states
     const [newHoliday, setNewHoliday] = useState({ name: '', date: '', type: 'Public Holiday' });
     const [editingHoliday, setEditingHoliday] = useState(null);
@@ -303,6 +315,58 @@ const AdminDashboard = ({ activeTab, user }) => {
             }
         } catch (err) {
             console.error(err);
+        }
+    };
+
+    const handleAddEmployee = async (e, shouldGenDoc = false) => {
+        if (e) e.preventDefault();
+        setAddEmpLoading(true);
+        try {
+            const response = await fetch(`${apiUrl}/admin/create-employee`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(addEmpForm)
+            });
+            const data = await response.json();
+            if (data.error) {
+                alert(data.error);
+            } else {
+                alert(`Employee ${data.employee_id} created successfully! They can now login and complete onboarding.`);
+                setIsAddEmpModalOpen(false);
+                
+                if (shouldGenDoc) {
+                    const isIntern = addEmpForm.employment_type === 'Intern';
+                    setDocGenType(isIntern ? 'internship_offer' : 'full_time_offer');
+                    setDocGenEmployee({ 
+                        ...addEmpForm, 
+                        employee_id: data.employee_id,
+                        full_name: addEmpForm.name 
+                    });
+                    setDocGenInitialData({
+                        emp_name: addEmpForm.name,
+                        employee_id: data.employee_id,
+                        designation: addEmpForm.position,
+                        doj: new Date().toISOString().split('T')[0],
+                        total_ctc_annual: parseInt(addEmpForm.monthly_salary) * 12,
+                        inhand_amount: parseInt(addEmpForm.monthly_salary)
+                    });
+                    setIsDocGenModalOpen(true);
+                }
+
+                setAddEmpForm({
+                    name: '',
+                    email: '',
+                    password: '',
+                    employment_type: 'Full-Time',
+                    position: '',
+                    monthly_salary: ''
+                });
+                fetchData();
+            }
+        } catch (err) {
+            alert("Connection error occurred.");
+        } finally {
+            setAddEmpLoading(false);
         }
     };
 
@@ -1007,19 +1071,37 @@ const AdminDashboard = ({ activeTab, user }) => {
                         <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                 <h2 className="card-title">Employee Directory ({approvedEmployees.length})</h2>
-                                <button
-                                    onClick={() => setIsEnhancedDocGenOpen(true)}
-                                    className="btn btn-primary"
-                                    style={{ 
-                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                        border: 'none',
-                                        padding: '0.75rem 1.5rem',
-                                        fontSize: '0.9rem',
-                                        fontWeight: '600'
-                                    }}
-                                >
-                                    📄 Enhanced Document Generator
-                                </button>
+                                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                    <button
+                                        onClick={() => setIsAddEmpModalOpen(true)}
+                                        className="btn btn-primary"
+                                        style={{ 
+                                            background: 'linear-gradient(135deg, #0a66c2 0%, #084a8c 100%)',
+                                            border: 'none',
+                                            padding: '0.75rem 1.25rem',
+                                            fontSize: '0.85rem',
+                                            fontWeight: '700',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem'
+                                        }}
+                                    >
+                                        ➕ Add New Employee
+                                    </button>
+                                    <button
+                                        onClick={() => setIsEnhancedDocGenOpen(true)}
+                                        className="btn btn-primary"
+                                        style={{ 
+                                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                            border: 'none',
+                                            padding: '0.75rem 1.25rem',
+                                            fontSize: '0.85rem',
+                                            fontWeight: '600'
+                                        }}
+                                    >
+                                        📄 Enhanced Document Generator
+                                    </button>
+                                </div>
                             </div>
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                 <thead>
@@ -2640,6 +2722,199 @@ const AdminDashboard = ({ activeTab, user }) => {
                 onClose={() => setIsEnhancedDocGenOpen(false)}
                 apiUrl={apiUrl}
             />
+            {/* MODAL: ADD EMPLOYEE */}
+            {isAddEmpModalOpen && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000 }}>
+                    <div className="card glass-panel" style={{ width: '100%', maxWidth: '500px', padding: '2.5rem', border: '1px solid rgba(255,255,255,0.1)', animation: 'slideUp 0.3s ease-out' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                            <h2 style={{ fontSize: '1.5rem', color: 'var(--primary)', margin: 0, fontWeight: 800 }}>➕ Add New Employee</h2>
+                            <button onClick={() => setIsAddEmpModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.25rem' }}>✕</button>
+                        </div>
+                        <form onSubmit={handleAddEmployee} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Full Name</label>
+                                <input 
+                                    required 
+                                    className="premium-input" 
+                                    placeholder="John Doe"
+                                    value={addEmpForm.name} 
+                                    onChange={e => setAddEmpForm({...addEmpForm, name: e.target.value})} 
+                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Company Email (@dhanadurga.com)</label>
+                                <input 
+                                    required 
+                                    type="email" 
+                                    className="premium-input" 
+                                    placeholder="john@dhanadurga.com"
+                                    value={addEmpForm.email} 
+                                    onChange={e => setAddEmpForm({...addEmpForm, email: e.target.value})} 
+                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Temporary Password</label>
+                                <input 
+                                    required 
+                                    type="password" 
+                                    className="premium-input" 
+                                    value={addEmpForm.password} 
+                                    onChange={e => setAddEmpForm({...addEmpForm, password: e.target.value})} 
+                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }}
+                                />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Employment Type</label>
+                                    <select 
+                                        value={addEmpForm.employment_type} 
+                                        onChange={e => setAddEmpForm({...addEmpForm, employment_type: e.target.value})}
+                                        style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(10,10,20, 0.5)', color: '#ffffff', fontWeight: 600 }}
+                                    >
+                                        <option value="Full-Time">Full-Time</option>
+                                        <option value="Intern">Intern</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Monthly Salary (₹)</label>
+                                    <input 
+                                        required 
+                                        type="number" 
+                                        className="premium-input" 
+                                        value={addEmpForm.monthly_salary} 
+                                        onChange={e => setAddEmpForm({...addEmpForm, monthly_salary: e.target.value})} 
+                                        style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Designation / Position</label>
+                                <input 
+                                    required 
+                                    className="premium-input" 
+                                    placeholder="e.g. Sales Executive"
+                                    value={addEmpForm.position} 
+                                    onChange={e => setAddEmpForm({...addEmpForm, position: e.target.value})} 
+                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }}
+                                />
+                            </div>
+                            
+                            <button 
+                                type="submit" 
+                                disabled={addEmpLoading}
+                                className="btn-submit-premium" 
+                                style={{ width: '100%', padding: '1rem', marginTop: '1rem', opacity: addEmpLoading ? 0.7 : 1 }}
+                            >
+                                {addEmpLoading ? 'Creating User...' : '🚀 Create Employee Account'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+            {/* MODAL: ADD EMPLOYEE */}
+            {isAddEmpModalOpen && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000 }}>
+                    <div className="card glass-panel" style={{ width: '100%', maxWidth: '500px', padding: '2.5rem', border: '1px solid rgba(255,255,255,0.1)', animation: 'slideUp 0.3s ease-out' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                            <h2 style={{ fontSize: '1.5rem', color: 'var(--primary)', margin: 0, fontWeight: 800 }}>➕ Add New Employee</h2>
+                            <button onClick={() => setIsAddEmpModalOpen(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.25rem' }}>✕</button>
+                        </div>
+                        <form onSubmit={handleAddEmployee} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Full Name</label>
+                                <input 
+                                    required 
+                                    className="premium-input" 
+                                    placeholder="John Doe"
+                                    value={addEmpForm.name} 
+                                    onChange={e => setAddEmpForm({...addEmpForm, name: e.target.value})} 
+                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Company Email (@dhanadurga.com)</label>
+                                <input 
+                                    required 
+                                    type="email" 
+                                    className="premium-input" 
+                                    placeholder="john@dhanadurga.com"
+                                    value={addEmpForm.email} 
+                                    onChange={e => setAddEmpForm({...addEmpForm, email: e.target.value})} 
+                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Temporary Password</label>
+                                <input 
+                                    required 
+                                    type="password" 
+                                    className="premium-input" 
+                                    value={addEmpForm.password} 
+                                    onChange={e => setAddEmpForm({...addEmpForm, password: e.target.value})} 
+                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937' }}
+                                />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Employment Type</label>
+                                    <select 
+                                        value={addEmpForm.employment_type} 
+                                        onChange={e => setAddEmpForm({...addEmpForm, employment_type: e.target.value})}
+                                        style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937', fontWeight: 600 }}
+                                    >
+                                        <option value="Full-Time">Full-Time</option>
+                                        <option value="Intern">Intern</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Monthly Salary (₹)</label>
+                                    <input 
+                                        required 
+                                        type="number" 
+                                        className="premium-input" 
+                                        value={addEmpForm.monthly_salary} 
+                                        onChange={e => setAddEmpForm({...addEmpForm, monthly_salary: e.target.value})} 
+                                        style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937' }}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Designation / Position</label>
+                                <input 
+                                    required 
+                                    className="premium-input" 
+                                    placeholder="e.g. Sales Executive"
+                                    value={addEmpForm.position} 
+                                    onChange={e => setAddEmpForm({...addEmpForm, position: e.target.value})} 
+                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937' }}
+                                />
+                            </div>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                                <button 
+                                    type="button" 
+                                    onClick={(e) => handleAddEmployee(e, true)}
+                                    disabled={addEmpLoading}
+                                    className="btn btn-primary" 
+                                    style={{ padding: '1rem', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', fontWeight: 'bold', border: 'none' }}
+                                >
+                                    {addEmpLoading ? '⌛...' : '✨ Create & Gen Letter'}
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    disabled={addEmpLoading}
+                                    className="btn btn-primary" 
+                                    style={{ padding: '1rem', background: '#0a66c2', fontWeight: 'bold' }}
+                                >
+                                    {addEmpLoading ? 'Creating...' : '🚀 Create Only'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
