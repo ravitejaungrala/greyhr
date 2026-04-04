@@ -705,19 +705,19 @@ const AdminDashboard = ({ activeTab, user }) => {
                         <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                             <div className="grid-3" style={{ gap: '1.5rem' }}>
                                 {/* Stat Cards */}
-                                <div className="card glass-panel" style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: 'white', cursor: 'pointer' }}>
+                                <div className="card shadow-sm" style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: 'white', cursor: 'pointer' }}>
                                     <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>Total Employees</div>
                                     <div style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0.5rem 0' }}>{overviewData.metrics.total_employees}</div>
                                     <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>Active workforce</div>
                                 </div>
                                 
-                                <div className="card glass-panel" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: 'white', cursor: 'pointer' }}>
+                                <div className="card shadow-sm" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: 'white', cursor: 'pointer' }}>
                                     <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>Pending Approvals</div>
                                     <div style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0.5rem 0' }}>{overviewData.metrics.pending_approvals}</div>
                                     <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>Onboarding candidates</div>
                                 </div>
 
-                                <div className="card glass-panel" style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: 'white', cursor: 'pointer' }}>
+                                <div className="card shadow-sm" style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: 'white', cursor: 'pointer' }}>
                                     <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>Leaves (Today)</div>
                                     <div style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0.5rem 0' }}>{overviewData.metrics.active_leaves_today}</div>
                                     <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>Out of office</div>
@@ -726,11 +726,11 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                             <div className="grid-2" style={{ gap: '1.5rem' }}>
                                 {/* Recent Activity */}
-                                <div className="card glass-panel">
+                                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                     <h2 className="card-title" style={{ fontSize: '1.1rem' }}>🔔 Recent Activity</h2>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                         {overviewData.recent_activity.map((act, i) => (
-                                            <div key={i} style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.02)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div key={i} style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border-color)' }}>
                                                 <div>
                                                     <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{act.name}</div>
                                                     <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>ID: {act.employee_id}</div>
@@ -750,10 +750,10 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 </div>
 
                                 {/* Active Announcement */}
-                                <div className="card glass-panel">
+                                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                     <h2 className="card-title" style={{ fontSize: '1.1rem' }}>📢 Current Announcement</h2>
                                     {overviewData.announcement ? (
-                                        <div style={{ padding: '1rem', background: 'rgba(10, 102, 194, 0.05)', borderRadius: '12px', borderLeft: '4px solid var(--primary)' }}>
+                                        <div style={{ padding: '1rem', background: '#eff6ff', borderRadius: '12px', border: '1px solid #bfdbfe', borderLeft: '4px solid var(--primary)' }}>
                                             <div style={{ fontWeight: 700, marginBottom: '0.5rem' }}>{overviewData.announcement.title}</div>
                                             <p style={{ fontSize: '0.85rem', margin: 0 }}>{overviewData.announcement.content}</p>
                                         </div>
@@ -775,10 +775,10 @@ const AdminDashboard = ({ activeTab, user }) => {
                     {/* TAB: ONBOARDING */}
                     {activeTab === 'onboarding' && (
                         <>
-                            <div className="card glass-card" style={{ gridColumn: 'span 1' }}>
+                            <div className="card shadow-sm" style={{ gridColumn: 'span 1', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                 <h2 className="card-title" style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Pending ({pendingEmployees.length})</h2>
                                 {pendingEmployees.length === 0 ? (
-                                    <div style={{ padding: '3rem 1.5rem', textAlign: 'center', backgroundColor: 'rgba(10, 102, 194, 0.04)', borderRadius: '20px', border: '1px dashed var(--primary)' }}>
+                                    <div style={{ padding: '3rem 1.5rem', textAlign: 'center', backgroundColor: '#f0f9ff', borderRadius: '20px', border: '1px dashed var(--primary)' }}>
                                         <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>✨</div>
                                         <p style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.9rem' }}>Workflow Complete</p>
                                         <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.25rem' }}>All profiles have been reviewed.</p>
@@ -791,7 +791,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 onClick={() => setViewedEmp(emp)} 
                                                 style={{ 
                                                     padding: '1.25rem', 
-                                                    backgroundColor: viewedEmp?.employee_id === emp.employee_id ? 'rgba(10, 102, 194, 0.08)' : 'var(--bg-color)', 
+                                                    backgroundColor: viewedEmp?.employee_id === emp.employee_id ? '#eff6ff' : '#ffffff', 
                                                     border: `1px solid ${viewedEmp?.employee_id === emp.employee_id ? 'var(--primary)' : 'var(--border-color)'}`, 
                                                     borderRadius: '16px', 
                                                     cursor: 'pointer',
@@ -807,7 +807,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 )}
                             </div>
 
-                            <div className="card glass-card" style={{ gridColumn: 'span 2' }}>
+                            <div className="card shadow-lg" style={{ gridColumn: 'span 2', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                 <h2 className="card-title" style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Review Profile</h2>
                                 {viewedEmp ? (
                                     <div>
@@ -867,7 +867,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             </div>
                                         </div>
 
-                                        <div style={{ backgroundColor: 'rgba(10, 102, 194, 0.04)', padding: '2rem', borderRadius: '24px', border: '1px solid rgba(10, 102, 194, 0.1)', marginBottom: '2rem' }}>
+                                        <div style={{ backgroundColor: '#f0f9ff', padding: '2rem', borderRadius: '24px', border: '1px solid #bfdbfe', marginBottom: '2rem' }}>
                                             <h3 style={{ fontSize: '1rem', color: 'var(--primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
                                                 <span style={{ fontSize: '1.25rem' }}>⚙️</span> Administrative Setup
                                             </h3>
@@ -1068,7 +1068,7 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                     {/* TAB: EMPLOYEES */}
                     {activeTab === 'employees' && (
-                        <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
+                        <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                 <h2 className="card-title">Employee Directory ({approvedEmployees.length})</h2>
                                 <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -1137,7 +1137,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                     pf_deduction_rate: emp.pf_deduction_rate || 0
                                                 });
                                             }}
-                                            style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', background: selectedApprovedEmp?.employee_id === emp.employee_id ? 'rgba(79, 70, 229, 0.1)' : 'transparent' }}
+                                            style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer', background: selectedApprovedEmp?.employee_id === emp.employee_id ? '#eff6ff' : 'transparent' }}
                                         >
                                             <td style={{ padding: '0.5rem 1rem' }}>
                                                 <img
@@ -1169,7 +1169,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                             </table>
 
                             {selectedApprovedEmp && (
-                                <div className="card glass-panel" style={{ marginTop: '2rem', borderTop: '2px solid #ff7a00' }}>
+                                <div className="card shadow-sm" style={{ marginTop: '2rem', borderTop: '4px solid #ff7a00', background: '#ffffff', borderRight: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', borderLeft: '1px solid var(--border-color)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                         <h3 style={{ fontSize: '1.25rem', color: '#1f2937' }}>✏️ Edit Profile: {selectedApprovedEmp.name}</h3>
                                         <button onClick={() => setSelectedApprovedEmp(null)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer' }}>✕ Close</button>
@@ -1414,7 +1414,7 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                     {/* TAB: LEAVES */}
                     {activeTab === 'leaves' && (
-                        <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
+                        <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <h2 className="card-title">Leave Requests</h2>
                             {leaves.length === 0 ? <p style={{ color: '#6b7280' }}>No leaves found (Try applying from Employee view).</p> : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1435,7 +1435,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                                 fontSize: '0.7rem', 
                                                                 padding: '0.15rem 0.4rem', 
                                                                 borderRadius: '4px', 
-                                                                backgroundColor: t.remaining <= 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(10, 102, 194, 0.05)',
+                                                                backgroundColor: t.remaining <= 0 ? '#FEF2F2' : '#F0F9FF',
                                                                 color: t.remaining <= 0 ? '#EF4444' : 'var(--text-muted)',
                                                                 border: `1px solid ${t.remaining <= 0 ? '#EF444444' : 'var(--border-color)'}`
                                                             }}>
@@ -1445,7 +1445,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                     </div>
                                                 )}
 
-                                                <div style={{ fontSize: '0.875rem', p: '0.75rem', background: 'rgba(0,0,0,0.02)', borderRadius: '4px', borderLeft: '3px solid var(--primary)' }}>
+                                                <div style={{ fontSize: '0.875rem', p: '0.75rem', background: '#f8fafc', borderRadius: '4px', borderLeft: '3px solid var(--primary)', borderRight: '1px solid var(--border-color)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', padding: '0.75rem' }}>
                                                     " {l.reason} "
                                                 </div>
                                             </div>
@@ -1472,21 +1472,33 @@ const AdminDashboard = ({ activeTab, user }) => {
                     {/* TAB: HOLIDAYS */}
                     {activeTab === 'holidays' && (
                         <>
-                            <div className="card" style={{ gridColumn: 'span 1' }}>
-                                <h2 className="card-title">{editingHoliday ? "Edit Holiday" : "Add Holiday"}</h2>
-                                <form onSubmit={submitHoliday} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    <div><label style={{ fontSize: '0.875rem' }}>Holiday Name</label><input required type="text" value={newHoliday.name} onChange={e => setNewHoliday({ ...newHoliday, name: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: 'none' }} /></div>
-                                    <div><label style={{ fontSize: '0.875rem' }}>Date</label><input required type="date" value={newHoliday.date} onChange={e => setNewHoliday({ ...newHoliday, date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: 'none' }} /></div>
-                                    <div><label style={{ fontSize: '0.875rem' }}>Type</label><select required value={newHoliday.type} onChange={e => setNewHoliday({ ...newHoliday, type: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: 'none' }}><option>Public Holiday</option><option>Optional Holiday</option></select></div>
-                                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                                        <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{editingHoliday ? "Save Changes" : "Add Holiday"}</button>
+                            <div className="card shadow-sm" style={{ gridColumn: 'span 1', background: '#ffffff', border: '1px solid var(--border-color)', height: 'fit-content', padding: '1.5rem' }}>
+                                <h2 className="card-title" style={{ fontSize: '1.25rem', marginBottom: '1.25rem' }}>{editingHoliday ? "Edit Holiday" : "Add Holiday"}</h2>
+                                <form onSubmit={submitHoliday} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Holiday Name</label>
+                                        <input required type="text" placeholder="Ugadi, New Year..." value={newHoliday.name} onChange={e => setNewHoliday({ ...newHoliday, name: e.target.value })} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937' }} />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Date</label>
+                                        <input required type="date" value={newHoliday.date} onChange={e => setNewHoliday({ ...newHoliday, date: e.target.value })} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937' }} />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Type</label>
+                                        <select required value={newHoliday.type} onChange={e => setNewHoliday({ ...newHoliday, type: e.target.value })} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937', fontWeight: 'bold' }}>
+                                            <option>Public Holiday</option>
+                                            <option>Optional Holiday</option>
+                                        </select>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                                        <button type="submit" className="btn btn-primary" style={{ flex: 1, padding: '0.75rem' }}>{editingHoliday ? "Save Changes" : "Add Holiday"}</button>
                                         {editingHoliday && (
-                                            <button type="button" className="btn btn-secondary" onClick={() => { setEditingHoliday(null); setNewHoliday({ name: '', date: '', type: 'Public Holiday' }); }} style={{ flex: 1 }}>Cancel</button>
+                                            <button type="button" className="btn btn-secondary" onClick={() => { setEditingHoliday(null); setNewHoliday({ name: '', date: '', type: 'Public Holiday' }); }} style={{ flex: 1, padding: '0.75rem' }}>Cancel</button>
                                         )}
                                     </div>
                                 </form>
                             </div>
-                            <div className="card glass-panel" style={{ gridColumn: 'span 2' }}>
+                            <div className="card shadow-sm" style={{ gridColumn: 'span 2', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                     <h2 className="card-title" style={{ margin: 0 }}>Holiday Calendar</h2>
                                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -1507,9 +1519,9 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.5rem', marginBottom: '0.5rem', textAlign: 'center', fontWeight: 'bold', color: '#6b7280' }}>
                                     <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
                                 </div>
-                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: '#E5E7EB', borderRadius: '12px', overflow: 'hidden', border: '1px solid #E5E7EB' }}>
+                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: 'var(--border-color)', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
                                     {Array.from({ length: new Date(calYear, calMonth, 1).getDay() }).map((_, i) => (
-                                        <div key={`empty-${i}`} style={{ padding: '2.5rem', background: '#F9FAFB' }}></div>
+                                        <div key={`empty-${i}`} style={{ padding: '1rem', background: '#F9FAFB' }}></div>
                                     ))}
                                     {Array.from({ length: new Date(calYear, calMonth + 1, 0).getDate() }).map((_, i) => {
                                         const day = i + 1;
@@ -1519,8 +1531,8 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         
                                         return (
                                             <div key={day} style={{ 
-                                                minHeight: '120px', 
-                                                padding: '0.75rem', 
+                                                minHeight: '70px', 
+                                                padding: '0.6rem', 
                                                 background: '#ffffff',
                                                 display: 'flex',
                                                 flexDirection: 'column',
@@ -1544,13 +1556,13 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                     {dayHolidays.map((h, hi) => (
                                                         <div key={hi} style={{ 
                                                             fontSize: '0.7rem', 
-                                                            background: h.type === 'Public Holiday' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)', 
+                                                            background: h.type === 'Public Holiday' ? '#FEF2F2' : '#FFFBEB', 
                                                             color: h.type === 'Public Holiday' ? '#EF4444' : '#F59E0B', 
                                                             padding: '0.4rem 0.6rem', 
                                                             borderRadius: '6px',
                                                             textAlign: 'left',
                                                             cursor: 'pointer',
-                                                            border: `1px solid ${h.type === 'Public Holiday' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`,
+                                                            border: `1px solid ${h.type === 'Public Holiday' ? '#FEE2E2' : '#FEF3C7'}`,
                                                             fontWeight: '600'
                                                         }} onClick={() => handleEditClick(h)} title="Click to Edit">
                                                             {h.name}
@@ -1564,7 +1576,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                             </div>
 
                             {/* Workday Overrides / Holiday Swapping */}
-                            <div className="card glass-panel" style={{ marginTop: '2rem' }}>
+                            <div className="card shadow-sm" style={{ marginTop: '2rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                 <h2 className="card-title">🔄 Holiday Swapping & Workday Overrides</h2>
                                 <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
                                     Force a specific date to be a **Working Day** (e.g., for deadlines) or a **Holiday** (e.g., as a substitute for a worked holiday).
@@ -1610,7 +1622,7 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                     {/* TAB: REPORTS */}
                     {activeTab === 'reports' && reports && (
-                        <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
+                        <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <h2 className="card-title">Company Health Data</h2>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
                                 <div style={{ padding: '2rem', background: '#ffffff', borderRadius: '8px', textAlign: 'center' }}>
@@ -1639,7 +1651,7 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                     {/* TAB: NOTIFICATIONS */}
                     {activeTab === 'notifications' && (
-                        <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
+                        <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <h2 className="card-title">Latest Updates</h2>
                             {notifications.length === 0 ? <p>No new notifications.</p> : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1659,7 +1671,7 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                     {/* TAB: ATTENDANCE LOGS */}
                     {activeTab === 'attendance' && (
-                        <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
+                        <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <h2 className="card-title">Global Attendance History</h2>
                             {/* ... existing table code ... */}
                             <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
@@ -1710,7 +1722,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 {compOffRequests.length === 0 ? <p style={{ color: '#9CA3AF' }}>No pending requests.</p> : (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem' }}>
                                         {compOffRequests.map((req, i) => (
-                                            <div key={i} className="card glass-panel" style={{ padding: '1.5rem' }}>
+                                            <div key={i} className="card shadow-sm" style={{ padding: '1.5rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                                                     <div>
                                                         <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{req.employee_id}</div>
@@ -1752,7 +1764,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 {weekendWorkRequests.length === 0 ? <p style={{ color: '#9CA3AF' }}>No pending work requests.</p> : (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem' }}>
                                         {weekendWorkRequests.map((req, i) => (
-                                            <div key={i} className="card glass-panel" style={{ padding: '1.5rem' }}>
+                                            <div key={i} className="card shadow-sm" style={{ padding: '1.5rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                                                     <div>
                                                         <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{req.employee_id}</div>
@@ -1789,7 +1801,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                     {activeTab === 'payroll' && (
                         <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
-                            <div className="card glass-panel" style={{ borderLeft: '4px solid #10b981' }}>
+                            <div className="card shadow-sm" style={{ borderLeft: '4px solid #10b981', background: '#ffffff', borderRight: '1px solid var(--border-color)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
                                 <h2 className="card-title">⚙️ Global Salary Configuration</h2>
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
                                     Control which deductions are applied company-wide. These settings affect all salary calculations.
@@ -1859,7 +1871,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 </button>
                             </div>
 
-                            <div className="card glass-panel">
+                            <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                 <h2 className="card-title">🚀 Payslip Release Control</h2>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     {['February 2026', 'March 2026'].map(month => {
@@ -1885,7 +1897,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     })}
                                 </div>
                             </div>
-                            <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(10, 102, 194, 0.05)', borderRadius: '12px', borderLeft: '4px solid var(--primary)', backdropFilter: 'blur(8px)' }}>
+                            <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#eff6ff', borderRadius: '12px', border: '1px solid #bfdbfe', borderLeft: '4px solid var(--primary)' }}>
                                 <div style={{ fontWeight: 'bold', color: 'var(--primary)', marginBottom: '0.5rem' }}>AI Payroll Note:</div>
                                 <p style={{ fontSize: '0.875rem', margin: 0 }}>All LOP (Loss of Pay) deductions are automatically calculated based on attendance and leave records for the selected month.</p>
                             </div>
@@ -1894,7 +1906,7 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                     {/* TAB: SALARY REPORT */}
                     {activeTab === 'salary_report' && (
-                        <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
+                        <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                                 <h2 className="card-title" style={{ margin: 0 }}>📊 Monthly Salary Report</h2>
                                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -1949,7 +1961,7 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                     {/* TAB: ITEMS */}
                     {activeTab === 'items' && (
-                        <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
+                        <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <h2 className="card-title">📦 Item Requests ({itemRequests.length})</h2>
                             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
                                 <thead>
@@ -2007,7 +2019,7 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                     {/* TAB: TEMPLATES */}
                     {activeTab === 'templates' && (
-                        <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
+                        <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '1.5rem' }}>📄 AI Document Templates</h1>
                             <p style={{ color: '#6b7280', marginBottom: '2rem' }}>Train our AI on your specific company documents. Upload any PDF/HTML format and we'll convert it into a dynamic system template.</p>
 
@@ -2103,7 +2115,7 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                             <input id="template-upload-input" type="file" hidden accept=".html,.pdf" onChange={handleTemplateUpload} />
 
-                            <div className="card" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid #E5E7EB', padding: '1.5rem' }}>
+                            <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.5rem' }}>
                                 <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Active System Templates</h3>
                                 {offerLetterTemplates.length === 0 ? (
                                     <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#6b7280' }}>
@@ -2159,7 +2171,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                     {
                         templateAnalysis && (
                             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100, padding: '2rem' }}>
-                                <div className="card glass-panel" style={{ width: '100%', maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto', border: '1px solid #ff7a00', boxShadow: '0 0 40px rgba(255,122,0,0.2)' }}>
+                                <div className="card shadow-2xl" style={{ width: '100%', maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto', border: '1px solid #ff7a00', background: '#ffffff' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                                         <div>
                                             <h2 className="card-title" style={{ margin: 0 }}>🧠 AI Analysis Complete</h2>
@@ -2170,7 +2182,7 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                            <div style={{ padding: '1.5rem', background: 'rgba(10, 102, 194, 0.05)', borderRadius: '12px', border: '1px solid #0a66c2' }}>
+                                            <div style={{ padding: '1.5rem', background: '#eff6ff', borderRadius: '12px', border: '1px solid #bfdbfe' }}>
                                                 <h3 style={{ fontSize: '1rem', color: '#0a66c2', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                     <span>🏷️</span> Detected Placeholders
                                                 </h3>
@@ -2187,13 +2199,13 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             </div>
 
                                             {templateAnalysis.roi_fields?.length > 0 && (
-                                                <div style={{ padding: '1.5rem', background: 'rgba(16, 185, 129, 0.05)', borderRadius: '12px', border: '1px solid #10B981' }}>
+                                                <div style={{ padding: '1.5rem', background: '#ecfdf5', borderRadius: '12px', border: '1px solid #a7f3d0' }}>
                                                     <h3 style={{ fontSize: '1rem', color: '#10B981', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                         <span>💰</span> ROI / Investment Fields Found
                                                     </h3>
                                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                                                         {templateAnalysis.roi_fields.map(field => (
-                                                            <span key={field} style={{ padding: '0.4rem 0.8rem', background: 'rgba(16, 185, 129, 0.2)', color: '#065f46', borderRadius: '20px', fontSize: '0.75rem', border: '1px solid #10B981' }}>
+                                                            <span key={field} style={{ padding: '0.4rem 0.8rem', background: '#d1fae5', color: '#065f46', borderRadius: '20px', fontSize: '0.75rem', border: '1px solid #10B981' }}>
                                                                 {field} detected
                                                             </span>
                                                         ))}
@@ -2270,7 +2282,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                     {
                         previewActiveTemplate && (
                             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200, padding: '1rem' }}>
-                                <div className="card glass-panel" style={{ width: '95vw', maxWidth: '1600px', height: '95vh', display: 'flex', flexDirection: 'column' }}>
+                                <div className="card shadow-2xl" style={{ width: '95vw', maxWidth: '1600px', height: '95vh', display: 'flex', flexDirection: 'column', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                         <h2 className="card-title" style={{ margin: 0 }}>👁️ Template Preview</h2>
                                         <button className="btn" onClick={() => setPreviewActiveTemplate(null)}>✕</button>
@@ -2287,9 +2299,9 @@ const AdminDashboard = ({ activeTab, user }) => {
                         )
                     }
 
-                    {
-                        activeTab === 'announcements' && (
-                            <div className="card glass-panel" style={{ gridColumn: 'span 3' }}>
+                    {/* TAB: ANNOUNCEMENTS */}
+                    {activeTab === 'announcements' && (
+                                <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                 <h2 className="card-title">📢 Manage System Announcements</h2>
                                 <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>This message will be visible to all employees in their Engage module.</p>
 
@@ -2446,14 +2458,14 @@ const AdminDashboard = ({ activeTab, user }) => {
             {
                 isRelievingLetterModalOpen && (
                     <div className="modal-overlay">
-                        <div className="modal-content glass-panel" style={{ maxWidth: '1000px', width: '95%', maxHeight: '95vh', overflowY: 'auto' }}>
+                        <div className="modal-content shadow-2xl" style={{ maxWidth: '1000px', width: '95%', maxHeight: '95vh', overflowY: 'auto', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                 <h2 className="card-title">📄 Exit Documents: Relieving & Experience</h2>
                                 <button onClick={() => setIsRelievingLetterModalOpen(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.5rem' }}>✕</button>
                             </div>
 
                             {/* --- RELIEVING LETTER SECTION --- */}
-                            <div style={{ border: '1px solid #E5E7EB', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem', background: 'rgba(255,122,0,0.02)' }}>
+                            <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem', background: '#fff9f5' }}>
                                 <h3 style={{ fontSize: '1.1rem', color: '#0a66c2', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     📑 1. Relieving Letter
                                 </h3>
@@ -2509,7 +2521,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                             </div>
 
                             {/* --- EXPERIENCE CERTIFICATE SECTION --- */}
-                            <div style={{ border: '1px solid #E5E7EB', borderRadius: '12px', padding: '1.5rem', background: 'rgba(10, 102, 194, 0.02)' }}>
+                            <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', background: '#f0f9ff' }}>
                                 <h3 style={{ fontSize: '1.1rem', color: '#0a66c2', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     🏆 2. Experience Certificate
                                 </h3>
@@ -2580,7 +2592,7 @@ const AdminDashboard = ({ activeTab, user }) => {
             {
                 isPayslipManagerOpen && (
                     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '2rem' }}>
-                        <div className="card glass-panel" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div className="card shadow-2xl" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                 <div>
                                     <h2 className="card-title" style={{ margin: 0 }}>💰 Release Payslips</h2>
@@ -2725,98 +2737,7 @@ const AdminDashboard = ({ activeTab, user }) => {
             {/* MODAL: ADD EMPLOYEE */}
             {isAddEmpModalOpen && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000 }}>
-                    <div className="card glass-panel" style={{ width: '100%', maxWidth: '500px', padding: '2.5rem', border: '1px solid rgba(255,255,255,0.1)', animation: 'slideUp 0.3s ease-out' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                            <h2 style={{ fontSize: '1.5rem', color: 'var(--primary)', margin: 0, fontWeight: 800 }}>➕ Add New Employee</h2>
-                            <button onClick={() => setIsAddEmpModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.25rem' }}>✕</button>
-                        </div>
-                        <form onSubmit={handleAddEmployee} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                            <div>
-                                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Full Name</label>
-                                <input 
-                                    required 
-                                    className="premium-input" 
-                                    placeholder="John Doe"
-                                    value={addEmpForm.name} 
-                                    onChange={e => setAddEmpForm({...addEmpForm, name: e.target.value})} 
-                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }}
-                                />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Company Email (@dhanadurga.com)</label>
-                                <input 
-                                    required 
-                                    type="email" 
-                                    className="premium-input" 
-                                    placeholder="john@dhanadurga.com"
-                                    value={addEmpForm.email} 
-                                    onChange={e => setAddEmpForm({...addEmpForm, email: e.target.value})} 
-                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }}
-                                />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Temporary Password</label>
-                                <input 
-                                    required 
-                                    type="password" 
-                                    className="premium-input" 
-                                    value={addEmpForm.password} 
-                                    onChange={e => setAddEmpForm({...addEmpForm, password: e.target.value})} 
-                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }}
-                                />
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Employment Type</label>
-                                    <select 
-                                        value={addEmpForm.employment_type} 
-                                        onChange={e => setAddEmpForm({...addEmpForm, employment_type: e.target.value})}
-                                        style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(10,10,20, 0.5)', color: '#ffffff', fontWeight: 600 }}
-                                    >
-                                        <option value="Full-Time">Full-Time</option>
-                                        <option value="Intern">Intern</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Monthly Salary (₹)</label>
-                                    <input 
-                                        required 
-                                        type="number" 
-                                        className="premium-input" 
-                                        value={addEmpForm.monthly_salary} 
-                                        onChange={e => setAddEmpForm({...addEmpForm, monthly_salary: e.target.value})} 
-                                        style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }}
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Designation / Position</label>
-                                <input 
-                                    required 
-                                    className="premium-input" 
-                                    placeholder="e.g. Sales Executive"
-                                    value={addEmpForm.position} 
-                                    onChange={e => setAddEmpForm({...addEmpForm, position: e.target.value})} 
-                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }}
-                                />
-                            </div>
-                            
-                            <button 
-                                type="submit" 
-                                disabled={addEmpLoading}
-                                className="btn-submit-premium" 
-                                style={{ width: '100%', padding: '1rem', marginTop: '1rem', opacity: addEmpLoading ? 0.7 : 1 }}
-                            >
-                                {addEmpLoading ? 'Creating User...' : '🚀 Create Employee Account'}
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            )}
-            {/* MODAL: ADD EMPLOYEE */}
-            {isAddEmpModalOpen && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000 }}>
-                    <div className="card glass-panel" style={{ width: '100%', maxWidth: '500px', padding: '2.5rem', border: '1px solid rgba(255,255,255,0.1)', animation: 'slideUp 0.3s ease-out' }}>
+                    <div className="card shadow-2xl" style={{ width: '100%', maxWidth: '500px', padding: '2.5rem', border: '1px solid var(--border-color)', background: '#ffffff', animation: 'slideUp 0.3s ease-out' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                             <h2 style={{ fontSize: '1.5rem', color: 'var(--primary)', margin: 0, fontWeight: 800 }}>➕ Add New Employee</h2>
                             <button onClick={() => setIsAddEmpModalOpen(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.25rem' }}>✕</button>

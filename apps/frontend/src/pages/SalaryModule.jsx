@@ -64,7 +64,7 @@ const SalaryModule = ({ userId }) => {
     return (
         <div className="salary-page">
             <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '1.5rem' }}>💰 Salary Module</h1>
-            <div className="card glass-panel" style={{ marginBottom: '2rem' }}>
+            <div className="card shadow-sm" style={{ marginBottom: '2rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                 <h2 className="card-title">💵 Current Month Summary</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1.5rem' }}>
                     <div>
@@ -141,8 +141,8 @@ const SalaryModule = ({ userId }) => {
 
             {joiningDate && (
                 <div style={{ 
-                    background: 'rgba(200, 76, 255, 0.1)', 
-                    border: '1px solid var(--primary)', 
+                    background: '#fdf4ff', 
+                    border: '1px solid #d8b4fe', 
                     padding: '1rem', 
                     borderRadius: '8px', 
                     marginBottom: '1.5rem',
@@ -157,11 +157,11 @@ const SalaryModule = ({ userId }) => {
                 </div>
             )}
 
-            <div className="card" style={{ overflowX: 'auto' }}>
+            <div className="card shadow-sm" style={{ overflowX: 'auto', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                 <h2 className="card-title">📄 Salary Disbursement History</h2>
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
                     <thead>
-                        <tr style={{ background: 'rgba(255,255,255,0.05)', textAlign: 'left' }}>
+                        <tr style={{ background: '#f8fafc', textAlign: 'left' }}>
                             <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>
                                 <input 
                                     type="checkbox" 
@@ -185,7 +185,7 @@ const SalaryModule = ({ userId }) => {
                             payslips.map((p, i) => (
                                 <tr key={i} style={{ 
                                     borderBottom: '1px solid var(--border-color)', 
-                                    background: selectedMonths.includes(p.month) ? 'rgba(200, 76, 255, 0.05)' : 'transparent',
+                                    background: selectedMonths.includes(p.month) ? '#f5f3ff' : 'transparent',
                                     transition: 'background 0.2s'
                                 }}>
                                     <td style={{ padding: '1rem' }}>

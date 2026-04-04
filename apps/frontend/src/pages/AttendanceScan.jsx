@@ -319,7 +319,7 @@ const AttendanceScan = ({ userId }) => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                 {/* Left Column: Camera & Status */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    <div className="card glass-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div className="card shadow-lg" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                         <div className="video-container" style={{
                             borderColor: scanStatus === 'success' ? 'var(--secondary)' :
                                 scanStatus === 'scanning' ? 'var(--violet)' : 'var(--primary)',
@@ -438,7 +438,7 @@ const AttendanceScan = ({ userId }) => {
                         </div>
                     </div>
 
-                    <div className="card">
+                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                         <h2 className="card-title">Today's Status</h2>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                             <div style={{ color: 'var(--text-muted)' }}>Current Status</div>
@@ -460,7 +460,7 @@ const AttendanceScan = ({ userId }) => {
 
                 {/* Right Column: Calendar & History */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    <div className="card glass-panel">
+                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                         <h2 className="card-title">📅 Attendance Calendar</h2>
                         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
                             {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
@@ -477,7 +477,7 @@ const AttendanceScan = ({ userId }) => {
                                         padding: '0.5rem 0',
                                         minWidth: 'auto',
                                         fontSize: '0.8rem',
-                                        backgroundColor: d.status ? (d.color || (d.status === 'Present' ? 'rgba(10, 102, 194, 0.2)' : 'rgba(255,255,255,0.05)')) : 'transparent',
+                                        backgroundColor: d.status ? (d.color || (d.status === 'Present' ? '#E6F0FF' : '#ffffff')) : 'transparent',
                                         borderColor: d.color || (d.status ? (d.status === 'Present' ? 'var(--secondary)' : 'var(--border-color)') : 'transparent'),
                                         color: d.status === 'Present' || d.status === 'Leave' || d.status?.includes('Present') ? 'white' : 'var(--text-muted)',
                                         position: 'relative'
@@ -551,23 +551,23 @@ const AttendanceScan = ({ userId }) => {
                         </div>
                     </div>
 
-                    <div className="card glass-panel" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                         <h2 className="card-title">🤖 AI Agent Feedback</h2>
-                        <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-color)', borderRadius: '6px', fontSize: '0.875rem' }}>
+                        <div style={{ padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '6px', fontSize: '0.875rem', border: '1px solid var(--border-color)' }}>
                             <strong>Pattern Analysis:</strong> {todayStatus.last_punch ?
                                 "System indicates you've successfully completed your identity verification." :
                                 "Awaiting your daily sign-in to begin performance analysis."}
                         </div>
                     </div>
 
-                    <div className="card glass-panel" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                    <div className="card shadow-sm" style={{ maxHeight: '400px', overflowY: 'auto', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                         <h2 className="card-title">📜 Detailed History</h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             {attendanceHistory.length === 0 ? (
                                 <div style={{ color: 'var(--text-muted)', textAlign: 'center', py: '1rem' }}>No records found for this month.</div>
                             ) : (
                                 attendanceHistory.slice().reverse().map((h, i) => (
-                                    <div key={i} style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: `1px solid ${h.color || 'var(--border-color)'}` }}>
+                                    <div key={i} style={{ padding: '0.75rem', background: '#ffffff', borderRadius: '8px', border: `1px solid ${h.color || 'var(--border-color)'}` }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
                                             <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>
                                                 {new Date(h.date).toLocaleDateString([], { month: 'short', day: 'numeric', weekday: 'short' })}
@@ -596,7 +596,7 @@ const AttendanceScan = ({ userId }) => {
                         </div>
                     </div>
 
-                    <div className="card glass-panel">
+                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                         <h2 className="card-title">📸 Recent Identity Captures</h2>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
                             {recentCaptures.slice(0, 8).map((h) => (

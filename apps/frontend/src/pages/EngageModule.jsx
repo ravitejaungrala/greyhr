@@ -16,19 +16,17 @@ const EngageModule = () => {
         <div className="engage-page">
             <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '1.5rem' }}>💬 Engage Module</h1>
             <div className="grid-2">
-                <div className="card glass-panel">
+                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                     <h2 className="card-title">📣 Announcements</h2>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div style={{ padding: '1rem', background: 'rgba(255, 122, 0,0.05)', borderRadius: '8px', borderLeft: '4px solid var(--primary)' }}>
-                            <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--primary)' }}>{announcement.title}</div>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', margin: '0.5rem 0', lineHeight: '1.5', whiteSpace: 'pre-line' }}>
-                                {announcement.content}
-                            </p>
-                            <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>Updated Recently</span>
-                        </div>
+                    <div style={{ padding: '1rem', background: '#fff9f5', borderRadius: '8px', borderLeft: '4px solid var(--primary)', borderRight: '1px solid var(--border-color)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--primary)' }}>{announcement.title}</div>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', margin: '0.5rem 0', lineHeight: '1.5', whiteSpace: 'pre-line' }}>
+                            {announcement.content}
+                        </p>
+                        <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>Updated Recently</span>
                     </div>
                 </div>
-                <div className="card">
+                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                     <h2 className="card-title">💡 Employee Suggestions</h2>
                     <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Have an idea to improve our workplace? Share it with us anonymously.</p>
                     <textarea

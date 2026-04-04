@@ -123,21 +123,21 @@ const ItemRequests = ({ userId, user }) => {
                             </tr>
                         </thead>
                         <tbody>
-                            {requests.length === 0 ? (
-                                <tr>
-                                    <td colSpan="5" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                        You haven't made any item requests yet.
-                                    </td>
-                                </tr>
-                            ) : (
-                                requests.map(req => (
-                                    <tr key={req.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                        <td style={{ padding: '1rem', fontWeight: 'bold' }}>{req.item_name}</td>
-                                        <td style={{ padding: '1rem' }}>{req.quantity}</td>
-                                        <td style={{ padding: '1rem', fontSize: '0.85rem', maxWidth: '300px' }}>{req.reason}</td>
-                                        <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                            {new Date(req.applied_on).toLocaleDateString()}
+                                {requests.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="5" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                            You haven't made any item requests yet.
                                         </td>
+                                    </tr>
+                                ) : (
+                                    requests.map(req => (
+                                        <tr key={req.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                            <td style={{ padding: '1rem', fontWeight: 'bold', color: 'var(--text-light)' }}>{req.item_name}</td>
+                                            <td style={{ padding: '1rem', color: 'var(--text-light)' }}>{req.quantity}</td>
+                                            <td style={{ padding: '1rem', fontSize: '0.85rem', maxWidth: '300px', color: 'var(--text-light)' }}>{req.reason}</td>
+                                            <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                                {new Date(req.applied_on).toLocaleDateString()}
+                                            </td>
                                         <td style={{ padding: '1rem' }}>
                                             <span style={{ 
                                                 padding: '0.25rem 0.6rem', 
@@ -159,15 +159,16 @@ const ItemRequests = ({ userId, user }) => {
 
             {/* Item Request Modal */}
             {isItemModalOpen && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-                    <div className="card glass-panel" style={{ 
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+                    <div className="card shadow-lg" style={{ 
                         maxWidth: '450px', 
                         width: '100%', 
                         maxHeight: '90vh',
                         overflowY: 'auto',
-                        border: '1px solid var(--primary)',
+                        border: '1px solid var(--border-color)',
                         display: 'flex',
                         flexDirection: 'column',
+                        background: '#ffffff',
                         scrollbarWidth: 'thin',
                         scrollbarColor: 'var(--primary) transparent'
                     }}>
@@ -205,7 +206,7 @@ const ItemRequests = ({ userId, user }) => {
                                     placeholder={requestType === 'item' ? "e.g. Need new laptop for development" : "e.g. Inquiry about project status"}
                                     value={itemRequestData.subject}
                                     onChange={(e) => setItemRequestData({...itemRequestData, subject: e.target.value})}
-                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                                    style={{ width: '100%' }}
                                 />
                             </div>
 
@@ -218,7 +219,7 @@ const ItemRequests = ({ userId, user }) => {
                                             placeholder="e.g. Wireless Mouse"
                                             value={itemRequestData.item_name}
                                             onChange={(e) => setItemRequestData({...itemRequestData, item_name: e.target.value})}
-                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                                            style={{ width: '100%' }}
                                         />
                                     </div>
                                     <div style={{ flex: 1 }}>
@@ -228,7 +229,7 @@ const ItemRequests = ({ userId, user }) => {
                                             min="1"
                                             value={itemRequestData.quantity}
                                             onChange={(e) => setItemRequestData({...itemRequestData, quantity: parseInt(e.target.value) || 1})}
-                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                                            style={{ width: '100%' }}
                                         />
                                     </div>
                                 </div>
@@ -242,11 +243,11 @@ const ItemRequests = ({ userId, user }) => {
                                     required
                                     value={itemRequestData.approver_id}
                                     onChange={e => setItemRequestData({ ...itemRequestData, approver_id: e.target.value })}
-                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                                    style={{ width: '100%' }}
                                 >
                                     <option value="">Select Employee</option>
                                     {allEmployees.map(emp => (
-                                        <option key={emp.employee_id} value={emp.employee_id} style={{ background: '#1a1a1a' }}>
+                                        <option key={emp.employee_id} value={emp.employee_id}>
                                             {emp.name} ({emp.employee_id})
                                         </option>
                                     ))}
@@ -273,7 +274,7 @@ const ItemRequests = ({ userId, user }) => {
                                     border: '1px solid var(--border-color)', 
                                     borderRadius: '8px', 
                                     padding: '0.4rem',
-                                    backgroundColor: 'rgba(0,0,0,0.2)',
+                                    backgroundColor: '#ffffff',
                                     scrollbarWidth: 'thin',
                                     scrollbarColor: 'var(--primary) transparent'
                                 }}>
@@ -292,7 +293,7 @@ const ItemRequests = ({ userId, user }) => {
                                                         setItemRequestData({ ...itemRequestData, cc_ids: newCcIds });
                                                     }}
                                                 />
-                                                <span style={{ fontSize: '0.85rem', color: 'white' }}>{emp.name}</span>
+                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>{emp.name}</span>
                                             </label>
                                         ))
                                     }
@@ -310,7 +311,7 @@ const ItemRequests = ({ userId, user }) => {
                                     placeholder={requestType === 'item' ? "Explain why you need this item..." : "Write your message here..."}
                                     value={itemRequestData.reason}
                                     onChange={(e) => setItemRequestData({...itemRequestData, reason: e.target.value})}
-                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.05)', color: 'white', resize: 'none' }}
+                                    style={{ width: '100%', resize: 'none' }}
                                 ></textarea>
                             </div>
                             

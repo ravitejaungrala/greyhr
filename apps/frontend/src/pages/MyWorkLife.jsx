@@ -79,10 +79,10 @@ const MyWorkLife = ({ userId, setActiveMenu }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h1 className="card-title" style={{ fontSize: '1.75rem', margin: 0 }}>❤️ My Work Life</h1>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                    <span style={{ background: 'rgba(79, 70, 229, 0.2)', color: 'var(--primary)', padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                    <span style={{ background: '#e0e7ff', color: 'var(--primary)', padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold', border: '1px solid #c7d2fe' }}>
                         {profile?.position || 'Staff'}
                     </span>
-                    <span style={{ background: profile?.employment_type === 'Intern' ? 'rgba(200, 76, 255, 0.2)' : 'rgba(10, 102, 194, 0.2)', color: profile?.employment_type === 'Intern' ? 'var(--violet)' : 'var(--secondary)', padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                    <span style={{ background: profile?.employment_type === 'Intern' ? '#f5f3ff' : '#eff6ff', color: profile?.employment_type === 'Intern' ? 'var(--violet)' : 'var(--secondary)', padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold', border: `1px solid ${profile?.employment_type === 'Intern' ? '#ddd6fe' : '#bfdbfe'}` }}>
                         {profile?.employment_type || 'Full-Time'}
                     </span>
                 </div>
@@ -90,7 +90,7 @@ const MyWorkLife = ({ userId, setActiveMenu }) => {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
                 {/* ID Card Visualization */}
-                <div className="card glass-panel id-card-container">
+                <div className="card shadow-2xl id-card-container">
                     <div className="id-card-header">
                         <div className="id-card-logo">NeuzenAI</div>
                         <div className="id-chip"></div>
@@ -119,7 +119,7 @@ const MyWorkLife = ({ userId, setActiveMenu }) => {
                 </div>
 
                 {/* Upload Section */}
-                <div className="card glass-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '1.5rem', textAlign: 'center' }}>
+                <div className="card shadow-sm" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '1.5rem', textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '3rem' }}>📸</div>
                     <div>
                         <h2 className="card-title" style={{ marginBottom: '0.5rem' }}>Update ID Photo</h2>
@@ -136,27 +136,27 @@ const MyWorkLife = ({ userId, setActiveMenu }) => {
             </div>
 
             <div className="grid-3">
-                <div className="card glass-panel" style={{ textAlign: 'center' }}>
+                <div className="card shadow-sm" style={{ textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🏆</div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--secondary)' }}>150</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Reward Points</div>
                 </div>
-                <div className="card glass-panel" style={{ textAlign: 'center' }}>
+                <div className="card shadow-sm" style={{ textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📅</div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>
                         {calculateTenure(profile?.joining_date)}
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Tenure</div>
                 </div>
-                <div className="card glass-panel" style={{ textAlign: 'center' }}>
+                <div className="card shadow-sm" style={{ textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⭐</div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--secondary)' }}>4.8</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Avg. Rating</div>
                 </div>
 
                 <div 
-                    className="card glass-panel" 
-                    style={{ textAlign: 'center', cursor: 'pointer', border: '1px solid var(--primary)', background: 'rgba(79, 70, 229, 0.05)' }}
+                    className="card shadow-sm" 
+                    style={{ textAlign: 'center', cursor: 'pointer', border: '1px solid var(--primary)', background: '#f5f3ff' }}
                     onClick={() => setActiveMenu('items')}
                 >
                     <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📦</div>
@@ -167,7 +167,7 @@ const MyWorkLife = ({ userId, setActiveMenu }) => {
 
 
             {profile?.offer_letter_status === 'final' && (
-                <div className="card glass-panel" style={{ marginTop: '2rem', border: '1px solid var(--secondary)', background: 'rgba(10, 102, 194, 0.05)' }}>
+                <div className="card shadow-sm" style={{ marginTop: '2rem', border: '1px solid #bfdbfe', background: '#eff6ff' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                             <h2 className="card-title" style={{ margin: 0 }}>📄 Official Offer Letter</h2>

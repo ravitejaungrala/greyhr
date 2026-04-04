@@ -94,7 +94,7 @@ const DocumentCenter = ({ user }) => {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
 
                         {/* Offer Letter */}
-                        <div className="card" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)' }}>
+                        <div className="card" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
                                     <div style={{ fontWeight: 'bold' }}>📄 Offer Letter</div>
@@ -117,7 +117,7 @@ const DocumentCenter = ({ user }) => {
                         </div>
 
                         {/* Relieving / Internship Completion */}
-                        <div className="card" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)' }}>
+                        <div className="card" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
                                     <div style={{ fontWeight: 'bold' }}>📄 {user.employment_type === 'Intern' ? 'Internship Completion' : 'Relieving Letter'}</div>
@@ -132,7 +132,7 @@ const DocumentCenter = ({ user }) => {
                         </div>
 
                         {/* Experience Certificate */}
-                        <div className="card" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)' }}>
+                        <div className="card" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
                                     <div style={{ fontWeight: 'bold' }}>📄 Experience Certificate</div>
@@ -148,7 +148,7 @@ const DocumentCenter = ({ user }) => {
 
                         {/* Recent Payslip */}
                         {payslips.length > 0 && (
-                            <div className="card" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)' }}>
+                            <div className="card" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div>
                                         <div style={{ fontWeight: 'bold' }}>💰 Latest Payslip</div>
@@ -171,7 +171,7 @@ const DocumentCenter = ({ user }) => {
                     ) : (
                         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             {payslips.map((ps, idx) => (
-                                <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                                     <div>
                                         <div style={{ fontWeight: '600' }}>{ps.month}</div>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Released on {ps.date}</div>
@@ -203,8 +203,8 @@ const DocumentCenter = ({ user }) => {
 
             {/* Signature Modal */}
             {showSignModal && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-                    <div className="card glass-panel" style={{ width: '90%', maxWidth: '500px', padding: '2rem' }}>
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+                    <div className="card shadow-lg" style={{ width: '90%', maxWidth: '500px', padding: '2rem', background: '#ffffff' }}>
                         <h2 className="card-title">✍️ Sign Offer Letter</h2>
                         <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
                             Please provide your full name as a digital signature and the date to accept the offer.
@@ -218,7 +218,7 @@ const DocumentCenter = ({ user }) => {
                                 value={signatureName}
                                 onChange={(e) => setSignatureName(e.target.value)}
                                 placeholder="Enter your full name"
-                                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                                style={{ width: '100%' }}
                             />
                         </div>
 
@@ -229,7 +229,7 @@ const DocumentCenter = ({ user }) => {
                                 className="input-field" 
                                 value={signingDate}
                                 onChange={(e) => setSigningDate(e.target.value)}
-                                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                                style={{ width: '100%' }}
                             />
                         </div>
 

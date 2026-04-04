@@ -5,7 +5,7 @@
   --primary-hover: #084d91;
   --secondary: #0a66c2;
   --violet: #7c3aed;
-  --bg-color: #f8fafc;
+  --bg-color: #ffffff;
   --surface-color: #ffffff;
   --text-light: #0f172a;
   --text-muted: #64748b;
@@ -154,18 +154,18 @@ body {
   display: flex;
   height: 100vh;
   overflow: hidden;
-  background-color: #f8fafc;
+  background-color: var(--bg-color);
   position: relative;
 }
 
 .sidebar {
   width: 280px;
-  background: #ffffff;
-  border-right: 1px solid #f1f5f9;
+  background: var(--surface-color);
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   z-index: 20;
-  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.01);
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.02);
 }
 
 .sidebar-header {
@@ -401,12 +401,13 @@ body {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  background-color: var(--bg-color);
 }
 
 .topbar {
   height: 64px;
-  background: #ffffff;
-  border-bottom: 1px solid #f1f5f9;
+  background: var(--surface-color);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -438,15 +439,45 @@ body {
 .page-container {
   padding: 1.5rem;
   flex: 1;
+  background-color: var(--bg-color);
+}
+
+/* Global Form Elements */
+input, select, textarea {
+  background-color: #ffffff !important;
+  color: var(--text-light) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px rgba(10, 102, 194, 0.1);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+label {
+  color: var(--text-light);
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  display: block;
 }
 
 /* Base UI Components (Keeping from original if needed) */
 .card {
-  background-color: #ffffff;
+  background-color: var(--surface-color);
   border-radius: 12px;
   padding: 1.5rem;
-  border: 1px solid #f1f5f9;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .page-container {
@@ -520,7 +551,7 @@ body {
 }
 
 .btn-secondary {
-  background-color: transparent;
+  background-color: #ffffff;
   border: 1px solid var(--border-color);
   color: var(--text-light);
 }

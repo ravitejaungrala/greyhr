@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Response, UploadFile, File
+from fastapi.responses import HTMLResponse
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
@@ -36,7 +37,13 @@ from api.email_utils import (
     send_item_notification,
     get_admin_emails
 )
-from api.admin_agent import process_admin_query, sync_employee_to_vector_db
+from api.admin_agent import (
+    process_admin_query, 
+    sync_employee_to_vector_db, 
+    sync_all_to_vector_db, 
+    sync_leave_request_to_vector_db, 
+    sync_all_leaves_to_vector_db
+)
 
 router = APIRouter()
 
@@ -82,7 +89,7 @@ class AdminEmployeeCreate(BaseModel):
 class LeaveRequest(BaseModel):
     employee_id: str
     leave_type: str
-    subject: str
+    subject: Optional[str] = ""
     start_date: str
     end_date: str
     reason: str
@@ -485,12 +492,30 @@ def assign_role(request: RoleAssignment):
     return {"message": f"Role updated to {request.role} for {request.employee_id}"}
 
 # --- Leaves & Admin Features ---
-class LeaveRequest(BaseModel):
-    employee_id: str
-    leave_type: str
-    start_date: str
-    end_date: str
-    reason: str
+
+@router.get("/admin/vector-inventory")
+def vector_inventory_api():
+    """Diagnostic tool to see what is actually in the vector database."""
+    inventory = get_vector_inventory()
+    return {"inventory": inventory}
+
+@router.post("/admin/sync-all")
+def sync_all_data():
+    """Sync all employees and leaves to vector DB with status report. Now perform Clean Sync."""
+    # Step 1: Purge old data to ensure clean state (Requested by user)
+    purged = clear_vector_db()
+    
+    # Step 2: Sync fresh data
+    emp_count = sync_all_to_vector_db(mongo_db)
+    leave_count = sync_all_leaves_to_vector_db(mongo_db)
+    
+    return {
+        "status": "success", 
+        "message": "Full system sync complete",
+        "purge_performed": purged,
+        "employees_synced": emp_count,
+        "leaves_synced": leave_count
+    }
 
 class AdminCopilotRequest(BaseModel):
     query: str
@@ -810,6 +835,25 @@ def apply_leave(request: LeaveRequest):
         try:
             user = mongo_db.users.find_one({"employee_id": request.employee_id}, {"name": 1})
             emp_name = user.get("name", "An Employee") if user else "An Employee"
+            
+            # Fetch current balance context for the Admin
+            balance_data = get_leave_balance(request.employee_id)
+            balance_str = "Unavailable"
+            if "types" in balance_data:
+                for t in balance_data["types"]:
+                    if t["name"] == record.get("leave_type"):
+                        balance_str = f"{t['remaining']} Days Remaining"
+                        break
+            
+            # Add balance to record for email rendering
+            record["current_balance"] = balance_str
+            
+            # Index in Vector DB for Admin Intelligence
+            try:
+                sync_leave_request_to_vector_db(record, mongo_db)
+            except Exception as v_err:
+                print(f"Vector Sync Warning: {v_err}")
+
             send_leave_notification(emp_name, record, record["id"], request.approver_id, request.cc_ids)
         except Exception as e:
             print(f"Leave Notification Failed: {e}")
@@ -855,6 +899,15 @@ class LeaveStatusUpdate(BaseModel):
 def update_leave(leave_id: str, update: LeaveStatusUpdate):
     if mongo_db.db is not None:
         mongo_db.leaves.update_one({"id": leave_id}, {"$set": {"status": update.status}})
+        
+        # Sync Status Change to Vector DB
+        try:
+            updated_record = mongo_db.leaves.find_one({"id": leave_id})
+            if updated_record:
+                sync_leave_request_to_vector_db(updated_record, mongo_db)
+        except Exception as v_err:
+            print(f"Vector Status Sync Warning: {v_err}")
+            
     return {"message": f"Leave {leave_id} updated to {update.status}"}
 
 @router.get("/admin/leaves/approve-direct")
@@ -862,20 +915,49 @@ def approve_leave_direct(id: str, status: str):
     """Direct approval from email link."""
     if mongo_db.db is not None:
         mongo_db.leaves.update_one({"id": id}, {"$set": {"status": status}})
-    
+        
+        # Sync Status Change to Vector DB
+        try:
+            updated_record = mongo_db.leaves.find_one({"id": id})
+            if updated_record:
+                sync_leave_request_to_vector_db(updated_record, mongo_db)
+        except Exception as v_err:
+            print(f"Vector Status Sync Warning: {v_err}")
+
     color = "#10B981" if status == "Approved" else "#EF4444"
-    return Response(content=f"""
+    icon = "✅" if status == "Approved" else "❌"
+    
+    html_content = f"""
+    <!DOCTYPE html>
     <html>
-    <head><title>Request Updated</title></head>
-    <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f9fafb;">
-        <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; border-top: 5px solid {color};">
-            <h1 style="color: {color}; margin: 0 0 1rem 0;">{status}!</h1>
-            <p style="color: #4b5563; font-size: 1.1rem;">The leave request has been successfully updated.</p>
-            <p style="color: #9ca3af; font-size: 0.875rem; margin-top: 2rem;">You can close this window now.</p>
+    <head>
+        <title>Action Successful | Dhanadurga HRMS</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    </head>
+    <body style="font-family: 'Inter', sans-serif; background-color: #f8fafc; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+        <div style="background: #ffffff; padding: 60px 40px; border-radius: 32px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08); text-align: center; max-width: 440px; width: 90%; border: 1px solid #e2e8f0;">
+            <div style="background-color: {color}10; width: 100px; height: 100px; border-radius: 50px; display: flex; align-items: center; justify-content: center; margin: 0 auto 32px; border: 2px solid {color}30;">
+                <span style="font-size: 48px;">{icon}</span>
+            </div>
+            
+            <h1 style="color: #0f172a; margin: 0 0 16px 0; font-size: 32px; font-weight: 800; letter-spacing: -0.025em;">Request {status}!</h1>
+            <p style="color: #64748b; font-size: 18px; line-height: 1.6; margin-bottom: 40px;">
+                The leave application has been processed successfully. The employee will be notified via email.
+            </p>
+            
+            <div style="padding-top: 32px; border-top: 1.5px solid #f1f5f9;">
+                <a href="https://dhanadurgahr.web.app/admin" style="display: inline-block; background-color: #0f172a; color: #ffffff; padding: 16px 32px; border-radius: 16px; font-weight: 600; text-decoration: none; font-size: 16px; transition: all 0.2s;">
+                    Back to Admin Dashboard
+                </a>
+            </div>
+            
+            <p style="color: #94a3b8; font-size: 14px; margin-top: 32px;">You can safely close this window.</p>
         </div>
     </body>
     </html>
-    """, media_type="text/html")
+    """
+    return HTMLResponse(content=html_content, status_code=200)
 
 # --- Item Requests ---
 class ItemRequest(BaseModel):
@@ -950,18 +1032,39 @@ def approve_item_direct(id: str, status: str):
         mongo_db.item_requests.update_one({"id": id}, {"$set": {"status": status}})
     
     color = "#3B82F6" if status == "Approved" else "#EF4444"
-    return Response(content=f"""
+    icon = "✅" if status == "Approved" else "❌"
+    
+    html_content = f"""
+    <!DOCTYPE html>
     <html>
-    <head><title>Request Updated</title></head>
-    <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f9fafb;">
-        <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; border-top: 5px solid {color};">
-            <h1 style="color: {color}; margin: 0 0 1rem 0;">Item Request {status}!</h1>
-            <p style="color: #4b5563; font-size: 1.1rem;">The request status has been updated successfully.</p>
-            <p style="color: #9ca3af; font-size: 0.875rem; margin-top: 2rem;">You can close this window now.</p>
+    <head>
+        <title>Action Successful | Dhanadurga HRMS</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    </head>
+    <body style="font-family: 'Inter', sans-serif; background-color: #f8fafc; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+        <div style="background: #ffffff; padding: 60px 40px; border-radius: 32px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08); text-align: center; max-width: 440px; width: 90%; border: 1px solid #e2e8f0;">
+            <div style="background-color: {color}10; width: 100px; height: 100px; border-radius: 50px; display: flex; align-items: center; justify-content: center; margin: 0 auto 32px; border: 2px solid {color}30;">
+                <span style="font-size: 48px;">{icon}</span>
+            </div>
+            
+            <h1 style="color: #0f172a; margin: 0 0 16px 0; font-size: 32px; font-weight: 800; letter-spacing: -0.025em;">Item Request {status}!</h1>
+            <p style="color: #64748b; font-size: 18px; line-height: 1.6; margin-bottom: 40px;">
+                The item request status has been updated. The employee can now view the status in their portal.
+            </p>
+            
+            <div style="padding-top: 32px; border-top: 1.5px solid #f1f5f9;">
+                <a href="https://dhanadurgahr.web.app/admin" style="display: inline-block; background-color: #0f172a; color: #ffffff; padding: 16px 32px; border-radius: 16px; font-weight: 600; text-decoration: none; font-size: 16px; transition: all 0.2s;">
+                    Back to Admin Dashboard
+                </a>
+            </div>
+            
+            <p style="color: #94a3b8; font-size: 14px; margin-top: 32px;">You can safely close this window.</p>
         </div>
     </body>
     </html>
-    """, media_type="text/html")
+    """
+    return HTMLResponse(content=html_content, status_code=200)
 
 # --- Holidays ---
 @router.post("/admin/holidays")
@@ -2347,7 +2450,7 @@ def get_leave_balance(employee_id: str):
         ],
         "accrual_info": {
             "months_passed": months_processed_count,
-            "last_sync": datetime.datetime.utcnow().isoformat()
+            "last_sync": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
     }
 
@@ -2390,7 +2493,7 @@ def update_salary_settings(enable_tax: bool, enable_pf: bool, tax_rate: float = 
             "enable_pf": enable_pf, 
             "tax_rate": tax_rate,
             "pf_rate": pf_rate,
-            "updated_at": datetime.datetime.utcnow().isoformat()
+            "last_sync": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }},
         upsert=True
     )

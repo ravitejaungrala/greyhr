@@ -73,27 +73,27 @@ const AttendanceInfo = ({ userId }) => {
                 statusChar = 'O';
                 statusText = 'Off Day';
                 dayTypeIcon = '📺';
-                bgColor = 'rgba(59, 130, 246, 0.1)';
+                bgColor = '#EBF5FF';
                 statusColor = '#3B82F6';
             } else if (dayOfWeek === 6) {
                 statusChar = 'R';
                 statusText = 'Rest Day';
                 dayTypeIcon = '☕';
-                bgColor = 'rgba(200, 76, 255, 0.05)';
+                bgColor = '#F5EBFF';
                 statusColor = 'var(--violet)';
             } else if (record) {
                 statusChar = record.status_char;
                 statusText = record.status;
                 statusColor = record.color;
 
-                bgColor = record.color === 'var(--secondary)' ? 'rgba(10, 102, 194, 0.1)' :
-                    record.color === '#A855F7' ? 'rgba(168, 85, 247, 0.1)' :
-                        record.color === '#EF4444' ? 'rgba(239, 68, 68, 0.1)' :
-                            record.color === 'var(--violet)' ? 'rgba(200, 76, 255, 0.1)' : 'rgba(255,255,255,0.1)';
+                bgColor = record.color === 'var(--secondary)' ? '#E6F0FF' :
+                    record.color === '#A855F7' ? '#F3E8FF' :
+                        record.color === '#EF4444' ? '#FEE2E2' :
+                            record.color === 'var(--violet)' ? '#F5EBFF' : '#ffffff';
             } else if (dateObj < today) {
                 statusChar = 'A';
                 statusText = 'Absent';
-                bgColor = 'rgba(239, 68, 68, 0.1)';
+                bgColor = '#FEE2E2';
                 statusColor = '#EF4444';
             }
 
@@ -130,15 +130,15 @@ const AttendanceInfo = ({ userId }) => {
         <div className="attendance-info-page" style={{ color: 'var(--text-light)' }}>
             {/* Header Metrics */}
             <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                <div className="card glass-panel" style={{ flex: 1, textAlign: 'center' }}>
+                <div className="card shadow-sm" style={{ flex: 1, textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>AVG. WORK HRS</div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{attendanceData.length > 0 ? avgWorkHrs() : '--:--'}</div>
                 </div>
-                <div className="card glass-panel" style={{ flex: 1, textAlign: 'center' }}>
+                <div className="card shadow-sm" style={{ flex: 1, textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>AVG. ACTUAL WORK HRS</div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{attendanceData.length > 0 ? avgWorkHrs() : '--:--'}</div>
                 </div>
-                <div className="card glass-panel" style={{ flex: 1, textAlign: 'center' }}>
+                <div className="card shadow-sm" style={{ flex: 1, textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>PENALTY DAYS</div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{getDaysInMonth().filter(d => d && d.day < new Date().getDate() && d.statusChar === 'A').length}</div>
                 </div>
@@ -148,7 +148,7 @@ const AttendanceInfo = ({ userId }) => {
             </div>
 
             {/* Exception Alert */}
-            <div style={{ padding: '0.75rem 1.5rem', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '0.75rem 1.5rem', background: '#FEF2F2', border: '1px solid #FEE2E2', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span style={{ color: '#EF4444' }}>⚠️</span>
                     <span style={{ fontSize: '0.9rem' }}>{getDaysInMonth().filter(d => d && d.day < new Date().getDate() && d.statusChar === 'A').length} exception day(s)</span>
@@ -158,7 +158,7 @@ const AttendanceInfo = ({ userId }) => {
 
             <div style={{ display: 'flex', gap: '1.5rem' }}>
                 {/* CALENDAR SECTION */}
-                <div className="card glass-panel" style={{ flex: 2, padding: '1.5rem' }}>
+                <div className="card shadow-sm" style={{ flex: 2, padding: '1.5rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                         <button className="btn" style={{ minWidth: 'auto', padding: '0.25rem' }}>&lt; Prev</button>
                         <h2 style={{ fontSize: '1.25rem', margin: 0 }}>{new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</h2>
@@ -167,7 +167,7 @@ const AttendanceInfo = ({ userId }) => {
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
                         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                            <div key={day} style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.8rem', fontWeight: 'bold', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border-color)' }}>
+                            <div key={day} style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.8rem', fontWeight: 'bold', background: '#f8fafc', borderBottom: '1px solid var(--border-color)' }}>
                                 {day}
                             </div>
                         ))}
@@ -178,7 +178,7 @@ const AttendanceInfo = ({ userId }) => {
                                 style={{
                                     padding: '0.5rem', height: '80px', borderRight: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)',
                                     cursor: d ? 'pointer' : 'default', transition: 'background 0.2s',
-                                    background: d ? (selectedDate === d.date ? 'rgba(79, 70, 229, 0.1)' : d.bgColor) : 'transparent',
+                                    background: d ? (selectedDate === d.date ? '#EEF2FF' : d.bgColor) : 'transparent',
                                     position: 'relative'
                                 }}
                             >
@@ -232,7 +232,7 @@ const AttendanceInfo = ({ userId }) => {
 
                 {/* DETAIL PANEL SECTION */}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <div className="card glass-panel" style={{ padding: '0' }}>
+                    <div className="card shadow-sm" style={{ padding: '0', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                         <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '1rem' }}>
                             <div style={{ textAlign: 'center' }}>
                                 <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{selectedDayData?.day ? String(selectedDayData.day).padStart(2, '0') : '--'}</div>
@@ -262,7 +262,7 @@ const AttendanceInfo = ({ userId }) => {
                         </div>
                     </div>
 
-                    <div className="card glass-panel">
+                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                         <h3 className="card-title" style={{ fontSize: '1rem' }}>Status Details</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '0.5rem' }}>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Status</div>
@@ -276,10 +276,10 @@ const AttendanceInfo = ({ userId }) => {
                         </div>
                     </div>
 
-                    <div className="card glass-panel">
+                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                         <h3 className="card-title" style={{ fontSize: '1rem' }}>Session Details</h3>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                            <thead style={{ background: 'rgba(255,255,255,0.03)', textAlign: 'left' }}>
+                            <thead style={{ background: '#f8fafc', textAlign: 'left' }}>
                                 <tr>
                                     <th style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-color)' }}>Session</th>
                                     <th style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-color)' }}>Session Timing</th>

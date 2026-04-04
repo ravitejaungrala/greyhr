@@ -17,17 +17,20 @@ CHROMA_DATABASE = os.getenv("CHROMA_DATABASE", "").strip()
 CHROMA_COLLECTION = os.getenv("CHROMA_COLLECTION", "hrms").strip()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
+GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE", "0.4"))
 
 # Initialize Clients
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
     print(f"--- Admin Agent AI Initialized ---")
-    print(f"Model: {MODEL_NAME}")
-    print(f"Key (masked): ...{GEMINI_API_KEY[-4:] if len(GEMINI_API_KEY) > 4 else 'INVALID'}")
+    print(f"Model: {MODEL_NAME} | Temp: {GEMINI_TEMPERATURE}")
 else:
     print("WARNING: GEMINI_API_KEY not found in environment.")
 
-model = genai.GenerativeModel(MODEL_NAME)
+model = genai.GenerativeModel(
+    MODEL_NAME,
+    generation_config={"temperature": GEMINI_TEMPERATURE}
+)
 
 # ChromaDB Cloud Client
 try:
@@ -107,22 +110,20 @@ def sync_employee_to_vector_db(employee_id: str, mongo_db_client):
     if not user_doc:
         return {"error": "Employee not found in MongoDB"}
 
-    # Fetch Unified Leave Balance Insight
+    # Fetch Unified Leave Balance Insight (Standalone calculation to avoid circular import)
     leave_context = "Leave Balance Status: Information not yet processed."
     try:
-        # Move import inside function to avoid circular dependency with router.py
-        from api.router import get_leave_balance
-        
-        # Use the same logic as the main dashboard for parity
-        balance = get_leave_balance(employee_id)
-        if "types" in balance:
-            leave_info = []
-            for t in balance["types"]:
-                leave_info.append(f"{t['name']}: {t['remaining']} Days Remaining")
+        # Avoid import from api.router here. We can calculate simple balance context directly.
+        all_leaves = list(mongo_db_client.leaves.find({"employee_id": employee_id}))
+        if all_leaves:
+            # Group by type and count
+            types = {}
+            for l in all_leaves:
+                lt = l.get("leave_type", "Other")
+                types[lt] = types.get(lt, 0) + 1
             
-            leave_context = f"Leave Balance Insight (Real-time): {', '.join(leave_info)}."
-        elif "error" in balance:
-            leave_context = f"Leave Balance Insight: [Error] {balance['error']}"
+            leave_info = [f"{k}: {v} records" for k, v in types.items()]
+            leave_context = f"Leave History Context: {', '.join(leave_info)}."
     except Exception as e:
         print(f"Error calculating leave context for sync: {e}")
 
@@ -142,19 +143,101 @@ def sync_employee_to_vector_db(employee_id: str, mongo_db_client):
             documents=[doc_text],
             metadatas=[metadata]
         )
+        print(f"   [SYNC] Profile Success: {employee_id}")
         return {"status": "success", "message": f"Employee {employee_id} synced to ChromaDB"}
     except Exception as e:
         print(f"Error upserting to ChromaDB: {e}")
         return {"error": f"Failed to sync to ChromaDB: {str(e)}"}
 
+def sync_leave_request_to_vector_db(leave_record: Dict[str, Any], mongo_db_client):
+    """
+    Indexes an individual leave request in ChromaDB.
+    This allows the AI to answer specifically 'Who is on leave' and 'When'.
+    """
+    if not collection:
+        return {"error": "ChromaDB connection unavailable"}
+
+    # Robust ID Handling (Fallback to MongoDB _id if custom 'id' is missing)
+    leave_id = str(leave_record.get("id") or leave_record.get("_id"))
+    emp_id = leave_record.get("employee_id")
+    
+    # Fetch human-readable name for the document
+    user = mongo_db_client.users.find_one({"employee_id": emp_id}, {"name": 1})
+    emp_name = user.get("name", "Unknown Employee") if user else "Unknown Employee"
+
+    doc_text = f"""
+    [LEAVE_EVENT_RECORD]
+    *** STATUS: {leave_record.get("status", "Pending")} ***
+    Employee: {emp_name} (ID: {emp_id})
+    Leave Type: {leave_record.get("leave_type")}
+    Date Range: {leave_record.get("start_date")} to {leave_record.get("end_date")}
+    *** REASON: {leave_record.get("reason", "No reason provided")} ***
+    Applied On: {leave_record.get("applied_on", "N/A")}
+    [SEARCH_KEYWORDS]: {emp_name}, {emp_id}, {leave_record.get("leave_type")}, {leave_record.get("status")}, REASON, STATUS, RECORD
+    """.strip()
+
+    metadata = {
+        "employee_id": emp_id,
+        "name": emp_name,
+        "type": "leave_request",
+        "leave_id": leave_id,
+        "status": leave_record.get("status", "Pending"),
+        "start_date": leave_record.get("start_date", ""),
+        "last_updated": datetime.datetime.now().isoformat()
+    }
+
+    try:
+        collection.upsert(
+            ids=[f"leave_{leave_id}"],
+            documents=[doc_text],
+            metadatas=[metadata]
+        )
+        print(f"   [SYNC] Leave Success: {leave_id} ({emp_name})")
+        return {"status": "success", "message": f"Leave {leave_id} synced to ChromaDB"}
+    except Exception as e:
+        print(f"Error indexing leave {leave_id}: {e}")
+        return {"error": str(e)}
+
+def sync_all_leaves_to_vector_db(mongo_db_client):
+    """Backfills all leave records into the vector DB. Returns success count."""
+    if not collection: return 0
+    print("--- Syncing All Leaves to ChromaDB ---")
+    try:
+        leaves = list(mongo_db_client.leaves.find({}))
+        count = 0
+        for leaf in leaves:
+            try:
+                res = sync_leave_request_to_vector_db(leaf, mongo_db_client)
+                if "status" in res and res["status"] == "success":
+                    count += 1
+            except Exception as inner_e:
+                print(f"Failed to sync leaf individual record: {inner_e}")
+        print(f"Finished syncing {count}/{len(leaves)} leaves.")
+        return count
+    except Exception as outer_e:
+        print(f"Critical failure during leaves sync: {outer_e}")
+        return 0
+
+def clear_vector_db():
+    """Purges all documents from the vector collection. Returns status."""
+    if not collection: return False
+    try:
+        print("--- Purging Vector Collection ---")
+        # ChromaDB delete with empty filter deletes all
+        collection.delete(where={}) 
+        return True
+    except Exception as e:
+        print(f"Error purging ChromaDB: {e}")
+        return False
+
 def sync_all_to_vector_db(mongo_db_client):
     """
     Mass synchronization of all approved employees to ChromaDB.
-    Can be run at startup to ensure the vector DB is current.
+    Returns success count.
     """
     if not collection:
         print("ChromaDB connection unavailable. Skipping sync.")
-        return
+        return 0
 
     print("--- Starting ChromaDB Synchronization ---")
     employees = list(mongo_db_client.users.find({"status": "approved"}))
@@ -170,6 +253,26 @@ def sync_all_to_vector_db(mongo_db_client):
     
     print(f"Synchronization complete: {success_count}/{total} succeeded.")
     print("-----------------------------------------")
+    return success_count
+
+def get_vector_inventory():
+    """Returns a summary of what is currently in ChromaDB."""
+    if not collection: return {"error": "ChromaDB offline"}
+    try:
+        results = collection.get(include=["metadatas", "documents"], limit=50)
+        inventory = []
+        if results and "metadatas" in results:
+            for i in range(len(results["metadatas"])):
+                meta = results["metadatas"][i]
+                inventory.append({
+                    "id": results["ids"][i],
+                    "type": meta.get("type", "unknown"),
+                    "name": meta.get("name", "N/A"),
+                    "snippet": results["documents"][i][:100] + "..." if results["documents"] else ""
+                })
+        return inventory
+    except Exception as e:
+        return {"error": str(e)}
 
 async def process_admin_query(query: str) -> str:
     """
@@ -180,25 +283,37 @@ async def process_admin_query(query: str) -> str:
     if not collection:
         return "System configuration error: ChromaDB connection offline."
 
-    # 1. Retrieval
+    # 1. Retrieval (Boost context depth for wide queries)
     try:
+        search_depth = 50 if ("leave" in query.lower() or "all" in query.lower()) else 25
         results = collection.query(
             query_texts=[query],
-            n_results=5
+            n_results=search_depth
         )
         # Flatten retrieved documents into a context block
         context_parts = []
         if results and results['documents']:
             for i, doc in enumerate(results['documents'][0]):
-                context_parts.append(f"Result {i+1}:\n{doc}")
+                meta = results['metadatas'][0][i] if results['metadatas'] else {}
+                doc_type = meta.get("type", "unknown")
+                context_parts.append(f"Source {i+1} [{doc_type}]:\n{doc}")
         
         context = "\n---\n".join(context_parts) if context_parts else "No relevant records found in the database."
     except Exception as e:
         print(f"Error querying ChromaDB: {e}")
         context = "An error occurred during information retrieval."
 
-    # 2. Generation
-    prompt = ADMIN_AGENT_MASTER_PROMPT.format(query=query, context=context)
+    # 2. Generation (Inject Today's Date and ESCAPE context to protect against curly-braces)
+    today_str = datetime.datetime.now().strftime("%B %d, %Y")
+    
+    # Escape any existing curly braces in the context so .format() doesn't fail
+    safe_context = context.replace("{", "{{").replace("}", "}}")
+    
+    prompt = ADMIN_AGENT_MASTER_PROMPT.format(
+        today=today_str,
+        query=query, 
+        context=safe_context
+    )
     
     try:
         print(f"--- Admin Agent processing query with model: {MODEL_NAME} ---")

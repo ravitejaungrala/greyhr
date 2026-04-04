@@ -304,7 +304,7 @@ const HomeDashboard = ({ user, setUser }) => {
                     </span>
                     <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>Step {step} of 2</span>
                 </div>
-                <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                <div style={{ height: '6px', background: 'var(--border-color)', borderRadius: '10px', overflow: 'hidden' }}>
                     <div style={{ 
                         height: '100%', 
                         width: step === 1 ? '50%' : '100%', 
@@ -317,7 +317,7 @@ const HomeDashboard = ({ user, setUser }) => {
 
         return (
             <div style={{ maxWidth: '800px', margin: '2rem auto', padding: '0 1rem' }}>
-                <div className="card glass-panel animate-fade-in" style={{ padding: '2.5rem' }}>
+                <div className="card shadow-lg animate-fade-in" style={{ padding: '2.5rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                     <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
                         <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-light)', marginBottom: '0.5rem' }}>
                             Complete Your Profile
@@ -364,7 +364,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                 </div>
 
                                 {/* Biometric Section */}
-                                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '2rem', borderRadius: '20px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
+                                <div style={{ background: '#ffffff', padding: '2rem', borderRadius: '20px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
                                     <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-light)' }}>Biometric Verification</h3>
                                     <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Verify your identity for attendance using a 3D face scan.</p>
                                     
@@ -414,22 +414,22 @@ const HomeDashboard = ({ user, setUser }) => {
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                                         <div className="input-field-group">
                                             <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Bank Name</label>
-                                            <input type="text" name="bank_name" required placeholder="State Bank of India" value={formData.bank_name} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.02)', color: 'var(--text-light)' }} />
+                                            <input type="text" name="bank_name" required placeholder="State Bank of India" value={formData.bank_name} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: '#ffffff', color: 'var(--text-light)' }} />
                                         </div>
                                         <div className="input-field-group">
                                             <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Account Number</label>
-                                            <input type="text" name="bank_account" required placeholder="XXXX XXXX XXXX" value={formData.bank_account} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.02)', color: 'var(--text-light)' }} />
+                                            <input type="text" name="bank_account" required placeholder="XXXX XXXX XXXX" value={formData.bank_account} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: '#ffffff', color: 'var(--text-light)' }} />
                                         </div>
                                         <div className="input-field-group">
                                             <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>IFSC Code</label>
-                                            <input type="text" name="bank_ifsc" required placeholder="SBIN000XXXX" value={formData.bank_ifsc} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.02)', color: 'var(--text-light)' }} />
+                                            <input type="text" name="bank_ifsc" required placeholder="SBIN000XXXX" value={formData.bank_ifsc} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: '#ffffff', color: 'var(--text-light)' }} />
                                         </div>
                                         <div className="input-field-group">
                                             <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>CIF Number</label>
                                             <input type="text" name="cif_number" required placeholder="90XXXXXXXX" value={formData.cif_number} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.02)', color: 'var(--text-light)' }} />
                                         </div>
                                     </div>
-                                    <div style={{ background: 'rgba(0,0,0,0.01)', padding: '1.25rem', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
+                                    <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
                                         <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-light)', marginBottom: '1rem', fontWeight: 500 }}>Upload Bank Passbook / Mock Transaction Screenshot</label>
                                         <input type="file" required onChange={e => handleFileUpload(e, setBankPhoto)} style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }} />
                                         {bankPhoto && <span style={{ marginLeft: '1rem', color: '#4ade80', fontSize: '0.75rem' }}>✓ Attached</span>}
@@ -453,7 +453,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                             <input type="text" name="pan_no" required placeholder="ABCDE1234F" value={formData.pan_no} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.02)', color: 'var(--text-light)' }} />
                                         </div>
                                     </div>
-                                    <div style={{ background: 'rgba(0,0,0,0.01)', padding: '1.25rem', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
+                                    <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
                                         <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-light)', marginBottom: '1rem', fontWeight: 500 }}>Upload Highest Degree Certificate</label>
                                         <input type="file" required onChange={e => handleFileUpload(e, setEduCert)} style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }} />
                                         {eduCert && <span style={{ marginLeft: '1rem', color: '#4ade80', fontSize: '0.75rem' }}>✓ Attached</span>}
@@ -477,7 +477,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                     </div>
 
                                     {formData.is_experienced && (
-                                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                        <div style={{ background: '#ffffff', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                                             <div className="input-field-group">
                                                 <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Company</label>
                                                 <input type="text" name="prev_company" required value={formData.prev_company} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-light)' }} />
@@ -494,7 +494,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                                 <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>PF Account Number</label>
                                                 <input type="text" name="pf_number" required value={formData.pf_number} onChange={handleInputChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-light)' }} />
                                             </div>
-                                            <div style={{ gridColumn: 'span 2', background: 'rgba(0,0,0,0.01)', padding: '1rem', borderRadius: '10px', border: '1px dashed var(--border-color)' }}>
+                                            <div style={{ gridColumn: 'span 2', background: '#ffffff', padding: '1rem', borderRadius: '10px', border: '1px dashed var(--border-color)' }}>
                                                 <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-light)', marginBottom: '0.75rem' }}>Previous Company Payslip (Last 3 Months)</label>
                                                 <input type="file" required onChange={e => handleFileUpload(e, setPayslipPhoto)} style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }} />
                                                 {payslipPhoto && <span style={{ marginLeft: '1rem', color: '#4ade80', fontSize: '0.75rem' }}>✓ Attached</span>}
@@ -605,7 +605,7 @@ const HomeDashboard = ({ user, setUser }) => {
 
         return (
             <div className="grid-2" style={{ gap: '2rem' }}>
-                <div className="card glass-panel" style={{ background: 'rgba(255,255,255,0.01)' }}>
+                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
                         <span style={{ fontSize: '1.5rem' }}>✈️</span>
                         <h2 className="card-title" style={{ marginBottom: 0 }}>Apply for Leave</h2>
@@ -755,11 +755,11 @@ const HomeDashboard = ({ user, setUser }) => {
         }, []);
 
         return (
-            <div className="card glass-panel" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <div className="card shadow-sm" style={{ maxWidth: '800px', margin: '0 auto', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                 <h2 className="card-title">📄 Your Payslips</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {payslips.map((p, i) => (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                             <div>
                                 <div style={{ fontWeight: 'bold' }}>{p.month}</div>
                                 <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Disbursed on {p.date}</div>
@@ -829,7 +829,7 @@ const HomeDashboard = ({ user, setUser }) => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {kudos.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Be the first to share appreciation!</p> :
                             kudos.map((k, i) => (
-                                <div key={i} style={{ padding: '1.25rem', background: 'rgba(10, 102, 194, 0.04)', borderLeft: '4px solid var(--primary)', borderRadius: '12px' }}>
+                                <div key={i} style={{ padding: '1.25rem', background: 'rgba(10, 102, 194, 0.05)', borderLeft: '4px solid var(--primary)', borderRadius: '12px', borderRight: '1px solid var(--border-color)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
                                     <div style={{ fontSize: '0.9rem', color: 'var(--text-light)', marginBottom: '0.5rem' }}>
                                         <strong>{k.sender_name}</strong> recognized <strong>{k.receiver_name}</strong>
                                     </div>
@@ -863,13 +863,13 @@ const HomeDashboard = ({ user, setUser }) => {
         }, []);
 
         return (
-            <div className="card glass-panel" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <div className="card shadow-sm" style={{ maxWidth: '800px', margin: '0 auto', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                 <h2 className="card-title">📅 Company Holiday Calendar</h2>
                 {hLoading ? <p style={{ color: '#6b7280' }}>Loading holidays...</p> : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {holidays.length === 0 ? <p style={{ color: '#6b7280' }}>No holidays scheduled.</p> :
                             holidays.map((h, i) => (
-                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                                     <div>
                                         <div style={{ fontWeight: 'bold', color: '#0a66c2' }}>{h.name}</div>
                                         <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{h.type}</div>
@@ -997,7 +997,7 @@ const HomeDashboard = ({ user, setUser }) => {
                     </div>
 
                     {/* Policy Notice */}
-                    <div className="card glass-card" style={{ borderLeft: '4px solid var(--primary)' }}>
+                    <div className="card shadow-sm" style={{ borderLeft: '4px solid var(--primary)', background: '#ffffff', borderRight: '1px solid var(--border-color)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
                             <div style={{ width: '40px', height: '40px', background: 'rgba(10, 102, 194, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <span style={{ fontSize: '1.2rem' }}>📜</span>

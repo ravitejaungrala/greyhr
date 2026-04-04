@@ -71,15 +71,14 @@ How can I power your workday today?` }
         }}>
             {/* Sidebar Suggestions */}
             <div className="assistant-sidebar" style={{ width: '280px', display: 'flex', flexDirection: 'column', gap: '1rem', flexShrink: 0 }}>
-                <div className="card glass-panel" style={{ 
+                <div className="card shadow-sm" style={{ 
                     padding: '1.5rem', 
                     flex: 1, 
                     display: 'flex', 
                     flexDirection: 'column', 
                     borderRadius: '20px',
-                    background: 'white',
-                    border: '1px solid #e2e8f0',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)'
+                    background: '#ffffff',
+                    border: '1px solid var(--border-color)'
                 }}>
                     <h3 style={{ 
                         fontSize: '0.85rem', 
@@ -150,18 +149,15 @@ How can I power your workday today?` }
                 flexDirection: 'column',
                 gap: '1rem'
             }}>
-                {/* Header Section Removed/Integrated to Chat Body as per image */}
-                
                 {/* Chat Body */}
-                <div className="chat-content-wrapper card glass-panel" style={{
+                <div className="chat-content-wrapper card shadow-md" style={{
                     flex: 1,
                     borderRadius: '24px',
                     display: 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden',
-                    background: 'white',
-                    border: '1px solid #e2e8f0',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.04)',
+                    background: '#ffffff',
+                    border: '1px solid var(--border-color)',
                     padding: 0
                 }}>
                     <div className="messages-scroll-area" style={{
@@ -189,8 +185,7 @@ How can I power your workday today?` }
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     flexShrink: 0,
-                                    color: 'white',
-                                    boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
+                                    color: 'white'
                                 }}>
                                     {msg.role === 'user' ? <User size={22} /> : <BrainCircuit size={24} />}
                                 </div>
@@ -202,7 +197,6 @@ How can I power your workday today?` }
                                     fontSize: '0.95rem',
                                     lineHeight: '1.6',
                                     border: msg.role === 'assistant' ? '1px solid #e2e8f0' : 'none',
-                                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                     overflowX: 'auto'
                                 }}>
                                     {msg.role === 'user' ? (

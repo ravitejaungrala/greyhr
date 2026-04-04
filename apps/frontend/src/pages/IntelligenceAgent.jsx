@@ -96,7 +96,7 @@ How can I power your decisions today?` }
         }}>
             {/* Sidebar Suggestions */}
             <div className="intelligence-sidebar" style={{ width: '280px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div className="card glass-panel" style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column', border: '1px solid rgba(74, 144, 226, 0.2)' }}>
+                <div className="card shadow-sm" style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column', border: '1px solid var(--border-color)', background: '#ffffff' }}>
                     <h3 style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '1.25rem', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <Zap size={16} /> Quick Analysis
                     </h3>
@@ -203,7 +203,7 @@ How can I power your decisions today?` }
 
             {/* Main Chat Area */}
             <div className="intelligence-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div className="card glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0, border: '1px solid rgba(74, 144, 226, 0.2)' }}>
+                <div className="card shadow-sm" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0, border: '1px solid var(--border-color)', background: '#ffffff' }}>
                     <div className="chat-messages" style={{ flex: 1, padding: '2rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         {chat.map((msg, i) => (
                             <div key={i} style={{ 

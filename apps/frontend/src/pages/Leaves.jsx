@@ -149,7 +149,7 @@ const Leaves = ({ userId, user }) => {
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     {Array.isArray(leaveData?.types) && leaveData.types.map((type, idx) => (
-                        <div key={idx} className="glass-panel" style={{ padding: '0.5rem 1rem', borderRadius: '8px', textAlign: 'center', minWidth: '100px' }}>
+                        <div key={idx} className="card shadow-sm" style={{ padding: '0.5rem 1rem', borderRadius: '8px', textAlign: 'center', minWidth: '100px', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{type.name}</div>
                             <div style={{ fontWeight: 'bold', color: 'var(--primary)' }}>
                                 {type.remaining} Days
@@ -308,7 +308,7 @@ const Leaves = ({ userId, user }) => {
                 </div>
 
                 {/* AI Leave Insights */}
-                <div className="card glass-panel" style={{ borderColor: 'var(--border-color)' }}>
+                <div className="card shadow-sm" style={{ borderColor: 'var(--border-color)', background: '#ffffff' }}>
                     <h2 className="card-title">Team Availability</h2>
                     <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
                         AI snapshot of your team's current availability.
@@ -341,7 +341,7 @@ const Leaves = ({ userId, user }) => {
             <div style={{ marginTop: '2.5rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 
                 <div className="grid-3" style={{ gap: '1.5rem' }}>
-                    <div className="card glass-panel" style={{ textAlign: 'center', padding: '1.5rem' }}>
+                    <div className="card shadow-sm" style={{ textAlign: 'center', padding: '1.5rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>LEAVES THIS MONTH</div>
                         <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary)' }}>
                             {recentLeaves.filter(l => {
@@ -354,7 +354,7 @@ const Leaves = ({ userId, user }) => {
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Approved requests</div>
                     </div>
                     
-                    <div className="card glass-panel" style={{ textAlign: 'center', padding: '1.5rem' }}>
+                    <div className="card shadow-sm" style={{ textAlign: 'center', padding: '1.5rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>PENDING REQUESTS</div>
                         <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#F59E0B' }}>
                             {recentLeaves.filter(l => l.status.includes('Pending')).length}
@@ -362,7 +362,7 @@ const Leaves = ({ userId, user }) => {
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Awaiting review</div>
                     </div>
 
-                    <div className="card glass-panel" style={{ textAlign: 'center', padding: '1.5rem' }}>
+                    <div className="card shadow-sm" style={{ textAlign: 'center', padding: '1.5rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>UPCOMING LEAVES</div>
                         <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--secondary)' }}>
                             {recentLeaves.filter(l => {
@@ -375,7 +375,7 @@ const Leaves = ({ userId, user }) => {
                     </div>
                 </div>
 
-                <div className="card glass-panel">
+                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                         <h2 className="card-title" style={{ marginBottom: 0 }}>Recent Applications & Status</h2>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Real-time approval tracking</div>
