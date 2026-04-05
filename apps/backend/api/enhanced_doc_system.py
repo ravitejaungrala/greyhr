@@ -146,6 +146,19 @@ def get_employee_prefill_data(employee_id: str, doc_type: str):
             prefill_data["net_salary"] = monthly_salary - prefill_data["total_deductions"]
             prefill_data["days_worked"] = "30"
             prefill_data["month_year"] = datetime.datetime.now().strftime("%B %Y")
+        prefill_data["days_worked"] = "30"
+        prefill_data["arrears_days"] = 0
+        prefill_data["lwp"] = 0
+        prefill_data["location"] = employee.get("location") or "Hyderabad"
+        prefill_data["band"] = employee.get("band") or ""
+        prefill_data["dob"] = employee.get("dob") or ""
+        prefill_data["uan_number"] = employee.get("uan_number") or employee.get("uan") or ""
+        
+        # New financial defaults
+        prefill_data["lta"] = 0
+        prefill_data["medical_insurance"] = 0
+        prefill_data["lwf_deduction"] = 0
+        prefill_data["med_ins_deduction"] = 0
     
     elif monthly_salary and doc_type == "full_time_offer":
         annual_salary = monthly_salary * 12

@@ -116,19 +116,23 @@
             font-weight: bold;
         }
 
-        /* Watermark */
+        /* Background Logo Watermark */
         .watermark {
             position: absolute;
-            top: 45%;
+            top: 50%;
             left: 50%;
             transform: translate(-50%, -50%) rotate(-30deg);
-            opacity: 0.08;
-            font-size: 70px;
-            font-weight: bold;
+            opacity: 0.06;
             pointer-events: none;
-            width: 100%;
-            text-align: center;
+            width: 450px;
             z-index: -1;
+            display: flex;
+            justify-content: center;
+        }
+
+        .watermark img {
+            width: 100%;
+            height: auto;
         }
     </style>
 </head>
@@ -152,8 +156,9 @@
     </div>
 
     <div class="letter-container">
-        <div class="watermark">NEUZENAI</div>
-
+        <div class="watermark">
+            <img src="{{ logo_path }}" alt="Background Watermark">
+        </div>
         <div style="text-align: right; font-weight: bold; margin-bottom: 10px; font-size: 13px;">Date: {{ current_date }}</div>
 
         <h2 class="doc-title">Work Experience Letter</h2>

@@ -44,7 +44,7 @@ class S3Loader(BaseLoader):
         return source, None, lambda: True
 
 # Join local templates directory
-templates_dir = os.path.join(os.path.dirname(base_dir), 'templates')
+templates_dir = os.path.join(base_dir, 'templates')
 
 # Jinja2 Setup - Hybrid Loader (Local first, then S3)
 env = Environment(
@@ -116,8 +116,9 @@ def render_doc_to_html_bytes(data, doc_type):
     # Data Injection
     # Use the correct filenames as provided by the user
     backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
-    data['logo_path'] = f'{backend_url}/static/chatbot%20icon.png' # Using the Dhanadurga Chatbot/Main Icon
-    data['signature_path'] = f'{backend_url}/static/signature.png'
+    base_url = backend_url.replace('/api', '').rstrip('/')
+    data['logo_path'] = f'{base_url}/static/company-logo.png' 
+    data['signature_path'] = f'{base_url}/static/signature.png'
     data['signatory_name'] = "B. Subba Rami Reddy"
     data['signatory_designation'] = "Co-Founder"
     

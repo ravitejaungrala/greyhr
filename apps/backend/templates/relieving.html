@@ -18,7 +18,7 @@
             line-height: 1.4;
         }
 
-        /* Header Image Section (Matches image_138e54.png) */
+        /* Header Image Section */
         .header-top {
             background: linear-gradient(to right, #ff3b30, #ff9500);
             height: 25px;
@@ -72,6 +72,26 @@
             margin: 0 auto;
             padding-bottom: 80px;
             position: relative;
+            min-height: 750px;
+        }
+
+        /* Background Logo Watermark (Replaces Text) */
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            opacity: 0.06;
+            pointer-events: none;
+            width: 450px;
+            z-index: -1;
+            display: flex;
+            justify-content: center;
+        }
+
+        .watermark img {
+            width: 100%;
+            height: auto;
         }
 
         .doc-title {
@@ -104,7 +124,7 @@
             font-size: 13px;
         }
 
-        /* Footer Section (Matches image_138e79.png) */
+        /* Footer Section */
         .footer-fixed {
             position: fixed;
             bottom: 0;
@@ -118,20 +138,6 @@
             font-size: 11px;
             font-weight: bold;
         }
-
-        /* Watermark */
-        .watermark {
-            position: absolute;
-            top: 45%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-30deg);
-            opacity: 0.08;
-            font-size: 70px;
-            font-weight: bold;
-            pointer-events: none;
-            width: 100%;
-            text-align: center;
-        }
     </style>
 </head>
 
@@ -143,7 +149,7 @@
     </div>
 
     <div class="header-content">
-        <img src="{{ logo_path }}" alt="NEUZENAI">
+        <img src="{{ logo_path }}" alt="NEUZENAI Logo">
         <div class="company-title">NEUZENAI IT Solutions Pvt Ltd</div>
         <div class="company-addr">T Hub Phase 2, 20, Inorbit Mall Rd, Vittal Rao Nagar, Madhapur, Hyderabad, Telangana
             500081</div>
@@ -154,7 +160,9 @@
     </div>
 
     <div class="letter-body">
-        <div class="watermark">NEUZENAI</div>
+        <div class="watermark">
+            <img src="{{ logo_path }}" alt="Background Watermark">
+        </div>
 
         <h2 class="doc-title">Relieving Letter</h2>
 
@@ -168,15 +176,27 @@
         <div class="salutation">Dear {{ emp_name }},</div>
 
         <div class="text-content">
-            This letter serves as a formal confirmation that you have been relieved from your duties at <strong>NEUZENAI
-                IT Solutions Pvt Ltd</strong> effective from <strong>{{ last_working_day }}</strong>.
+            This letter serves as a formal confirmation that you have been relieved from your duties at
+            <strong>NEUZENAI IT Solutions Pvt Ltd</strong> effective from
+            <strong>{{ last_working_day }}</strong>.
             <br><br>
-            We acknowledge your resignation, which was submitted on <strong>{{ resignation_date }}</strong>. We would
-            like to thank you for your contributions during your tenure. You were a valuable member of the team, and we
-            appreciate the dedication you put into your role.
+
+            We acknowledge your resignation, which was submitted on
+            <strong>{{ resignation_date }}</strong>. We would like to thank you for your contributions during your
+            tenure with the company.
+            You were a valuable member of the team, and we appreciate the dedication and hard work you have put into
+            your role.
             <br><br>
+
             Your final settlement, including any outstanding dues, will be processed in accordance with company
-            policies. We wish you all the best in your future endeavors.
+            policies and applicable laws.<br><br>
+
+            We wish you all the best in your future endeavors and hope that you continue to achieve success in your
+            career.
+            Please do not hesitate to reach out should you need any further assistance.
+            <br><br>
+
+            Thank you once again for your time at <strong>NEUZENAI IT Solutions Pvt Ltd</strong>.
         </div>
 
         <div class="signature-section">

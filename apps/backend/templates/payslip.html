@@ -18,6 +18,27 @@
             margin: 20px auto;
             padding: 15px;
             background: #fff;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Background Logo Watermark */
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            opacity: 0.05;
+            pointer-events: none;
+            width: 450px;
+            z-index: -1;
+            display: flex;
+            justify-content: center;
+        }
+
+        .watermark img {
+            width: 100%;
+            height: auto;
         }
 
         /* Header & Logo Section */
@@ -152,6 +173,9 @@
 <body>
 
     <div class="container">
+        <div class="watermark">
+            <img src="{{ logo_path }}" alt="Background Watermark">
+        </div>
         <div class="header-container">
             <div class="logo-section">
                 <img src="{{ logo_path }}" alt="Company Logo">
@@ -173,30 +197,57 @@
                 <td class="value">{{ emp_code }}</td>
                 <td class="label">Employee Name</td>
                 <td class="value">{{ emp_name }}</td>
+
             </tr>
             <tr>
                 <td class="label">Bank Name</td>
                 <td class="value">{{ bank_name }}</td>
                 <td class="label">Bank Account Number</td>
                 <td class="value">{{ account_no }}</td>
+
             </tr>
             <tr>
                 <td class="label">Permanent Account Number</td>
                 <td class="value">{{ pan_no }}</td>
                 <td class="label">PF Account Number</td>
                 <td class="value">{{ pf_no }}</td>
+
             </tr>
             <tr>
                 <td class="label">Date of Joining</td>
                 <td class="value">{{ doj }}</td>
-                <td class="label">Designation</td>
-                <td class="value">{{ designation }}</td>
+                <td class="label">Date of Birth</td>
+                <td class="value">{{ dob }}</td>
+
+
             </tr>
             <tr>
                 <td class="label">Days Worked</td>
                 <td class="value">{{ days_worked }}</td>
+                <td class="label">LWP (Leave Without Pay)</td>
+                <td class="value">{{ lwp }}</td>
+
+            </tr>
+            <tr>
+                <td class="label">Arrears Days</td>
+                <td class="value">{{ arrears_days }}</td>
+                <td class="label">UAN Number</td>
+                <td class="value">{{ uan_number }}</td>
+
+            </tr>
+            <tr>
+                <td class="label">Designation</td>
+                <td class="value">{{ designation }}</td>
                 <td class="label">Department</td>
                 <td class="value">{{ department }}</td>
+
+            </tr>
+            <tr>
+                <td class="label">Location</td>
+                <td class="value">{{ location }}</td>
+                <td class="label">Band/Grade</td>
+                <td class="value">{{ band }}</td>
+
             </tr>
         </table>
 
@@ -204,6 +255,10 @@
             <div class="side">
                 <div class="side-title">Earnings</div>
                 <table class="data-table">
+                    <tr>
+                        <td><b>Particulars</b></td>
+                        <td><b>Amount</b></td>
+                    </tr>
                     <tr>
                         <td>Basic Salary</td>
                         <td class="amount">{{ basic }}</td>
@@ -213,9 +268,18 @@
                         <td class="amount">{{ hra }}</td>
                     </tr>
                     <tr>
+                        <td>Leave Travel Allowance (LTA)</td>
+                        <td class="amount">{{ lta }}</td>
+                    </tr>
+                    <tr>
                         <td>Special Allowance</td>
                         <td class="amount">{{ special_allowance }}</td>
                     </tr>
+                    <tr>
+                        <td>Medical Insurance (E)</td>
+                        <td class="amount">{{ medical_insurance }}</td>
+                    </tr>
+
                     <tr class="total-row">
                         <td>Total Earnings</td>
                         <td class="amount">{{ total_earnings }}</td>
@@ -226,6 +290,10 @@
                 <div class="side-title">Deductions</div>
                 <table class="data-table">
                     <tr>
+                        <td><b>Particulars</b></td>
+                        <td><b>Amount</b></td>
+                    </tr>
+                    <tr>
                         <td>Professional Tax</td>
                         <td class="amount">{{ prof_tax }}</td>
                     </tr>
@@ -234,9 +302,19 @@
                         <td class="amount">{{ pf_deduction }}</td>
                     </tr>
                     <tr>
-                        <td>Income Tax</td>
+                        <td>Income Tax (TDS)</td>
                         <td class="amount">{{ income_tax }}</td>
                     </tr>
+
+                    <tr>
+                        <td>LWF Deduction</td>
+                        <td class="amount">{{ lwf_deduction }}</td>
+                    </tr>
+                    <tr>
+                        <td>Medical Insurance (D)</td>
+                        <td class="amount">{{ med_ins_deduction }}</td>
+                    </tr>
+
                     <tr class="total-row">
                         <td>Total Deductions</td>
                         <td class="amount">{{ total_deductions }}</td>

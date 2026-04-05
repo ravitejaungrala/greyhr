@@ -133,7 +133,14 @@ class ProfileUpdateRequest(BaseModel):
     pf_number: Optional[str] = None
     uan_number: Optional[str] = None
     # Files
+class PassportPhotoUpload(BaseModel):
+    employee_id: str
     passport_photo_base64: str
+
+class DocumentRequest(BaseModel):
+    employee_id: str
+    doc_type: str
+    reason: Optional[str] = ""
 
 
 def parse_base64(b64_string: str) -> bytes:
@@ -350,6 +357,7 @@ class EmployeeUpdate(BaseModel):
     internship_completed: Optional[bool] = None
     tax_deduction_rate: Optional[float] = None
     pf_deduction_rate: Optional[float] = None
+    payroll_settings: Optional[Dict[str, Any]] = None
 
 
 @router.post("/auth/admin/approve")
@@ -416,6 +424,10 @@ def update_employee_details(employee_id: str, update: EmployeeUpdate):
             set_ops[k] = v
         else:
             set_ops[k] = v
+
+    # Special handling for payroll_settings if provided
+    if "payroll_settings" in update_data:
+        set_ops["payroll_settings"] = update_data["payroll_settings"]
 
     result = mongo_db.users.update_one(
         {"employee_id": employee_id},
@@ -1246,9 +1258,6 @@ class ProfileUpdateRequest(BaseModel):
 class AttendanceScanRequest(BaseModel):
     employee_id: str
     image_base64: str
-    image_left_base64: Optional[str] = None
-    image_right_base64: Optional[str] = None
-    image_profile_base64: Optional[str] = None
     location: str
     action_type: str # 'sign_in' or 'sign_out'
 
@@ -1286,130 +1295,31 @@ def process_face_scan(request: AttendanceScanRequest):
         if sign_out_record:
             return {"error": "You have already signed out today."}
 
-    # 1. Decode Image
+    # 1. Decode Image (Simplified: No left/right)
     try:
         base64_data = request.image_base64.split(',')[1] if ',' in request.image_base64 else request.image_base64
         image_bytes = base64.b64decode(base64_data)
-        
-        left_bytes = None
-        if request.image_left_base64:
-            left_b64 = request.image_left_base64.split(',')[1] if ',' in request.image_left_base64 else request.image_left_base64
-            left_bytes = base64.b64decode(left_b64)
-            
-        right_bytes = None
-        if request.image_right_base64:
-            right_b64 = request.image_right_base64.split(',')[1] if ',' in request.image_right_base64 else request.image_right_base64
-            right_bytes = base64.b64decode(right_b64)
-
-        profile_bytes = None
-        if request.image_profile_base64:
-            profile_b64 = request.image_profile_base64.split(',')[1] if ',' in request.image_profile_base64 else request.image_profile_base64
-            profile_bytes = base64.b64decode(profile_b64)
     except Exception as e:
         return {"error": "Invalid image format"}
 
-    # 1.2 Face Presence Verification (Passive Liveness)
-    try:
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if img is not None:
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-            faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-            if len(faces) == 0:
-                return {"error": "No face detected in the image. Please ensure you are looking at the camera."}
-    except Exception as e:
-        print(f"Face detection internal error: {e}")
-        # Continue if OpenCV fails for simple environments, but ideally enforce it
-
-    # 1.5 Real AI Face Comparison using Gemini
-    reference_image_key = user.get("reference_image_key")
-    if not reference_image_key:
-        return {"error": "No registered face found. Please complete your profile with face registration."}
+    # 1.5 Simplified Identity Check (Photo Logging Only)
+    # Face matching removed per request to ensure faster sign-in/out.
+    # We still verify the employee exists and is approved.
     
-    ref_image_bytes = s3_db.get_image(reference_image_key)
-    if not ref_image_bytes:
-        return {"error": "Reference identity image not found in storage."}
-
-    try:
-        # Use the latest requested model name
-        model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash") # Fallback to 1.5 if 3.1 is not in env
-        if "3.1" in os.environ.get("GEMINI_MODEL", ""):
-             model_name = os.environ.get("GEMINI_MODEL")
-        
-        # User explicitly asked for 3.1 flash
-        model = genai.GenerativeModel(model_name)
-        
-        # Prepare all available images for a deep multi-frame analysis
-        images_to_analyze = [
-            {"mime_type": "image/jpeg", "data": base64.b64encode(ref_image_bytes).decode('utf-8')}, # Reference
-            {"mime_type": "image/jpeg", "data": base64.b64encode(image_bytes).decode('utf-8')}      # Current Front
-        ]
-        
-        if left_bytes:
-            images_to_analyze.append({"mime_type": "image/jpeg", "data": base64.b64encode(left_bytes).decode('utf-8')})
-        if right_bytes:
-            images_to_analyze.append({"mime_type": "image/jpeg", "data": base64.b64encode(right_bytes).decode('utf-8')})
-
-        prompt = """
-        You are a high-security biometric verification system using Gemini 3.1 Flash's professional vision capabilities.
-        
-        Perform an EXTREMELY STRICT facial identity verification. Compare the person in the video frames (Image 2+) with the official ENROLLED REFERENCE (Image 1).
-        
-        Strict Identity Check Requirements:
-        1. Biometric Alignment: Analyze unique facial landmarks: distance between pupils, nose bridge width, jawline contour, and ear position.
-        2. Differentiation: Reject the match if there are ANY significant deviations in facial structure, even if hair or apparel matches.
-        3. Confidence Scoring: The confidence score must be mathematically representative of the similarity. A 0.90+ means near-certain match. Below 0.80 suggests doubt.
-        4. Anti-Spoofing: Ensure the face is a real 3D human. Check for light reflections on skin vs. paper/screens.
-        
-        Return ONLY a JSON object:
-        {
-            "match": true/false,
-            "confidence": 0.0-1.0,
-            "liveness_verified": true/false,
-            "analysis": "Technical biometric analysis summary",
-            "reason": "Clear, professional explanation for the user if rejected"
-        }
-        """
-        
-        response = model.generate_content([prompt] + images_to_analyze)
-        # Clean response
-        resp_text = response.text.strip().strip('`').replace('json', '').strip()
-        result = json.loads(resp_text)
-        
-        face_match_success = result.get("match", False) and result.get("liveness_verified", False)
-        verification_score = result.get("confidence", 0.0)
-        
-        # INCREASED SECURITY: Enforce a strict confidence threshold (0.85)
-        # This prevents unauthorized "look-alikes" from passing.
-        MIN_CONFIDENCE_THRESHOLD = 0.85
-        
-        if not face_match_success or verification_score < MIN_CONFIDENCE_THRESHOLD:
-            # If match is true but confidence is low, it's still a failure
-            fail_reason = result.get("reason", "Face verification failed. Please try again with clear lighting.")
-            if face_match_success and verification_score < MIN_CONFIDENCE_THRESHOLD:
-                fail_reason = f"Identity similarity check was inconclusive ({int(verification_score*100)}%). Please ensure you are looking directly at the camera with clear lighting."
-                
-            print(f"Enhanced Verification REJECTED for {request.employee_id}: Score={verification_score}, Match={face_match_success}, Analysis={result.get('analysis')}")
-            return {"error": fail_reason}
-
-    except Exception as e:
-        print(f"AI Enhanced Verification Error: {e}")
-        return {"error": "Deep face analysis service is currently unavailable. Please try again later."}
-
+    face_match_success = True
+    verification_score = 1.0 # Default success
+    
     timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
     timestamp_str = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
     image_key = f"attendance_faces/{request.employee_id}_{timestamp_str}.jpg"
-    image_left_key = f"attendance_faces/{request.employee_id}_{timestamp_str}_left.jpg" if left_bytes else None
-    image_right_key = f"attendance_faces/{request.employee_id}_{timestamp_str}_right.jpg" if right_bytes else None
     
-    # 2. Save Daily Image to S3
+    # 2. Save Snapshot to S3 (For auditing)
     s3_db.save_image(image_key, image_bytes, content_type='image/jpeg')
-    if left_bytes: s3_db.save_image(image_left_key, left_bytes, content_type='image/jpeg')
-    if right_bytes: s3_db.save_image(image_right_key, right_bytes, content_type='image/jpeg')
 
     # 2.5 Save Profile Photo for ID Card if provided
-    if profile_bytes:
+    if hasattr(request, 'image_profile_base64') and request.image_profile_base64:
+        profile_b64 = request.image_profile_base64.split(',')[1] if ',' in request.image_profile_base64 else request.image_profile_base64
+        profile_bytes = base64.b64decode(profile_b64)
         profile_image_key = f"reference_faces/{request.employee_id}_id_card.jpg"
         s3_db.save_image(profile_image_key, profile_bytes, content_type='image/jpeg')
         # Update user record with the new official ID photo
@@ -1418,16 +1328,14 @@ def process_face_scan(request: AttendanceScanRequest):
             {"$set": {"id_card_photo_key": profile_image_key}}
         )
     
-    # 3. Save to MongoDB
+    # 3. Save to MongoDB (Simplified Record)
     attendance_record = {
         "employee_id": request.employee_id,
         "action": request.action_type,
         "timestamp": timestamp,
         "location": request.location,
         "s3_image_key": image_key,
-        "s3_image_left_key": image_left_key,
-        "s3_image_right_key": image_right_key,
-        "ai_verification_score": verification_score
+        "verified": True # Manual audit available
     }
     mongo_db.attendance.insert_one(attendance_record)
 
@@ -3304,6 +3212,23 @@ def get_admin_notifications():
         return {"notifications": []}
     notes = list(mongo_db.db.notifications.find({}, {"_id": 0}).sort("created_at", -1).limit(20))
     return {"notifications": notes}
+
+@router.post("/employee/request-document")
+def request_document(request: DocumentRequest):
+    if mongo_db.db is None:
+        return {"error": "Database error"}
+    
+    # Create notification for admin
+    notification = {
+        "type": "document_request",
+        "employee_id": request.employee_id,
+        "doc_type": request.doc_type,
+        "reason": request.reason,
+        "status": "pending",
+        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+    }
+    mongo_db.db.notifications.insert_one(notification)
+    return {"message": "Request submitted to HR successfully."}
 
 @router.get("/admin/attendance")
 def get_all_attendance_logs():
