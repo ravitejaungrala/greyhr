@@ -1107,6 +1107,20 @@ def get_holidays():
         ]
     return {"holidays": holidays}
 
+@router.get("/employee/attendance/history")
+def get_attendance_history(employee_id: str):
+    if mongo_db.attendance is None:
+        return {"history": []}
+    
+    today_str = datetime.datetime.utcnow().strftime('%Y-%m-%d')
+    # Get only today's records for the employee
+    history = list(mongo_db.attendance.find(
+        {"employee_id": employee_id, "timestamp": {"$regex": f"^{today_str}"}},
+        {"_id": 0}
+    ).sort("timestamp", -1))
+    
+    return {"history": history}
+
 @router.get("/employee/holidays")
 def get_employee_holidays():
     # Employees see the same holidays as admin
@@ -1257,7 +1271,7 @@ class ProfileUpdateRequest(BaseModel):
     last_company_payslip_base64: Optional[str] = None
 class AttendanceScanRequest(BaseModel):
     employee_id: str
-    image_base64: str
+    image_base64: Optional[str] = None
     location: str
     action_type: str # 'sign_in' or 'sign_out'
 
@@ -1278,43 +1292,40 @@ def process_face_scan(request: AttendanceScanRequest):
 
     # 0.5 Check for duplicate actions today
     today_str = datetime.datetime.utcnow().strftime('%Y-%m-%d')
-    existing_today = list(mongo_db.attendance.find({
-        "employee_id": request.employee_id,
-        "timestamp": {"$regex": f"^{today_str}"}
-    }))
+    # Get the latest action today to enforce alternating sequence
+    latest_today = mongo_db.attendance.find_one(
+        {"employee_id": request.employee_id, "timestamp": {"$regex": f"^{today_str}"}},
+        sort=[("timestamp", -1)]
+    )
     
-    sign_in_record = next((r for r in existing_today if r["action"] == "sign_in"), None)
-    sign_out_record = next((r for r in existing_today if r["action"] == "sign_out"), None)
-    
-    if request.action_type == "sign_in":
-        if sign_in_record:
-            return {"error": "You have already signed in today."}
-    elif request.action_type == "sign_out":
-        if not sign_in_record:
-            return {"error": "You must sign in before you can sign out."}
-        if sign_out_record:
-            return {"error": "You have already signed out today."}
+    if latest_today:
+        if latest_today["action"] == request.action_type:
+            action_name = "Sign In" if request.action_type == "sign_in" else "Sign Out"
+            next_action = "Sign Out" if request.action_type == "sign_in" else "Sign In"
+            return {"error": f"You have already performed a {action_name}. Please {next_action} before another {action_name}."}
+    else:
+        # First action of the day must be sign_in
+        if request.action_type == "sign_out":
+            return {"error": "You must Sign In before you can Sign Out."}
 
-    # 1. Decode Image (Simplified: No left/right)
-    try:
-        base64_data = request.image_base64.split(',')[1] if ',' in request.image_base64 else request.image_base64
-        image_bytes = base64.b64decode(base64_data)
-    except Exception as e:
-        return {"error": "Invalid image format"}
-
-    # 1.5 Simplified Identity Check (Photo Logging Only)
-    # Face matching removed per request to ensure faster sign-in/out.
-    # We still verify the employee exists and is approved.
-    
-    face_match_success = True
-    verification_score = 1.0 # Default success
+    # 1. Decode Image (Optional)
+    image_key = None
+    if request.image_base64:
+        try:
+            base64_data = request.image_base64.split(',')[1] if ',' in request.image_base64 else request.image_base64
+            image_bytes = base64.b64decode(base64_data)
+            
+            timestamp_str = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+            image_key = f"attendance_faces/{request.employee_id}_{timestamp_str}.jpg"
+            
+            # 2. Save Snapshot to S3 (For auditing)
+            s3_db.save_image(image_key, image_bytes, content_type='image/jpeg')
+        except Exception as e:
+            print(f"Image decode error (skipping snapshot): {e}")
+            # We continue without image if decoding fails
+            image_key = None
     
     timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    timestamp_str = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-    image_key = f"attendance_faces/{request.employee_id}_{timestamp_str}.jpg"
-    
-    # 2. Save Snapshot to S3 (For auditing)
-    s3_db.save_image(image_key, image_bytes, content_type='image/jpeg')
 
     # 2.5 Save Profile Photo for ID Card if provided
     if hasattr(request, 'image_profile_base64') and request.image_profile_base64:
@@ -1353,9 +1364,9 @@ def process_face_scan(request: AttendanceScanRequest):
 
     # 4. Generate Warnings for Sign-out
     warning = None
-    if request.action_type == "sign_out" and sign_in_record:
+    if request.action_type == "sign_out" and latest_today:
         try:
-            t1 = datetime.datetime.fromisoformat(sign_in_record["timestamp"].replace('Z', '+00:00'))
+            t1 = datetime.datetime.fromisoformat(latest_today["timestamp"].replace('Z', '+00:00'))
             t2 = datetime.datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
             work_sec = int((t2 - t1).total_seconds())
             
@@ -1546,23 +1557,45 @@ def ask_hr_copilot(query: CopilotQuery):
 @router.get("/employee/attendance/status")
 def get_attendance_status(employee_id: str):
     if mongo_db.attendance is None:
-        return {"last_punch": None, "status": "Not Signed In"}
+        return {"last_punch": None, "status": "Not Signed In", "total_hours_today": "0h 0m"}
     
     today_str = datetime.datetime.utcnow().strftime('%Y-%m-%d')
-    # Get latest punch for today
-    latest = mongo_db.attendance.find_one(
+    # Get all swipes today to calculate cumulative time
+    swipes = list(mongo_db.attendance.find(
         {"employee_id": employee_id, "timestamp": {"$regex": f"^{today_str}"}},
-        sort=[("timestamp", -1)]
-    )
+        sort=[("timestamp", 1)]
+    ))
     
+    total_sec = 0
+    in_time = None
+    for s in swipes:
+        if s["action"] == "sign_in":
+            in_time = datetime.datetime.fromisoformat(s["timestamp"].replace('Z', '+00:00'))
+        elif s["action"] == "sign_out" and in_time:
+            out_time = datetime.datetime.fromisoformat(s["timestamp"].replace('Z', '+00:00'))
+            total_sec += (out_time - in_time).total_seconds()
+            in_time = None
+    
+    # Status is based on the LAST punch
+    latest = swipes[-1] if swipes else None
+    
+    # If currently signed in, add time so far to the total display
+    current_sec = total_sec
+    if in_time:
+        now = datetime.datetime.now(datetime.timezone.utc)
+        current_sec += (now - in_time).total_seconds()
+    
+    total_hours_str = f"{int(current_sec // 3600)}h {int((current_sec % 3600) // 60)}m"
+
     if latest:
         return {
             "last_punch": latest["timestamp"],
             "action": latest["action"],
-            "status": "Signed In" if latest["action"] == "sign_in" else "Signed Out"
+            "status": "Signed In" if latest["action"] == "sign_in" else "Signed Out",
+            "total_hours_today": total_hours_str
         }
     
-    return {"last_punch": None, "status": "Not Signed In"}
+    return {"last_punch": None, "status": "Not Signed In", "total_hours_today": "0h 0m"}
 
 @router.get("/employee/attendance/calendar")
 def get_attendance_calendar(employee_id: str, year: Optional[int] = None, month: Optional[int] = None):

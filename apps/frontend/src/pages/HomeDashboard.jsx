@@ -45,6 +45,9 @@ const HomeDashboard = ({ user, setUser }) => {
     const [punchLoading, setPunchLoading] = useState(false);
     const [showCamera, setShowCamera] = useState(false);
     const [punchAction, setPunchAction] = useState(null);
+    const [showSwipeModal, setShowSwipeModal] = useState(false);
+    const [attendanceHistory, setAttendanceHistory] = useState([]);
+    const [showDotsMenu, setShowDotsMenu] = useState(false);
 
     const apiUrl = API_URL;
 
@@ -233,35 +236,13 @@ const HomeDashboard = ({ user, setUser }) => {
         setPunchLoading(true);
 
         try {
-            // 1. Get Camera
-            const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            
-            // 2. We need a temporary video element to capture the frame
-            const tempVideo = document.createElement('video');
-            tempVideo.srcObject = mediaStream;
-            await tempVideo.play();
-
-            // Small delay to let camera focus/adjust
-            await new Promise(r => setTimeout(r, 600));
-
-            // 3. Capture Frame
-            const canvas = document.createElement('canvas');
-            canvas.width = tempVideo.videoWidth;
-            canvas.height = tempVideo.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(tempVideo, 0, 0, canvas.width, canvas.height);
-            const imageBase64 = canvas.toDataURL('image/jpeg');
-
-            // 4. Stop Camera
-            mediaStream.getTracks().forEach(t => t.stop());
-
-            // 5. Submit to Backend
+            // 1. Submit to Backend directly without camera
             const response = await fetch(`${apiUrl}/attendance/scan`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     employee_id: user.employee_id,
-                    image_base64: imageBase64,
+                    image_base64: null, // No image needed anymore
                     location: "Dashboard Mobile/Web",
                     action_type: action
                 })
@@ -272,14 +253,28 @@ const HomeDashboard = ({ user, setUser }) => {
                 fetchDashboardData();
                 alert(`Successfully ${action === 'sign_in' ? 'Signed In' : 'Signed Out'}!`);
             } else {
-                alert("Punch failed. Please try again.");
+                const errData = await response.json();
+                alert(errData.error || "Punch failed. Please try again.");
             }
         } catch (err) {
             console.error("Dashboard punch error:", err);
-            alert("Camera error or permission denied.");
+            alert("Connection error. Please try again.");
         } finally {
             setPunchLoading(false);
             setPunchAction(null);
+        }
+    };
+
+    const fetchAttendanceHistory = async () => {
+        try {
+            const res = await fetch(`${apiUrl}/employee/attendance/history?employee_id=${user.employee_id}`);
+            const data = await res.json();
+            if (res.ok) {
+                setAttendanceHistory(data.history || []);
+                setShowSwipeModal(true);
+            }
+        } catch (err) {
+            console.error("Error fetching history:", err);
         }
     };
 
@@ -972,11 +967,34 @@ const HomeDashboard = ({ user, setUser }) => {
                     {/* Daily Assistant Agent */}
                     <div className="card glass-card" style={{ borderTop: '4px solid var(--primary)', position: 'relative', overflow: 'hidden', padding: '1rem' }}>
                         <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: 'var(--primary)', opacity: 0.05, borderRadius: '50%' }}></div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                            <div style={{ width: '32px', height: '32px', background: 'var(--accent-blue)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <span style={{ fontSize: '1rem' }}>🤖</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ width: '32px', height: '32px', background: 'var(--accent-blue)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <span style={{ fontSize: '1rem' }}>🤖</span>
+                                </div>
+                                <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1rem' }}>Smart Daily Assistant</h2>
                             </div>
-                            <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1rem' }}>Smart Daily Assistant</h2>
+                            
+                            <div style={{ position: 'relative' }}>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setShowDotsMenu(!showDotsMenu); }}
+                                    style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', padding: '0.25rem', color: 'var(--text-muted)' }}
+                                >
+                                    ⋮
+                                </button>
+                                {showDotsMenu && (
+                                    <div style={{ position: 'absolute', top: '100%', right: 0, background: '#fff', border: '1px solid var(--border-color)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100, minWidth: '120px', padding: '0.5rem 0' }}>
+                                        <div 
+                                            onClick={() => { setShowDotsMenu(false); fetchAttendanceHistory(); }}
+                                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', cursor: 'pointer' }}
+                                            onMouseEnter={(e) => e.target.style.background = 'var(--bg-color)'}
+                                            onMouseLeave={(e) => e.target.style.background = 'none'}
+                                        >
+                                            🔄 Swipes
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <div style={{ backgroundColor: 'rgba(10, 102, 194, 0.05)', padding: '1rem', borderRadius: '14px', marginBottom: '1rem', border: '1px solid rgba(10, 102, 194, 0.1)' }}>
@@ -984,26 +1002,35 @@ const HomeDashboard = ({ user, setUser }) => {
                                 <strong style={{ color: 'var(--primary)', display: 'block', marginBottom: '0.15rem', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>AI Insight</strong>
                                 {dashboardLoading ? 'Analyzing your workspace...' : (dashboardData?.insight_message || 'Loading your daily analysis...')}
                             </p>
+                            {todayStatus && todayStatus.total_hours_today && (
+                                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px dashed rgba(10, 102, 194, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Total Work Time Today</span>
+                                    <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary)' }}>{todayStatus.total_hours_today}</span>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Integrated Attendance Controls */}
-                        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                            <button 
-                                className="btn btn-primary" 
-                                style={{ flex: 1, padding: '0.65rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                                onClick={() => handleDashboardPunch('sign_in')}
-                                disabled={punchLoading || todayStatus.status === 'Signed In'}
-                            >
-                                {punchAction === 'sign_in' ? '...' : '🔘 Sign In'}
-                            </button>
-                            <button 
-                                className="btn btn-secondary" 
-                                style={{ flex: 1, padding: '0.65rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                                onClick={() => handleDashboardPunch('sign_out')}
-                                disabled={punchLoading || todayStatus.status === 'Signed Out' || todayStatus.status === 'Not Signed In'}
-                            >
-                                {punchAction === 'sign_out' ? '...' : '🔘 Sign Out'}
-                            </button>
+                        {/* Integrated Attendance Controls - Consolidated Toggle Button */}
+                        <div style={{ marginBottom: '1.25rem' }}>
+                            {todayStatus.status === 'Signed In' ? (
+                                <button 
+                                    className="btn" 
+                                    style={{ width: '100%', padding: '0.75rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', borderRadius: '14px', backgroundColor: '#EF4444', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                                    onClick={() => handleDashboardPunch('sign_out')}
+                                    disabled={punchLoading}
+                                >
+                                    {punchAction === 'sign_out' ? 'Processing...' : '🔘 Sign Out'}
+                                </button>
+                            ) : (
+                                <button 
+                                    className="btn btn-primary" 
+                                    style={{ width: '100%', padding: '0.75rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', borderRadius: '14px', boxShadow: '0 4px 12px rgba(10, 102, 194, 0.2)', fontWeight: 600 }}
+                                    onClick={() => handleDashboardPunch('sign_in')}
+                                    disabled={punchLoading}
+                                >
+                                    {punchAction === 'sign_in' ? 'Processing...' : todayStatus.status === 'Signed Out' ? '🔘 Sign In Again' : '🔘 Sign In for Today'}
+                                </button>
+                            )}
                         </div>
 
                         <h3 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Upcoming Highlights</h3>
@@ -1110,22 +1137,22 @@ const HomeDashboard = ({ user, setUser }) => {
                     </div>
 
                     {/* Quick Actions */}
-                    <div className="card">
-                        <h2 className="card-title">Quick Access</h2>
+                    <div className="card shadow-sm" style={{ borderTop: '4px solid var(--secondary)', background: '#ffffff', border: '1px solid var(--border-color)', padding: '1rem' }}>
+                        <h2 className="card-title" style={{ fontSize: '1rem', marginBottom: '1rem' }}>Quick Access</h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start' }} onClick={() => setActiveTab('payslips')}>
+                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.85rem' }} onClick={() => setActiveTab('payslips')}>
                                 📄 View Latest Payslip
                             </button>
-                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', position: 'relative' }} onClick={() => setActiveTab('leave')}>
+                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.85rem', position: 'relative' }} onClick={() => setActiveTab('leave')}>
                                 🌴 Apply for Leave
                                 {dashboardData?.highlights?.some(h => h.type === 'leave' && h.status === 'warning') && (
                                     <span style={{ position: 'absolute', top: '-5px', right: '-5px', width: '10px', height: '10px', background: '#F59E0B', borderRadius: '50%', border: '2px solid white', animation: 'pulse 1.5s infinite' }}></span>
                                 )}
                             </button>
-                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start' }} onClick={() => setActiveTab('kudos')}>
+                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.85rem' }} onClick={() => setActiveTab('kudos')}>
                                 🎉 Give Kudos
                             </button>
-                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start' }} onClick={() => setActiveTab('holidays')}>
+                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.85rem' }} onClick={() => setActiveTab('holidays')}>
                                 📅 View Holiday Calendar
                             </button>
                         </div>
@@ -1139,6 +1166,36 @@ const HomeDashboard = ({ user, setUser }) => {
                 <HolidayPage />
             ) : (
                 <KudosPage />
+            )}
+
+            {showSwipeModal && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={() => setShowSwipeModal(false)}>
+                    <div className="card shadow-lg animate-fade-in" style={{ maxWidth: '600px', width: '100%', background: '#fff', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>🕒 Attendance Swipes (Last 30 Days)</h2>
+                            <button onClick={() => setShowSwipeModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {attendanceHistory.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No swipe records found.</p> :
+                                attendanceHistory.map((s, i) => (
+                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.85rem', background: 'var(--bg-color)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                            <div style={{ width: '10px', height: '10px', background: s.action === 'sign_in' ? '#22C55E' : '#EF4444', borderRadius: '50%' }}></div>
+                                            <div>
+                                                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-light)' }}>{s.action === 'sign_in' ? 'Sign In' : 'Sign Out'}</div>
+                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{s.location}</div>
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{new Date(s.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(s.timestamp).toLocaleDateString()}</div>
+                                        </div>
+                                    </div>
+                                ))
+                            }
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

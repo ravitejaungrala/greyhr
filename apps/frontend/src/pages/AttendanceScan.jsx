@@ -276,17 +276,6 @@ const AttendanceScan = ({ userId }) => {
                         </div>
                     </div>
 
-                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                        <h2 className="card-title">📸 Recent Captures</h2>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
-                            {recentCaptures.slice(0, 8).map((h) => (
-                                <div key={h.timestamp}>
-                                    <img src={`${apiUrl}/admin/photos/${h.s3_image_key}`} alt="Audit" style={{ width: '100%', aspectRatio: '1', borderRadius: '4px', objectFit: 'cover' }} />
-                                    <div style={{ fontSize: '0.5rem', textAlign: 'center' }}>{new Date(h.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}</div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
                 </div>
             </div>
             <style>{`
