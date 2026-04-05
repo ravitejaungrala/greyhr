@@ -129,45 +129,45 @@ const AttendanceInfo = ({ userId }) => {
     return (
         <div className="attendance-info-page" style={{ color: 'var(--text-light)' }}>
             {/* Header Metrics */}
-            <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                <div className="card shadow-sm" style={{ flex: 1, textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>AVG. WORK HRS</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{attendanceData.length > 0 ? avgWorkHrs() : '--:--'}</div>
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="card shadow-sm" style={{ flex: 1, textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)', padding: '0.75rem' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>AVG. WORK HRS</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{attendanceData.length > 0 ? avgWorkHrs() : '--:--'}</div>
                 </div>
-                <div className="card shadow-sm" style={{ flex: 1, textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>AVG. ACTUAL WORK HRS</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{attendanceData.length > 0 ? avgWorkHrs() : '--:--'}</div>
+                <div className="card shadow-sm" style={{ flex: 1, textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)', padding: '0.75rem' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>AVG. ACTUAL WORK HRS</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{attendanceData.length > 0 ? avgWorkHrs() : '--:--'}</div>
                 </div>
-                <div className="card shadow-sm" style={{ flex: 1, textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>PENALTY DAYS</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{getDaysInMonth().filter(d => d && d.day < new Date().getDate() && d.statusChar === 'A').length}</div>
+                <div className="card shadow-sm" style={{ flex: 1, textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)', padding: '0.75rem' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>PENALTY DAYS</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{getDaysInMonth().filter(d => d && d.day < new Date().getDate() && d.statusChar === 'A').length}</div>
                 </div>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', color: 'var(--primary)', fontWeight: 'bold', cursor: 'pointer' }}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', color: 'var(--primary)', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer' }}>
                     +3 INSIGHTS
                 </div>
             </div>
 
             {/* Exception Alert */}
-            <div style={{ padding: '0.75rem 1.5rem', background: '#FEF2F2', border: '1px solid #FEE2E2', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '0.5rem 1rem', background: '#FEF2F2', border: '1px solid #FEE2E2', borderRadius: '8px', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ color: '#EF4444' }}>⚠️</span>
-                    <span style={{ fontSize: '0.9rem' }}>{getDaysInMonth().filter(d => d && d.day < new Date().getDate() && d.statusChar === 'A').length} exception day(s)</span>
+                    <span style={{ color: '#EF4444', fontSize: '0.85rem' }}>⚠️</span>
+                    <span style={{ fontSize: '0.85rem' }}>{getDaysInMonth().filter(d => d && d.day < new Date().getDate() && d.statusChar === 'A').length} exception day(s)</span>
                 </div>
-                <button className="btn" style={{ fontSize: '0.8rem', color: 'var(--primary)', padding: '0.25rem 0.5rem' }}>Regularize</button>
+                <button className="btn" style={{ fontSize: '0.75rem', color: 'var(--primary)', padding: '0.2rem 0.5rem' }}>Regularize</button>
             </div>
 
             <div style={{ display: 'flex', gap: '1.5rem' }}>
                 {/* CALENDAR SECTION */}
-                <div className="card shadow-sm" style={{ flex: 2, padding: '1.5rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                        <button className="btn" style={{ minWidth: 'auto', padding: '0.25rem' }}>&lt; Prev</button>
-                        <h2 style={{ fontSize: '1.25rem', margin: 0 }}>{new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</h2>
-                        <button className="btn" style={{ minWidth: 'auto', padding: '0.25rem' }}>Next &gt;</button>
+                <div className="card shadow-sm" style={{ flex: 2, padding: '1rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <button className="btn" style={{ minWidth: 'auto', padding: '0.2rem' }}>&lt; Prev</button>
+                        <h2 style={{ fontSize: '1.1rem', margin: 0 }}>{new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</h2>
+                        <button className="btn" style={{ minWidth: 'auto', padding: '0.2rem' }}>Next &gt;</button>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
                         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                            <div key={day} style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.8rem', fontWeight: 'bold', background: '#f8fafc', borderBottom: '1px solid var(--border-color)' }}>
+                            <div key={day} style={{ padding: '0.5rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 'bold', background: '#f8fafc', borderBottom: '1px solid var(--border-color)' }}>
                                 {day}
                             </div>
                         ))}
@@ -176,7 +176,7 @@ const AttendanceInfo = ({ userId }) => {
                                 key={i}
                                 onClick={() => d && setSelectedDate(d.date)}
                                 style={{
-                                    padding: '0.5rem', height: '80px', borderRight: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)',
+                                    padding: '0.25rem', height: '65px', borderRight: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)',
                                     cursor: d ? 'pointer' : 'default', transition: 'background 0.2s',
                                     background: d ? (selectedDate === d.date ? '#EEF2FF' : d.bgColor) : 'transparent',
                                     position: 'relative'
@@ -184,20 +184,20 @@ const AttendanceInfo = ({ userId }) => {
                             >
                                 {d && (
                                     <>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: '500' }}>{String(d.day).padStart(2, '0')}</div>
+                                        <div style={{ fontSize: '0.8rem', fontWeight: '500' }}>{String(d.day).padStart(2, '0')}</div>
                                         <div style={{
                                             position: 'absolute', top: '55%', left: '50%', transform: 'translate(-50%, -50%)',
-                                            fontSize: d.statusChar.length > 1 ? '0.9rem' : '1.2rem', 
+                                            fontSize: d.statusChar.length > 1 ? '0.8rem' : '1.1rem', 
                                             color: d.statusColor,
                                             fontWeight: 'bold',
                                             letterSpacing: '-0.5px'
                                         }}>
                                             {d.statusChar}
                                         </div>
-                                        <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', fontSize: '0.9rem' }}>
+                                        <div style={{ position: 'absolute', top: '0.25rem', right: '0.25rem', fontSize: '0.8rem' }}>
                                             {d.dayTypeIcon}
                                         </div>
-                                        {d.statusChar === 'P' && <div style={{ position: 'absolute', bottom: '0.25rem', right: '0.25rem', fontSize: '0.65rem', color: 'var(--text-muted)' }}>GEN</div>}
+                                        {d.statusChar === 'P' && <div style={{ position: 'absolute', bottom: '0.2rem', right: '0.2rem', fontSize: '0.6rem', color: 'var(--text-muted)' }}>GEN</div>}
                                     </>
                                 )}
                             </div>
@@ -205,9 +205,9 @@ const AttendanceInfo = ({ userId }) => {
                     </div>
 
                     {/* Legends Section */}
-                    <div style={{ marginTop: '2rem' }}>
-                        <h3 style={{ fontSize: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Legends</h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+                    <div style={{ marginTop: '1rem' }}>
+                        <h3 style={{ fontSize: '0.9rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem', marginBottom: '0.75rem' }}>Legends</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
                             <LegendItem char="P" label="Present" color="var(--secondary)" />
                             <LegendItem char="CL" label="Casual Leave" color="#A855F7" />
                             <LegendItem char="SL" label="Sick Leave" color="#A855F7" />
@@ -219,8 +219,8 @@ const AttendanceInfo = ({ userId }) => {
                             <LegendItem char="H" label="Holiday" color="var(--secondary)" />
                         </div>
 
-                        <h3 style={{ fontSize: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', margin: '1.5rem 0 1rem' }}>Day Type</h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
+                        <h3 style={{ fontSize: '0.9rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem', margin: '1rem 0 0.75rem' }}>Day Type</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem' }}>
                             <LegendItem icon="☕" label="Rest Day" />
                             <LegendItem icon="📺" label="Off Day" />
                             <LegendItem icon="⛱️" label="Holiday" />
@@ -231,68 +231,68 @@ const AttendanceInfo = ({ userId }) => {
                 </div>
 
                 {/* DETAIL PANEL SECTION */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div className="card shadow-sm" style={{ padding: '0', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                        <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '1rem' }}>
+                        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '0.75rem' }}>
                             <div style={{ textAlign: 'center' }}>
-                                <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{selectedDayData?.day ? String(selectedDayData.day).padStart(2, '0') : '--'}</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{selectedDayData ? new Date(selectedDayData.date).toLocaleDateString(undefined, { weekday: 'short' }) : 'Day'}</div>
+                                <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{selectedDayData?.day ? String(selectedDayData.day).padStart(2, '0') : '--'}</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{selectedDayData ? new Date(selectedDayData.date).toLocaleDateString(undefined, { weekday: 'short' }) : 'Day'}</div>
                             </div>
-                            <div style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '1rem' }}>
-                                <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>General(GEN)</div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Shift : 09:00 to 18:00</div>
+                            <div style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '0.75rem' }}>
+                                <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>General(GEN)</div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Shift : 09:00 to 18:00</div>
                             </div>
                             <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                                <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>General</div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Attendance Scheme</div>
+                                <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>General</div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Attendance Scheme</div>
                             </div>
                         </div>
 
-                        <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', textAlign: 'center', borderBottom: '1px solid var(--border-color)' }}>
-                            <div><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>First In</div><div style={{ fontSize: '0.9rem' }}>{selectedDayData?.record?.first_in || '-'}</div></div>
-                            <div><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Last Out</div><div style={{ fontSize: '0.9rem' }}>{selectedDayData?.record?.last_out || '-'}</div></div>
-                            <div><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Late In</div><div style={{ fontSize: '0.9rem' }}>-</div></div>
-                            <div><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Early Out</div><div style={{ fontSize: '0.9rem' }}>-</div></div>
+                        <div style={{ padding: '0.75rem', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', textAlign: 'center', borderBottom: '1px solid var(--border-color)' }}>
+                            <div><div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>First In</div><div style={{ fontSize: '0.85rem' }}>{selectedDayData?.record?.first_in || '-'}</div></div>
+                            <div><div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Last Out</div><div style={{ fontSize: '0.85rem' }}>{selectedDayData?.record?.last_out || '-'}</div></div>
+                            <div><div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Late In</div><div style={{ fontSize: '0.85rem' }}>-</div></div>
+                            <div><div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Early Out</div><div style={{ fontSize: '0.85rem' }}>-</div></div>
                         </div>
 
-                        <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', textAlign: 'center' }}>
-                            <div><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Work Hrs</div><div style={{ fontSize: '0.9rem' }}>{selectedDayData?.record?.total_work_hrs || '-'}</div></div>
-                            <div><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Break Hrs</div><div style={{ fontSize: '0.9rem' }}>-</div></div>
-                            <div><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Actual Work Hrs</div><div style={{ fontSize: '0.9rem' }}>{selectedDayData?.record?.actual_work_hrs || '-'}</div></div>
+                        <div style={{ padding: '0.75rem', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
+                            <div><div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Total Work Hrs</div><div style={{ fontSize: '0.85rem' }}>{selectedDayData?.record?.total_work_hrs || '-'}</div></div>
+                            <div><div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Break Hrs</div><div style={{ fontSize: '0.85rem' }}>-</div></div>
+                            <div><div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Actual Work Hrs</div><div style={{ fontSize: '0.85rem' }}>{selectedDayData?.record?.actual_work_hrs || '-'}</div></div>
                         </div>
                     </div>
 
-                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                        <h3 className="card-title" style={{ fontSize: '1rem' }}>Status Details</h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '0.5rem' }}>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Status</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Remarks</div>
+                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '0.75rem' }}>
+                        <h3 className="card-title" style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>Status Details</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem', marginBottom: '0.25rem' }}>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Status</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Remarks</div>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
-                            <div style={{ fontSize: '0.9rem' }}>{selectedDayData?.statusText || '-'}</div>
-                            <div style={{ fontSize: '0.9rem', color: selectedDayData?.record?.deduction ? '#EF4444' : 'inherit' }}>
+                            <div style={{ fontSize: '0.85rem' }}>{selectedDayData?.statusText || '-'}</div>
+                            <div style={{ fontSize: '0.85rem', color: selectedDayData?.record?.deduction ? '#EF4444' : 'inherit' }}>
                                 {selectedDayData?.record?.deduction ? `Penalty (₹${selectedDayData.record.deduction})` : '-'}
                             </div>
                         </div>
                     </div>
 
-                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                        <h3 className="card-title" style={{ fontSize: '1rem' }}>Session Details</h3>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '0.75rem' }}>
+                        <h3 className="card-title" style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>Session Details</h3>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                             <thead style={{ background: '#f8fafc', textAlign: 'left' }}>
                                 <tr>
-                                    <th style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-color)' }}>Session</th>
-                                    <th style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-color)' }}>Session Timing</th>
-                                    <th style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-color)' }}>First In</th>
-                                    <th style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-color)' }}>Last Out</th>
+                                    <th style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>Session</th>
+                                    <th style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>Timing</th>
+                                    <th style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>In</th>
+                                    <th style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>Out</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-color)' }}>Day Session</td>
-                                    <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-color)' }}>09:00 - 18:00</td>
-                                    <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-color)' }}>{selectedDayData?.record?.first_in || '-'}</td>
-                                    <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-color)' }}>{selectedDayData?.record?.last_out || '-'}</td>
+                                    <td style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>Day Session</td>
+                                    <td style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>09-18</td>
+                                    <td style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>{selectedDayData?.record?.first_in || '-'}</td>
+                                    <td style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>{selectedDayData?.record?.last_out || '-'}</td>
                                 </tr>
                             </tbody>
                         </table>

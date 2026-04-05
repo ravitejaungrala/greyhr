@@ -43,6 +43,15 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
                     empDataMapping.pan_no = employee.pan_no || '';
                     empDataMapping.doj = employee.joining_date ? employee.joining_date.split('T')[0] : '';
                     empDataMapping.joining_date = employee.joining_date ? employee.joining_date.split('T')[0] : '';
+                    empDataMapping.dob = employee.dob || '';
+                    empDataMapping.uan_number = employee.uan_number || employee.uan || '';
+                    empDataMapping.band = employee.band || '';
+                    empDataMapping.location = employee.location || 'Hyderabad';
+                    
+                    // NEW: Pre-fill from persistent payroll settings
+                    if (docType === 'payslip' && employee.payroll_settings) {
+                        Object.assign(empDataMapping, employee.payroll_settings);
+                    }
                 }
 
                 // Initialize empty string for each field if not in initialData
@@ -137,6 +146,15 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
                             monthly_salary: formData.total_earnings ? parseInt(formData.total_earnings) : undefined,
                             joining_date: formData.doj || formData.joining_date || undefined,
                         };
+
+                        // NEW: Auto-persist payroll components (hike protection)
+                        if (docType === 'payslip') {
+                            updatePayload.payroll_settings = { ...formData };
+                            // Cleanup transient data not needed in profile
+                            delete updatePayload.payroll_settings.emp_name;
+                            delete updatePayload.payroll_settings.month_year;
+                        }
+
                         await fetch(`${apiUrl}/admin/employee/${employee.employee_id}`, {
                             method: 'PATCH',
                             headers: { 'Content-Type': 'application/json' },

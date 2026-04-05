@@ -41,17 +41,32 @@ const HomeDashboard = ({ user, setUser }) => {
     const [dashboardData, setDashboardData] = useState(null);
     const [dashboardLoading, setDashboardLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('dashboard');
+    const [todayStatus, setTodayStatus] = useState({ last_punch: null, status: 'Not Signed In' });
+    const [punchLoading, setPunchLoading] = useState(false);
+    const [showCamera, setShowCamera] = useState(false);
+    const [punchAction, setPunchAction] = useState(null);
 
     const apiUrl = API_URL;
 
     useEffect(() => {
         if (user.status === 'approved') {
             fetchDashboardData();
+            fetchPunchStatus();
         }
         if (user.status === 'incomplete_profile') {
             loadMediapipe();
         }
     }, [user.status]);
+
+    const fetchPunchStatus = async () => {
+        try {
+            const res = await fetch(`${apiUrl}/employee/attendance/status?employee_id=${user.employee_id}`);
+            const data = await res.json();
+            setTodayStatus(data);
+        } catch (err) {
+            console.error("Error fetching punch status:", err);
+        }
+    };
 
     const loadMediapipe = async () => {
         if (window.FaceMesh) return;
@@ -211,6 +226,61 @@ const HomeDashboard = ({ user, setUser }) => {
         setStreamActive(false);
         setLivenessStatus('none');
         setReferenceFace(capturedFaces.front); // use front face as user's main reference UI
+    };
+
+    const handleDashboardPunch = async (action) => {
+        setPunchAction(action);
+        setPunchLoading(true);
+
+        try {
+            // 1. Get Camera
+            const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            
+            // 2. We need a temporary video element to capture the frame
+            const tempVideo = document.createElement('video');
+            tempVideo.srcObject = mediaStream;
+            await tempVideo.play();
+
+            // Small delay to let camera focus/adjust
+            await new Promise(r => setTimeout(r, 600));
+
+            // 3. Capture Frame
+            const canvas = document.createElement('canvas');
+            canvas.width = tempVideo.videoWidth;
+            canvas.height = tempVideo.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(tempVideo, 0, 0, canvas.width, canvas.height);
+            const imageBase64 = canvas.toDataURL('image/jpeg');
+
+            // 4. Stop Camera
+            mediaStream.getTracks().forEach(t => t.stop());
+
+            // 5. Submit to Backend
+            const response = await fetch(`${apiUrl}/attendance/scan`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    employee_id: user.employee_id,
+                    image_base64: imageBase64,
+                    location: "Dashboard Mobile/Web",
+                    action_type: action
+                })
+            });
+
+            if (response.ok) {
+                fetchPunchStatus();
+                fetchDashboardData();
+                alert(`Successfully ${action === 'sign_in' ? 'Signed In' : 'Signed Out'}!`);
+            } else {
+                alert("Punch failed. Please try again.");
+            }
+        } catch (err) {
+            console.error("Dashboard punch error:", err);
+            alert("Camera error or permission denied.");
+        } finally {
+            setPunchLoading(false);
+            setPunchAction(null);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -900,20 +970,40 @@ const HomeDashboard = ({ user, setUser }) => {
             {activeTab === 'dashboard' ? (
                 <div className="grid-3">
                     {/* Daily Assistant Agent */}
-                    <div className="card glass-card" style={{ borderTop: '4px solid var(--primary)', position: 'relative', overflow: 'hidden' }}>
+                    <div className="card glass-card" style={{ borderTop: '4px solid var(--primary)', position: 'relative', overflow: 'hidden', padding: '1rem' }}>
                         <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: 'var(--primary)', opacity: 0.05, borderRadius: '50%' }}></div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
-                            <div style={{ width: '40px', height: '40px', background: 'var(--accent-blue)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <span style={{ fontSize: '1.25rem' }}>🤖</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ width: '32px', height: '32px', background: 'var(--accent-blue)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ fontSize: '1rem' }}>🤖</span>
                             </div>
-                            <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1.15rem' }}>Smart Daily Assistant</h2>
+                            <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1rem' }}>Smart Daily Assistant</h2>
                         </div>
 
-                        <div style={{ backgroundColor: 'rgba(10, 102, 194, 0.08)', padding: '1.25rem', borderRadius: '16px', marginBottom: '1.5rem', border: '1px solid rgba(10, 102, 194, 0.1)' }}>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-light)', lineHeight: '1.6' }}>
-                                <strong style={{ color: 'var(--primary)', display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>AI Insight</strong>
+                        <div style={{ backgroundColor: 'rgba(10, 102, 194, 0.05)', padding: '1rem', borderRadius: '14px', marginBottom: '1rem', border: '1px solid rgba(10, 102, 194, 0.1)' }}>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-light)', lineHeight: '1.5', margin: 0 }}>
+                                <strong style={{ color: 'var(--primary)', display: 'block', marginBottom: '0.15rem', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>AI Insight</strong>
                                 {dashboardLoading ? 'Analyzing your workspace...' : (dashboardData?.insight_message || 'Loading your daily analysis...')}
                             </p>
+                        </div>
+
+                        {/* Integrated Attendance Controls */}
+                        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                            <button 
+                                className="btn btn-primary" 
+                                style={{ flex: 1, padding: '0.65rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                                onClick={() => handleDashboardPunch('sign_in')}
+                                disabled={punchLoading || todayStatus.status === 'Signed In'}
+                            >
+                                {punchAction === 'sign_in' ? '...' : '🔘 Sign In'}
+                            </button>
+                            <button 
+                                className="btn btn-secondary" 
+                                style={{ flex: 1, padding: '0.65rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                                onClick={() => handleDashboardPunch('sign_out')}
+                                disabled={punchLoading || todayStatus.status === 'Signed Out' || todayStatus.status === 'Not Signed In'}
+                            >
+                                {punchAction === 'sign_out' ? '...' : '🔘 Sign Out'}
+                            </button>
                         </div>
 
                         <h3 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Upcoming Highlights</h3>
@@ -962,59 +1052,59 @@ const HomeDashboard = ({ user, setUser }) => {
                     </div>
 
                     {/* AI Workforce Insights */}
-                    <div className="card glass-card">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
-                            <div style={{ width: '40px', height: '40px', background: 'rgba(124, 58, 237, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <span style={{ fontSize: '1.25rem' }}>📊</span>
+                    <div className="card glass-card" style={{ padding: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ width: '32px', height: '32px', background: 'rgba(124, 58, 237, 0.1)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ fontSize: '1rem' }}>📊</span>
                             </div>
-                            <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1.15rem' }}>Workforce Insights</h2>
+                            <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1rem' }}>Workforce Insights</h2>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.5rem' }}>
-                            <div style={{ padding: '1.25rem', background: 'var(--bg-color)', borderRadius: '20px', textAlign: 'center' }}>
-                                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '-0.02em' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                            <div style={{ padding: '0.75rem', background: 'var(--bg-color)', borderRadius: '16px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '-0.02em' }}>
                                     {dashboardLoading ? '--' : (dashboardData?.productivity_score || 0)}%
                                 </div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginTop: '0.25rem' }}>Productivity</div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Productivity</div>
                             </div>
-                            <div style={{ padding: '1.25rem', background: 'var(--bg-color)', borderRadius: '20px', textAlign: 'center' }}>
-                                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#10b981', letterSpacing: '-0.02em' }}>
+                            <div style={{ padding: '0.75rem', background: 'var(--bg-color)', borderRadius: '16px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#10b981', letterSpacing: '-0.02em' }}>
                                     {dashboardLoading ? '--' : (dashboardData?.attendance_percentage || 0)}%
                                 </div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginTop: '0.25rem' }}>Attendance</div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Attendance</div>
                             </div>
                         </div>
 
-                        <div style={{ padding: '1rem 0' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.85rem', fontWeight: 600 }}>
+                        <div style={{ padding: '0.5rem 0' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600 }}>
                                 <span style={{ color: 'var(--text-light)' }}>Burnout Risk Assessment</span>
                                 <span style={{ color: 'var(--primary)' }}>{dashboardLoading ? 'Calculating...' : (dashboardData?.burnout_risk || 'N/A')}</span>
                             </div>
-                            <div style={{ height: '8px', backgroundColor: 'var(--border-color)', borderRadius: '10px', overflow: 'hidden' }}>
+                            <div style={{ height: '6px', backgroundColor: 'var(--border-color)', borderRadius: '10px', overflow: 'hidden' }}>
                                 <div style={{ height: '100%', width: `${dashboardData?.burnout_value || 0}%`, background: 'var(--main-gradient)', borderRadius: '10px', transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)' }}></div>
                             </div>
                         </div>
                     </div>
 
                     {/* Policy Notice */}
-                    <div className="card shadow-sm" style={{ borderLeft: '4px solid var(--primary)', background: '#ffffff', borderRight: '1px solid var(--border-color)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
-                            <div style={{ width: '40px', height: '40px', background: 'rgba(10, 102, 194, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <span style={{ fontSize: '1.2rem' }}>📜</span>
+                    <div className="card shadow-sm" style={{ borderLeft: '4px solid var(--primary)', background: '#ffffff', borderRight: '1px solid var(--border-color)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', padding: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ width: '32px', height: '32px', background: 'rgba(10, 102, 194, 0.1)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ fontSize: '1.1rem' }}>📜</span>
                             </div>
-                            <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1.15rem' }}>Company Policy</h2>
+                            <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1rem' }}>Company Policy</h2>
                         </div>
-                        <div style={{ fontSize: '0.9rem', lineHeight: '1.7', color: 'var(--text-light)' }}>
-                            <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ width: '6px', height: '6px', background: 'var(--primary)', borderRadius: '50%' }}></div>
-                                <span><strong>Hours:</strong> 11 AM - 8 PM (Flexible)</span>
+                        <div style={{ fontSize: '0.85rem', lineHeight: '1.6', color: 'var(--text-light)' }}>
+                            <div style={{ marginBottom: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                                <div style={{ width: '5px', height: '5px', background: 'var(--primary)', borderRadius: '50%' }}></div>
+                                <span><strong>Hours:</strong> 11 AM - 8 PM</span>
                             </div>
-                            <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ width: '6px', height: '6px', background: 'var(--primary)', borderRadius: '50%' }}></div>
-                                <span><strong>Leaves:</strong> 1.5 days/month for FTE.</span>
+                            <div style={{ marginBottom: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                                <div style={{ width: '5px', height: '5px', background: 'var(--primary)', borderRadius: '50%' }}></div>
+                                <span><strong>Leaves:</strong> 1.5 days/month FTE.</span>
                             </div>
-                            <div style={{ background: 'var(--bg-color)', padding: '0.75rem', borderRadius: '12px', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                                * Strict adherence required to avoid attendance discrepancies.
+                            <div style={{ background: 'var(--bg-color)', padding: '0.5rem', borderRadius: '10px', fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                                * Adherence required to avoid discrepancies.
                             </div>
                         </div>
                     </div>

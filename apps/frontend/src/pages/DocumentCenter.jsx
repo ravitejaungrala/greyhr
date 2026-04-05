@@ -9,6 +9,7 @@ const DocumentCenter = ({ user }) => {
     const [signatureName, setSignatureName] = useState('');
     const [signingDate, setSigningDate] = useState(new Date().toISOString().split('T')[0]);
     const [submitting, setSubmitting] = useState(false);
+    const [requestLoading, setRequestLoading] = useState({}); // Tracking which doc is being requested
     
     const apiUrl = API_URL;
 
@@ -81,6 +82,33 @@ const DocumentCenter = ({ user }) => {
         }
     };
 
+    const handleRequestDocument = async (type) => {
+        if (requestLoading[type]) return;
+        
+        setRequestLoading(prev => ({ ...prev, [type]: true }));
+        try {
+            const res = await fetch(`${apiUrl}/employee/request-document`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    employee_id: user.employee_id,
+                    doc_type: type,
+                    reason: `System Request from ${user.name}`
+                })
+            });
+            if (res.ok) {
+                alert(`Request for ${type.replace('_', ' ')} sent to HR department.`);
+                setRequestLoading(prev => ({ ...prev, [type]: 'sent' }));
+            } else {
+                alert("Failed to send request. Please contact HR directly.");
+            }
+        } catch (err) {
+            console.error("Error requesting document:", err);
+        } finally {
+            setRequestLoading(prev => ({ ...prev, [type]: false }));
+        }
+    };
+
     const findDoc = (type) => documents.find(d => d.type === type);
 
     return (
@@ -117,32 +145,50 @@ const DocumentCenter = ({ user }) => {
                         </div>
 
                         {/* Relieving / Internship Completion */}
-                        <div className="card" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
+                        <div className="card shadow-sm-premium" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.25rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
-                                    <div style={{ fontWeight: 'bold' }}>📄 {user.employment_type === 'Intern' ? 'Internship Completion' : 'Relieving Letter'}</div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Official service certificate</div>
+                                    <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>📄 {user.employment_type === 'Intern' ? 'Intern' : 'Relieving'} Letter</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Official service certificate</div>
                                 </div>
-                                {findDoc(user.employment_type === 'Intern' ? 'internship_completion' : 'relieving') ? (
-                                    <button className="btn btn-primary" onClick={() => handleDownloadDocument(user.employment_type === 'Intern' ? 'internship_completion' : 'relieving')}>Download</button>
-                                ) : (
-                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Not Available</span>
-                                )}
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    {findDoc(user.employment_type === 'Intern' ? 'internship_completion' : 'relieving') ? (
+                                        <button className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => handleDownloadDocument(user.employment_type === 'Intern' ? 'internship_completion' : 'relieving')}>Download</button>
+                                    ) : (
+                                        <button 
+                                            className="btn btn-secondary" 
+                                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', color: 'var(--primary)', borderColor: 'var(--primary)' }}
+                                            onClick={() => handleRequestDocument(user.employment_type === 'Intern' ? 'internship_completion' : 'relieving')}
+                                            disabled={requestLoading[user.employment_type === 'Intern' ? 'internship_completion' : 'relieving'] === 'sent'}
+                                        >
+                                            {requestLoading[user.employment_type === 'Intern' ? 'internship_completion' : 'relieving'] === 'sent' ? '✅ Requested' : 'Request'}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
                         {/* Experience Certificate */}
-                        <div className="card" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
+                        <div className="card shadow-sm-premium" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.25rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
-                                    <div style={{ fontWeight: 'bold' }}>📄 Experience Certificate</div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Proof of service & performance</div>
+                                    <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>📄 Experience Certificate</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Proof of service & performance</div>
                                 </div>
-                                {findDoc('experience') ? (
-                                    <button className="btn btn-primary" onClick={() => handleDownloadDocument('experience')}>Download</button>
-                                ) : (
-                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Not Available</span>
-                                )}
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    {findDoc('experience') ? (
+                                        <button className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => handleDownloadDocument('experience')}>Download</button>
+                                    ) : (
+                                        <button 
+                                            className="btn btn-secondary" 
+                                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', color: 'var(--primary)', borderColor: 'var(--primary)' }}
+                                            onClick={() => handleRequestDocument('experience')}
+                                            disabled={requestLoading['experience'] === 'sent'}
+                                        >
+                                            {requestLoading['experience'] === 'sent' ? '✅ Requested' : 'Request'}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
 

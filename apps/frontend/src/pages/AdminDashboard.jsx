@@ -190,6 +190,11 @@ const AdminDashboard = ({ activeTab, user }) => {
                 const sRes = await fetch(`${apiUrl}/admin/salary/settings`);
                 const sData = await sRes.json();
                 setSalarySettings(sData);
+
+                // Fetch Employees for Payslip Manager
+                const eRes = await fetch(`${apiUrl}/auth/admin/employees`);
+                const eData = await eRes.json();
+                setApprovedEmployees(eData.employees || []);
             } else if (activeTab === 'announcements') {
                 const res = await fetch(`${apiUrl}/announcement`);
                 const data = await res.json();
@@ -2681,7 +2686,10 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 designation: emp.position || 'Software Engineer',
                                                 month_year: payslipManagerMonth,
                                                 gross_salary: emp.monthly_salary || 50000,
-                                                        net_salary: (emp.in_hand_salary && emp.in_hand_salary > 0) ? emp.in_hand_salary : (emp.monthly_salary ? emp.monthly_salary - 200 : 49800)
+                                                net_salary: (emp.in_hand_salary && emp.in_hand_salary > 0) ? emp.in_hand_salary : (emp.monthly_salary ? emp.monthly_salary - 200 : 49800),
+                                                
+                                                // NEW: Infuse persistent payroll structure if available
+                                                ...(emp.payroll_settings || {})
                                             };
                                             try {
                                                 const res = await fetch(`${apiUrl}/enhanced-docs/generate`, {
