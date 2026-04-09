@@ -45,9 +45,7 @@ async def startup_event():
         sync_all_to_vector_db(mongo_db)
 
 print("Lambda handler invoked")
-# Mangum adapter for AWS Lambda. 
-# extra_binary_media_types is CRITICAL for serving images and PDFs correctly from Lambda.
-handler = Mangum(app, lifespan="off", extra_binary_media_types=["image/jpeg", "image/png", "application/pdf"])
+handler = Mangum(app, lifespan="off")
 
 if __name__ == "__main__":
     import uvicorn

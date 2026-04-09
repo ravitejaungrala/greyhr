@@ -22,7 +22,6 @@ class S3Database:
         
         if not self.mock_mode:
             self.s3_client = boto3.client('s3', region_name=self.region)
-            print(f"S3 Client initialized in region: {self.region} for bucket: {self.bucket_name}")
 
     def save_data(self, key: str, data: dict):
         if self.mock_mode:
