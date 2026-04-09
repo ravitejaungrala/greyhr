@@ -58,7 +58,7 @@ logo_path = os.path.join(static_dir, 'logo.png').replace('\\', '/')
 signature_path = os.path.join(static_dir, 'signature.png').replace('\\', '/')
 
 MASTER_PROMPT = """
-Act as the HR Operations Backend for DHANADURGA. 
+Act as the HR Operations Backend for NEUZENAI. 
 Analyze the input and return a JSON object with ONLY the exact field names listed below.
 
 ### Fields by Document Type:

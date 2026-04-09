@@ -126,9 +126,9 @@ const LoginRegister = ({ onLoginSuccess }) => {
                         <>
                             <div className="login-header">
                                 <div className="login-logo-centered">
-                                    <img src="/icon (2).png" alt="Dhanadurga Logo" />
+                                    <img src="/icon (2).png" alt="NeuzenAI Logo" />
                                 </div>
-                                <h2>{mode === 'login' ? 'Welcome Back' : 'Join Dhanadurga'}</h2>
+                                <h2>{mode === 'login' ? 'Welcome Back' : 'Join NeuzenAI'}</h2>
                                 <p>{mode === 'login' ? 'Sign in to access your HRMS dashboard' : 'Create your employee account below'}</p>
                             </div>
 

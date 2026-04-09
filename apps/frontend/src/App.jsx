@@ -29,16 +29,16 @@ const DynamicTitle = () => {
   
   useEffect(() => {
     const path = location.pathname;
-    let title = 'Dhanadurga HRMS';
+    let title = 'NeuzenAI HRMS';
     
-    if (path === '/login') title = 'Login | Dhanadurga';
-    else if (path === '/admin/dashboard') title = 'Admin Dashboard | Dhanadurga';
-    else if (path === '/employee/pulse') title = 'Pulse Dashboard | Dhanadurga';
-    else if (path === '/employee/attendance') title = 'Attendance | Dhanadurga';
-    else if (path === '/employee/salary') title = 'Salary | Dhanadurga';
-    else if (path === '/employee/leaves') title = 'Leaves | Dhanadurga';
-    else if (path === '/admin/intelligence') title = 'HR Intelligence | Dhanadurga';
-    else if (path.includes('admin/')) title = 'Admin | Dhanadurga';
+    if (path === '/login') title = 'Login | NeuzenAI';
+    else if (path === '/admin/dashboard') title = 'Admin Dashboard | NeuzenAI';
+    else if (path === '/employee/pulse') title = 'Pulse Dashboard | NeuzenAI';
+    else if (path === '/employee/attendance') title = 'Attendance | NeuzenAI';
+    else if (path === '/employee/salary') title = 'Salary | NeuzenAI';
+    else if (path === '/employee/leaves') title = 'Leaves | NeuzenAI';
+    else if (path === '/admin/intelligence') title = 'HR Intelligence | NeuzenAI';
+    else if (path.includes('admin/')) title = 'Admin | NeuzenAI';
     
     document.title = title;
   }, [location]);
@@ -190,7 +190,7 @@ function AppContent() {
                 <img src="/icon (2).png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
              </div>
              <div className="brand-text-group">
-                <div className="brand-main">Dhanadurga</div>
+                <div className="brand-main">NeuzenAI</div>
                 <div className="brand-sub" style={{ color: 'var(--primary)' }}>HRMS SOLUTIONS</div>
              </div>
           </div>
@@ -291,7 +291,7 @@ function AppContent() {
               </NavGroup>
 
               <NavItem path="/employee/docs" icon={Folder} title="Collection" subtitle="DOCUMENTS" />
-              <NavItem path="/employee/assistant" icon={BrainCircuit} title="AI Assistant" subtitle="DHANADURGA SPECIALIST" />
+              <NavItem path="/employee/assistant" icon={BrainCircuit} title="AI Assistant" subtitle="NEUZENAI SPECIALIST" />
             </>
           )}
         </nav>
@@ -303,7 +303,7 @@ function AppContent() {
               </div>
               <div className="user-details">
                  <div className="user-name-bold">{user.name}</div>
-                 <div className="user-company-sub" style={{ color: 'var(--primary)' }}>DHANADURGA</div>
+                 <div className="user-company-sub" style={{ color: 'var(--primary)' }}>NEUZENAI</div>
               </div>
               <div className="logout-btn-wrapper" onClick={handleLogout}>
                  <LogOut size={20} className="logout-icon-gray" />

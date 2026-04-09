@@ -28,4 +28,4 @@ def check_user(email):
         print(f"Error: {e}")
 
 if __name__ == "__main__":
-    check_user("vennala@dhanadurga.com")
+    check_user("vennala@neuzenai.com")

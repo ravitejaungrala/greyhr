@@ -22,4 +22,4 @@ def check_user(email):
         print(f"- {l['leave_type']}: {l['start_date']} to {l['end_date']}")
 
 if __name__ == "__main__":
-    check_user("vennala@dhanadurga.com")
+    check_user("vennala@neuzenai.com")

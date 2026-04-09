@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm';
 
 const EmployeeAssistant = ({ user }) => {
     const [messages, setMessages] = useState([
-        { role: 'assistant', content: `Welcome back, **${user?.name || 'Employee'}**! I am the Dhanadurga AI Specialist. 
+        { role: 'assistant', content: `Welcome back, **${user?.name || 'Employee'}**! I am the NeuzenAI AI Specialist. 
 
 I'm here to handle your work logistics, including:
 *   **Leave Applications**: Casual, Sick, or Privilege.

@@ -32,7 +32,7 @@ def get_admin_emails(approver_id=None):
     
     # Ultimate fallback to hardcoded admin if still none found
     if not emails:
-        emails = ["admin@dhanadurga.com"]
+        emails = ["contact@neuzenai.com"]
     return emails
 
 def send_approval_email(recipient_emails, subject, body_html, cc_emails=None):
@@ -41,7 +41,7 @@ def send_approval_email(recipient_emails, subject, body_html, cc_emails=None):
     if not recipient_emails or not isinstance(recipient_emails, list):
         print(f"SMTP Error: Invalid recipients list provided: {recipient_emails}")
         # Final emergency fallback if list is totally empty or corrupted
-        recipient_emails = ["admin@dhanadurga.com"]
+        recipient_emails = ["contact@neuzenai.com"]
 
     # Sanitize CC emails
     safe_cc = []
@@ -51,7 +51,7 @@ def send_approval_email(recipient_emails, subject, body_html, cc_emails=None):
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"Dhanadurga HRMS <{SMTP_USER}>"
+        msg["From"] = f"NeuzenAI HRMS <{SMTP_USER}>"
         msg["To"] = ", ".join(recipient_emails)
         
         if safe_cc:
@@ -112,7 +112,7 @@ def get_premium_template(title, employee_name, details, id_val, type_of_request=
                         <tr>
                             <td align="center" style="background-color: {c_primary}; padding: 24px;">
                                 <div style="color: #ffffff; font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">
-                                    Dhanadurga HRMS
+                                    NeuzenAI HRMS
                                 </div>
                             </td>
                         </tr>
@@ -142,7 +142,7 @@ def get_premium_template(title, employee_name, details, id_val, type_of_request=
                                 </table>
 
                                 <div style="margin-top: 32px; border-top: 1px solid #e5e7eb; padding-top: 24px; text-align: center;">
-                                    <a href="https://dhanadurgahr.web.app/admin" style="color: {c_primary}; font-size: 13px; font-weight: 600; text-decoration: none;">View in Admin Dashboard &rarr;</a>
+                                    <a href="https://neuzenaihr.web.app/admin" style="color: {c_primary}; font-size: 13px; font-weight: 600; text-decoration: none;">View in Admin Dashboard &rarr;</a>
                                 </div>
                             </td>
                         </tr>
@@ -150,7 +150,7 @@ def get_premium_template(title, employee_name, details, id_val, type_of_request=
                         <!-- Footer -->
                         <tr>
                             <td style="padding: 32px; background-color: #f9fafb; text-align: center; border-top: 1px solid #f3f4f6;">
-                                <p style="margin: 0; font-size: 12px; color: #9ca3af;">&copy; 2026 Dhanadurga IT Solutions. Automated system notification.</p>
+                                <p style="margin: 0; font-size: 12px; color: #9ca3af;">&copy; 2026 NeuzenAI IT Solutions. Automated system notification.</p>
                             </td>
                         </tr>
                     </table>

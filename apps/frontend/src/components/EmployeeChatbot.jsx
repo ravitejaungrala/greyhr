@@ -5,7 +5,7 @@ import axios from 'axios';
 const EmployeeChatbot = ({ user }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
-        { role: 'assistant', content: `Hello ${user?.name || 'there'}! I'm your Dhanadurga Assistant. How can I help you today? You can ask me to apply for leaves, request items, or check your status.` }
+        { role: 'assistant', content: `Hello ${user?.name || 'there'}! I'm your NeuzenAI Assistant. How can I help you today? You can ask me to apply for leaves, request items, or check your status.` }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);

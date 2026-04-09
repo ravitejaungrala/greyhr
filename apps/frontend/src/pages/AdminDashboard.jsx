@@ -2763,12 +2763,12 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 />
                             </div>
                             <div>
-                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Company Email (@dhanadurga.com)</label>
+                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Company Email (@neuzenai.com)</label>
                                 <input 
                                     required 
                                     type="email" 
                                     className="premium-input" 
-                                    placeholder="john@dhanadurga.com"
+                                    placeholder="john@neuzenai.com"
                                     value={addEmpForm.email} 
                                     onChange={e => setAddEmpForm({...addEmpForm, email: e.target.value})} 
                                     style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f9fafb', color: '#1f2937' }}

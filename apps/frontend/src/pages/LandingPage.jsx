@@ -56,7 +56,7 @@ const LandingPage = ({ onLoginClick }) => {
         <div className="navbar-container">
           <div className="logo-container">
             <img src="/icon (2).png" alt="Logo" className="logo-img" />
-            <span className="logo-text">Dhanadurga HRMS</span>
+            <span className="logo-text">NeuzenAI HRMS</span>
           </div>
           
           <div className="nav-links">
@@ -83,7 +83,7 @@ const LandingPage = ({ onLoginClick }) => {
           line1: "Modernize Your",
           line2: "Workforce Management"
         }}
-        subtitle="Experience the future of HR with Dhanadurga HRMS. AI-powered automation, seamless payroll, and intelligent employee insights — all in one place."
+        subtitle="Experience the future of HR with NeuzenAI HRMS. AI-powered automation, seamless payroll, and intelligent employee insights — all in one place."
         buttons={{
           primary: {
             text: "Get Started Now",
@@ -126,7 +126,7 @@ const LandingPage = ({ onLoginClick }) => {
         <h2 className="cta-title">Ready to transform your HR?</h2>
         <p className="cta-subtitle">Join hundreds of companies that use our HRMS to power their businesses.</p>
         <GradientButton onClick={onLoginClick}>
-          Join Dhanadurga Today
+          Join NeuzenAI Today
         </GradientButton>
       </section>
     </div>

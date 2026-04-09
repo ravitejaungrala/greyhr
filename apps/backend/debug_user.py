@@ -11,4 +11,4 @@ def check_user(email):
     print(json.dumps(user, indent=2))
 
 if __name__ == "__main__":
-    check_user("vennala@dhanadurga.com")
+    check_user("vennala@neuzenai.com")
