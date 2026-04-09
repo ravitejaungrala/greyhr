@@ -42,7 +42,9 @@ from api.admin_agent import (
     sync_employee_to_vector_db, 
     sync_all_to_vector_db, 
     sync_leave_request_to_vector_db, 
-    sync_all_leaves_to_vector_db
+    sync_all_leaves_to_vector_db,
+    get_vector_inventory,
+    clear_vector_db
 )
 
 router = APIRouter()
@@ -1240,9 +1242,12 @@ def get_monthly_salary_report(month_year: str):
 
 @router.get("/admin/photos/{photo_key:path}")
 def get_admin_photo(photo_key: str):
+    """
+    Serves images directly from S3. 
+    Crucial for displaying employee photos and attendance scans.
+    """
     image_bytes = s3_db.get_image(photo_key)
     if not image_bytes:
-        # For development/mock, if image is not found, we could return a placeholder or 404
         return Response(status_code=404)
         
     return Response(content=image_bytes, media_type="image/jpeg")
@@ -3321,12 +3326,7 @@ async def admin_ai_copilot(request: AdminCopilotRequest):
     answer = await process_admin_query(request.query)
     return {"answer": answer}
 
-@router.get("/admin/photos/{key:path}")
-def serve_s3_photo(key: str):
-    image_bytes = s3_db.get_image(key)
-    if image_bytes:
-        return Response(content=image_bytes, media_type="image/jpeg")
-    return {"error": "Photo not found"}
+# Removed duplicate serve_s3_photo route to prevent conflict with get_admin_photo at line 1241.
 
 # Include enhanced document system routes
 router.include_router(enhanced_router, prefix="")

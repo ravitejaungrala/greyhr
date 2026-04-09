@@ -9,8 +9,8 @@ load_dotenv()
 class S3Database:
     def __init__(self):
         # In a real environment, load from environment variables
-        self.bucket_name = os.getenv("S3_BUCKET_NAME", "ai-workforce-os-mock-bucket")
-        self.region = os.getenv("AWS_REGION", "us-east-1")
+        self.bucket_name = os.getenv("S3_BUCKET_NAME", "neuzenai-hrms-storage")
+        self.region = os.getenv("AWS_REGION", "ap-south-1")
         
         # Detect if we're on AWS Lambda or have explicit credentials
         is_lambda = os.getenv("AWS_LAMBDA_FUNCTION_NAME") is not None
@@ -21,7 +21,8 @@ class S3Database:
         self.local_storage = {}
         
         if not self.mock_mode:
-            self.s3_client = boto3.client('s3')
+            self.s3_client = boto3.client('s3', region_name=self.region)
+            print(f"S3 Client initialized in region: {self.region} for bucket: {self.bucket_name}")
 
     def save_data(self, key: str, data: dict):
         if self.mock_mode:
