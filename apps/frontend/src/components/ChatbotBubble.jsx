@@ -293,7 +293,7 @@ const ChatbotBubble = () => {
                     margin: 0.5rem 0;
                 }
                 .markdown-content strong {
-                    color: #1E293B;
+                    color: #000000;
                     font-weight: 600;
                 }
             `}</style>

@@ -160,9 +160,9 @@ How can I power your decisions today?` }
                         scrollbarWidth: 'thin'
                     }}>
                         {loadingEmps ? (
-                            <div style={{ fontSize: '0.75rem', color: '#64748b', textAlign: 'center', padding: '1rem' }}>Loading directory...</div>
+                            <div style={{ fontSize: '0.75rem', color: '#000000', textAlign: 'center', padding: '1rem' }}>Loading directory...</div>
                         ) : filteredEmployees.length === 0 ? (
-                            <div style={{ fontSize: '0.75rem', color: '#64748b', textAlign: 'center', padding: '1rem' }}>No matches found</div>
+                            <div style={{ fontSize: '0.75rem', color: '#000000', textAlign: 'center', padding: '1rem' }}>No matches found</div>
                         ) : (
                             filteredEmployees.map((emp, i) => (
                                 <button 
@@ -182,8 +182,8 @@ How can I power your decisions today?` }
                                         gap: '0.2rem'
                                     }}
                                 >
-                                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1E293B' }}>{emp.name}</div>
-                                    <div style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 600 }}>{emp.employee_id}</div>
+                                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#000000' }}>{emp.name}</div>
+                                    <div style={{ fontSize: '0.65rem', color: '#000000', fontWeight: 600 }}>{emp.employee_id}</div>
                                 </button>
                             ))
                         )}
@@ -230,7 +230,7 @@ How can I power your decisions today?` }
                                 <div style={{ 
                                     padding: '1.25rem', 
                                     background: msg.role === 'user' ? 'var(--primary)' : 'white', 
-                                    color: msg.role === 'user' ? 'white' : '#1e293b',
+                                    color: msg.role === 'user' ? 'white' : '#000000',
                                     borderRadius: msg.role === 'user' ? '20px 4px 20px 20px' : '4px 20px 20px 20px',
                                     boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
                                     fontSize: '0.95rem',
@@ -259,7 +259,7 @@ How can I power your decisions today?` }
                                 <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'linear-gradient(135deg, #4A90E2 0%, #9013FE 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
                                     <TrendingUp size={24} className="animate-pulse" />
                                 </div>
-                                <div style={{ padding: '1.25rem', background: '#f8fafc', borderRadius: '4px 20px 20px 20px', color: '#64748b', fontStyle: 'italic', fontSize: '0.9rem' }}>
+                                <div style={{ padding: '1.25rem', background: '#f8fafc', borderRadius: '4px 20px 20px 20px', color: '#000000', fontStyle: 'italic', fontSize: '0.9rem' }}>
                                     <span className="scanning-glow">Aggregating Intelligence...</span>
                                 </div>
                             </div>
@@ -328,7 +328,7 @@ How can I power your decisions today?` }
                     box-shadow: 0 4px 12px rgba(74, 144, 226, 0.1);
                 }
                 .scanning-glow {
-                    background: linear-gradient(90deg, #64748b 0%, #4A90E2 50%, #64748b 100%);
+                    background: linear-gradient(90deg, #000000 0%, #4A90E2 50%, #000000 100%);
                     background-size: 200% auto;
                     color: transparent;
                     -webkit-background-clip: text;

@@ -123,7 +123,7 @@ How can I power your workday today?` }
                     </div>
 
                     <div style={{ marginTop: 'auto', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.75rem', fontWeight: 600 }}>ASSISTANT STATUS</div>
+                        <div style={{ fontSize: '0.75rem', color: '#000000', marginBottom: '0.75rem', fontWeight: 600 }}>ASSISTANT STATUS</div>
                         <div style={{ 
                             padding: '0.75rem', 
                             background: 'rgba(34, 197, 94, 0.1)', 
@@ -193,7 +193,7 @@ How can I power your workday today?` }
                                     padding: '1.25rem',
                                     borderRadius: msg.role === 'user' ? '20px 4px 20px 20px' : '4px 20px 20px 20px',
                                     background: msg.role === 'user' ? '#4A90E2' : '#f8fafc',
-                                    color: msg.role === 'user' ? 'white' : '#1e293b',
+                                    color: msg.role === 'user' ? 'white' : '#000000',
                                     fontSize: '0.95rem',
                                     lineHeight: '1.6',
                                     border: msg.role === 'assistant' ? '1px solid #e2e8f0' : 'none',
@@ -229,7 +229,7 @@ How can I power your workday today?` }
                                     padding: '1rem 1.5rem', 
                                     background: '#f8fafc', 
                                     borderRadius: '4px 20px 20px 20px', 
-                                    color: '#64748b', 
+                                    color: '#000000', 
                                     fontSize: '0.9rem', 
                                     fontStyle: 'italic',
                                     border: '1px solid #e2e8f0'
@@ -257,7 +257,7 @@ How can I power your workday today?` }
                                     border: '2px solid #e2e8f0',
                                     background: 'white',
                                     fontSize: '1rem',
-                                    color: '#1e293b',
+                                    color: '#000000',
                                     outline: 'none',
                                     boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
                                     transition: 'all 0.2s'
@@ -326,7 +326,7 @@ How can I power your workday today?` }
                 .markdown-content.employee-chat td {
                     padding: 1rem;
                     border-top: 1px solid #e2e8f0;
-                    color: #334155;
+                    color: #000000;
                 }
                 .markdown-content.employee-chat tr:hover {
                     background: #f8fafc;

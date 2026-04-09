@@ -184,19 +184,19 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
     return (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999, padding: '2rem' }}>
             <div className="card glass-panel" style={{ width: '100%', maxWidth: '1200px', height: '90vh', display: 'flex', flexDirection: 'column', padding: '0' }}>
-                <div style={{ padding: '1.5rem', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h2 className="card-title" style={{ margin: 0 }}>🤖 AI {modalTitle}</h2>
                     <button className="btn" onClick={onClose}>✕</button>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', flex: 1, overflow: 'hidden' }}>
                     {/* LEFT PANEL: Form and Auto-fill */}
-                    <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid #E5E7EB', overflowY: 'auto' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid #e2e8f0', overflowY: 'auto' }}>
 
                         {/* AI Section */}
-                        <div style={{ padding: '1.5rem', background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+                        <div style={{ padding: '1.5rem', background: '#F9FAFB', borderBottom: '1px solid #e2e8f0' }}>
                             <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: '#111827' }}>AI Auto-Fill (Optional)</h3>
-                            <p style={{ fontSize: '0.8rem', color: '#6B7280', marginBottom: '1rem' }}>Paste raw HR text, offer details, or email threads here. AI will extract all required fields instantly.</p>
+                            <p style={{ fontSize: '0.8rem', color: '#000000', marginBottom: '1rem' }}>Paste raw HR text, offer details, or email threads here. AI will extract all required fields instantly.</p>
                             <textarea
                                 value={rawText}
                                 onChange={e => setRawText(e.target.value)}
@@ -207,7 +207,7 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
                                 onClick={handleExtract}
                                 disabled={isExtracting}
                                 className="btn btn-primary"
-                                style={{ background: '#0a66c2', width: '100%' }}
+                                style={{ background: '#ff4500', width: '100%' }}
                             >
                                 {isExtracting ? 'Extracting...' : '✨ Auto-Fill with AI'}
                             </button>
@@ -220,14 +220,14 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                     {Object.entries(schema).map(([key, typeHint]) => (
                                         <div key={key}>
-                                            <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem', textTransform: 'capitalize' }}>
+                                            <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem', textTransform: 'capitalize' }}>
                                                 {key.replace(/_/g, ' ')} <span style={{ color: '#D1D5DB' }}>({typeHint})</span>
                                             </label>
                                             <input
                                                 type={typeHint.includes('Date') ? 'date' : typeHint.includes('Number') ? 'number' : 'text'}
                                                 value={formData[key] || ''}
                                                 onChange={e => setFormData({ ...formData, [key]: e.target.value })}
-                                                style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }}
+                                                style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }}
                                             />
                                         </div>
                                     ))}
@@ -238,14 +238,14 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
 
                     {/* RIGHT PANEL: Preview */}
                     <div style={{ display: 'flex', flexDirection: 'column', background: '#F3F4F6' }}>
-                        <div style={{ padding: '1rem', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff' }}>
-                            <span style={{ fontWeight: '600', color: '#374151' }}>Live Document Preview</span>
+                        <div style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff' }}>
+                            <span style={{ fontWeight: '600', color: '#000000' }}>Live Document Preview</span>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                 <button
                                     onClick={handlePreview}
                                     disabled={isPreviewing}
                                     className="btn btn-secondary"
-                                    style={{ background: '#ffffff', color: '#0a66c2', borderColor: '#0a66c2' }}
+                                    style={{ background: '#ffffff', color: '#ff4500', borderColor: '#ff4500' }}
                                 >
                                     {isPreviewing ? 'Loading Preview...' : '👁️ Refresh Preview'}
                                 </button>
@@ -253,7 +253,7 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
                                     onClick={handleFinalize}
                                     disabled={isFinalizing || !previewBase64}
                                     className="btn btn-primary"
-                                    style={{ background: '#10B981', borderColor: '#10B981' }}
+                                    style={{ background: '#ff4500', borderColor: '#ff4500' }}
                                 >
                                     {isFinalizing ? 'Finalizing...' : '✅ Send to S3 & Finalize'}
                                 </button>
@@ -267,7 +267,7 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
                                     title="Document Preview"
                                 />
                             ) : (
-                                <div style={{ color: '#9CA3AF', textAlign: 'center' }}>
+                                <div style={{ color: '#000000', textAlign: 'center' }}>
                                     <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📄</div>
                                     Click "Refresh Preview" to generate document using current fields.
                                 </div>

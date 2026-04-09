@@ -282,7 +282,7 @@ const ItemRequests = ({ userId, user }) => {
                                         .filter(e => e.employee_id !== itemRequestData.approver_id && e.employee_id !== userId)
                                         .filter(e => e.name.toLowerCase().includes(ccSearchTerm.toLowerCase()))
                                         .map(emp => (
-                                            <label key={emp.employee_id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem', borderRadius: '4px', cursor: 'pointer', backgroundColor: itemRequestData.cc_ids.includes(emp.employee_id) ? 'rgba(10, 102, 194, 0.2)' : 'transparent' }}>
+                                            <label key={emp.employee_id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem', borderRadius: '4px', cursor: 'pointer', backgroundColor: itemRequestData.cc_ids.includes(emp.employee_id) ? 'rgba(255, 69, 0, 0.2)' : 'transparent' }}>
                                                 <input 
                                                     type="checkbox" 
                                                     checked={itemRequestData.cc_ids.includes(emp.employee_id)}

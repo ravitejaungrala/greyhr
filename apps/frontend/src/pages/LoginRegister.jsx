@@ -184,7 +184,7 @@ const LoginRegister = ({ onLoginSuccess }) => {
                         <div className="onboarding-flow">
                             <ProgressBar />
                             <div className="login-header" style={{textAlign: 'left', marginBottom: '2rem'}}>
-                                <h3 style={{fontSize: '1.5rem', fontWeight: 800, color: '#fff', marginBottom: '0.25rem'}}>
+                                <h3 style={{fontSize: '1.5rem', fontWeight: 800, color: '#000000', marginBottom: '0.25rem'}}>
                                     {step === 1 && 'Identity Check'}
                                     {step === 2 && 'Financial Setup'}
                                     {step === 3 && 'Academic Records'}
@@ -223,9 +223,9 @@ const LoginRegister = ({ onLoginSuccess }) => {
                             {step === 3 && (
                                 <div className="form-section">
                                     <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem'}}>
-                                        <div style={{gridColumn: 'span 2', fontSize: '0.7rem', fontWeight: 800, color: '#4da3ff', textTransform: 'uppercase'}}>Undergraduate Certification</div>
+                                        <div style={{gridColumn: 'span 2', fontSize: '0.7rem', fontWeight: 800, color: '#ff4500', textTransform: 'uppercase'}}>Undergraduate Certification</div>
                                         <div className="input-group"><label>Institution</label><div className="input-wrapper"><GraduationCap className="field-icon" size={16}/><input name="institution_name" value={onboardingData.ug_details.institution_name} onChange={e => handleInputChange(e, 'ug_details')} /></div></div>
-                                        <div className="input-group"><label>CGPA</label><input style={{background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '14px', height: '54px', paddingLeft: '1.5rem'}} name="cgpa" value={onboardingData.ug_details.cgpa} onChange={e => handleInputChange(e, 'ug_details')} /></div>
+                                        <div className="input-group"><label>CGPA</label><input style={{background: '#ffffff', border: '1px solid var(--border-color)', borderRadius: '14px', height: '54px', paddingLeft: '1.5rem', color: '#000000'}} name="cgpa" value={onboardingData.ug_details.cgpa} onChange={e => handleInputChange(e, 'ug_details')} /></div>
                                         <div style={{gridColumn: 'span 2'}}><div className="upload-classic" onClick={() => document.getElementById('ug-u').click()}><FileCheck size={18}/> <div>{onboardingData.ug_details.certificate_base64 ? 'Cert Verified' : 'Select Degree Certificate'}</div><input id="ug-u" type="file" hidden onChange={e => handleFileB64(e, 'certificate_base64', 'ug_details')} /></div></div>
                                     </div>
                                     <div style={{display: 'flex', gap: '1rem', marginTop: '2.5rem'}}><button className="btn-submit-premium" style={{background: 'rgba(255,255,255,0.05)', boxShadow: 'none'}} onClick={() => setStep(2)}>Finance</button><button className="btn-submit-premium" style={{flex: 2}} onClick={() => setStep(4)}>Career <ArrowRight size={18}/></button></div>
@@ -235,7 +235,7 @@ const LoginRegister = ({ onLoginSuccess }) => {
                             {step === 4 && (
                                 <div className="form-section">
                                     <div style={{display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '14px', marginBottom: '2rem', cursor: 'pointer'}} onClick={() => setOnboardingData(p => ({ ...p, has_experience: !p.has_experience }))}>
-                                        <div style={{width: '20px', height: '20px', border: '2px solid #0a66c2', borderRadius: '4px', background: onboardingData.has_experience ? '#0a66c2' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>{onboardingData.has_experience && <CheckCircle size={14} color="white"/>}</div>
+                                        <div style={{width: '20px', height: '20px', border: '2px solid #ff4500', borderRadius: '4px', background: onboardingData.has_experience ? '#ff4500' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>{onboardingData.has_experience && <CheckCircle size={14} color="white"/>}</div>
                                         <span style={{fontWeight: 700}}>I have prior work history</span>
                                     </div>
                                     {onboardingData.has_experience && (
@@ -253,7 +253,7 @@ const LoginRegister = ({ onLoginSuccess }) => {
 
                             {step === 5 && (
                                 <div className="form-section" style={{textAlign: 'center'}}>
-                                    <div style={{width: '100px', height: '120px', margin: '0 auto 1.5rem', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '2px solid #0a66c2', overflow: 'hidden'}}>
+                                    <div style={{width: '100px', height: '120px', margin: '0 auto 1.5rem', borderRadius: '12px', background: 'rgba(0,0,0,0.05)', border: '2px solid #ff4500', overflow: 'hidden'}}>
                                         {onboardingData.passport_photo_base64 ? <img src={onboardingData.passport_photo_base64} alt="Pass" style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : <div style={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.1}}><Camera size={40}/></div>}
                                     </div>
                                     <div className="upload-classic" onClick={() => document.getElementById('pass-up').click()}>Upload ID Photo<input id="pass-up" type="file" accept="image/*" hidden onChange={e => handleFileB64(e, 'passport_photo_base64')} /></div>

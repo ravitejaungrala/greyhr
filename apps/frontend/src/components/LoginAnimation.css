@@ -181,7 +181,7 @@
 
 .legend-item { display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.6); }
 .dot-p { width: 8px; height: 8px; border-radius: 50%; background: #22C55E; }
-.dot-h { width: 8px; height: 8px; border-radius: 50%; background: #3B82F6; }
+.dot-h { width: 8px; height: 8px; border-radius: 50%; background: #ff4500; }
 .dot-l { width: 8px; height: 8px; border-radius: 50%; background: #EAB308; }
 
 .calendar-grid-detailed {
@@ -204,7 +204,7 @@
 }
 
 .day-present { background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); color: #22C55E; }
-.day-holiday { background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); color: #3B82F6; }
+.day-holiday { background: rgba(255, 69, 0, 0.2); border: 1px solid rgba(255, 69, 0, 0.4); color: #ff4500; }
 .day-leave { background: rgba(234, 179, 8, 0.2); border: 1px solid rgba(234, 179, 8, 0.4); color: #EAB308; }
 
 /* --- STAGE 4: ID Card Preview --- */

@@ -53,9 +53,9 @@ float clouds(vec2 p) {
 }
 
 // Brand colors integrated into shader
-vec3 brandPrimary = vec3(0.04, 0.4, 0.76);    // #0a66c2
-vec3 brandCyan = vec3(0.0, 0.8, 1.0);        // Bright Cyan
-vec3 brandSecondary = vec3(0.14, 0.23, 0.53); // Deep Indigo
+vec3 brandPrimary = vec3(1.0, 0.27, 0.0);    // #ff4500
+vec3 brandCyan = vec3(1.0, 0.55, 0.0);        // #ff8c00
+vec3 brandSecondary = vec3(0.92, 0.35, 0.05); // #ea580c
 
 void main(void) {
 	vec2 uv=(FC-.5*R)/MN,st=uv*vec2(2,1);

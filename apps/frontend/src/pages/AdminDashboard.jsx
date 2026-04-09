@@ -671,8 +671,8 @@ const AdminDashboard = ({ activeTab, user }) => {
         return (
             <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
                 <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '1.5rem', position: 'relative', maxWidth: '900px', width: '90%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-                    <button onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', color: '#6b7280', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
-                    <h3 style={{ marginBottom: '1.5rem', color: '#111827', fontWeight: 'bold' }}>{doc.title}</h3>
+                    <button onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', color: '#000000', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
+                    <h3 style={{ marginBottom: '1.5rem', color: '#000000', fontWeight: 'bold' }}>{doc.title}</h3>
                     <div style={{ overflow: 'auto', flex: 1, display: 'flex', justifyContent: 'center' }}>
                         {doc.url.toLowerCase().endsWith('.pdf') ? (
                             <iframe src={doc.url} style={{ width: '100%', height: '70vh', border: 'none' }} title="PDF Preview"></iframe>
@@ -700,7 +700,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                 {activeTab === 'intelligence' && '🧠 HR Intelligence Specialist'}
             </h1>
 
-            {loading && <p style={{ color: '#6b7280', textAlign: 'center' }}>Loading data...</p>}
+            {loading && <p style={{ color: '#000000', textAlign: 'center' }}>Loading data...</p>}
 
             {!loading && (
                 <div className="grid-3">
@@ -738,7 +738,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             <div key={i} style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border-color)' }}>
                                                 <div>
                                                     <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{act.name}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>ID: {act.employee_id}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: '#000000' }}>ID: {act.employee_id}</div>
                                                 </div>
                                                 <span style={{ 
                                                     fontSize: '0.7rem', 
@@ -763,7 +763,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             <p style={{ fontSize: '0.85rem', margin: 0 }}>{overviewData.announcement.content}</p>
                                         </div>
                                     ) : (
-                                        <p style={{ color: '#6b7280', fontSize: '0.85rem' }}>No active announcement.</p>
+                                        <p style={{ color: '#000000', fontSize: '0.85rem' }}>No active announcement.</p>
                                     )}
                                 </div>
                             </div>
@@ -1032,7 +1032,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             </div>
                                         </div>
 
-                                        <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid #E5E7EB', paddingTop: '1.5rem', flexWrap: 'wrap' }}>
+                                        <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem', flexWrap: 'wrap' }}>
                                             <button onClick={() => handleApproval(viewedEmp.employee_id, 'reject')} className="btn btn-secondary" style={{ color: '#EF4444', borderColor: '#EF4444' }}>Reject Application</button>
 
                                             <button
@@ -1062,11 +1062,11 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 ✨ AI Generate Offer Letter
                                             </button>
 
-                                            <button onClick={() => handleApproval(viewedEmp.employee_id, 'approve')} className="btn btn-primary" style={{ backgroundColor: '#0a66c2', fontWeight: 'bold' }}>✅ Approve Onboarding (No Offer Letter Needed)</button>
+                                            <button onClick={() => handleApproval(viewedEmp.employee_id, 'approve')} className="btn btn-primary" style={{ backgroundColor: '#ff4500', fontWeight: 'bold' }}>✅ Approve Onboarding (No Offer Letter Needed)</button>
                                         </div>
-                                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem' }}>* You can approve an application immediately without generating an offer letter.</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#000000', marginTop: '0.5rem' }}>* You can approve an application immediately without generating an offer letter.</div>
                                     </div>
-                                ) : <div style={{ color: '#6b7280', textAlign: 'center' }}>Select an employee to review.</div>}
+                                ) : <div style={{ color: '#000000', textAlign: 'center' }}>Select an employee to review.</div>}
                             </div>
                         </>
                     )}
@@ -1081,7 +1081,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         onClick={() => setIsAddEmpModalOpen(true)}
                                         className="btn btn-primary"
                                         style={{ 
-                                            background: 'linear-gradient(135deg, #0a66c2 0%, #084a8c 100%)',
+                                            background: 'linear-gradient(135deg, #ff4500 0%, #e63e00 100%)',
                                             border: 'none',
                                             padding: '0.75rem 1.25rem',
                                             fontSize: '0.85rem',
@@ -1110,7 +1110,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                             </div>
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                 <thead>
-                                    <tr style={{ borderBottom: '1px solid #E5E7EB', color: '#6b7280' }}>
+                                    <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#000000' }}>
                                         <th style={{ padding: '1rem' }}>Photo</th>
                                         <th style={{ padding: '1rem' }}>ID</th>
                                         <th style={{ padding: '1rem' }}>Name</th>
@@ -1148,14 +1148,14 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 <img
                                                     src={emp.id_card_photo_key ? `${apiUrl}/admin/photos/${emp.id_card_photo_key}` : (emp.reference_image_key ? `${apiUrl}/admin/photos/${emp.reference_image_key}` : PLACEHOLDER_IMAGE)}
                                                     alt=""
-                                                    style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #E5E7EB' }}
+                                                    style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #e2e8f0' }}
                                                     onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
                                                 />
                                             </td>
                                             <td style={{ padding: '1rem', fontFamily: 'monospace' }}>{emp.employee_id}</td>
                                             <td style={{ padding: '1rem', fontWeight: 'bold' }}>{emp.name}</td>
-                                            <td style={{ padding: '1rem', color: '#6b7280' }}>{emp.email}</td>
-                                            <td style={{ padding: '1rem' }}><span style={{ background: 'rgba(10, 102, 194, 0.2)', color: '#0a66c2', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem' }}>Active</span></td>
+                                            <td style={{ padding: '1rem', color: '#000000' }}>{emp.email}</td>
+                                            <td style={{ padding: '1rem' }}><span style={{ background: 'rgba(255, 69, 0, 0.2)', color: '#ff4500', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem' }}>Active</span></td>
                                             <td style={{ padding: '1rem' }}>
                                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                     <button 
@@ -1177,105 +1177,105 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 <div className="card shadow-sm" style={{ marginTop: '2rem', borderTop: '4px solid #ff7a00', background: '#ffffff', borderRight: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', borderLeft: '1px solid var(--border-color)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                         <h3 style={{ fontSize: '1.25rem', color: '#1f2937' }}>✏️ Edit Profile: {selectedApprovedEmp.name}</h3>
-                                        <button onClick={() => setSelectedApprovedEmp(null)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer' }}>✕ Close</button>
+                                        <button onClick={() => setSelectedApprovedEmp(null)} style={{ background: 'none', border: 'none', color: '#000000', cursor: 'pointer' }}>✕ Close</button>
                                     </div>
 
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                                         {/* Same role setup fields as onboarding */}
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                             <div>
-                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Employment Type</label>
+                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Employment Type</label>
                                                 <select
                                                     value={empRoleSetup.employment_type}
                                                     onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, employment_type: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
                                                 >
                                                     <option>Full-Time</option>
                                                     <option>Intern</option>
                                                 </select>
                                             </div>
                                             <div>
-                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Designation / Position</label>
+                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Designation / Position</label>
                                                 <input
                                                     type="text"
                                                     value={empRoleSetup.position}
                                                     onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, position: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
                                                 />
                                             </div>
                                             <div style={{ gridColumn: 'span 2' }}>
-                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Monthly Gross Salary (₹)</label>
+                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Monthly Gross Salary (₹)</label>
                                                 <input
                                                     type="number"
                                                     value={empRoleSetup.monthly_salary}
                                                     onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, monthly_salary: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
                                                 />
                                             </div>
                                             <div style={{ gridColumn: 'span 2' }}>
-                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>In-hand Salary (₹) - Overrides calculations if set</label>
+                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>In-hand Salary (₹) - Overrides calculations if set</label>
                                                 <input
                                                     type="number"
                                                     value={empRoleSetup.in_hand_salary}
                                                     onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, in_hand_salary: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937', fontWeight: 'bold', borderColor: '#ff7a00' }}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937', fontWeight: 'bold', borderColor: '#ff7a00' }}
                                                 />
                                             </div>
                                             <div>
-                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Fixed Tax Deduction (%)</label>
+                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Fixed Tax Deduction (%)</label>
                                                 <input
                                                     type="number"
                                                     step="0.1"
                                                     value={empRoleSetup.tax_deduction_rate}
                                                     onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, tax_deduction_rate: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
                                                 />
                                             </div>
                                             <div>
-                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Fixed PF Deduction (%)</label>
+                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Fixed PF Deduction (%)</label>
                                                 <input
                                                     type="number"
                                                     step="0.1"
                                                     value={empRoleSetup.pf_deduction_rate}
                                                     onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_deduction_rate: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
                                                 />
                                             </div>
                                         </div>
                                             <div style={{ gridColumn: 'span 2' }}>
-                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>PAN Number</label>
+                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>PAN Number</label>
                                                 <input
                                                     type="text"
                                                     value={empRoleSetup.pan_no}
                                                     onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pan_no: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
                                                 />
                                             </div>
                                             <div style={{ gridColumn: 'span 2' }}>
-                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>PF Number</label>
+                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>PF Number</label>
                                                 <input
                                                     type="text"
                                                     value={empRoleSetup.pf_no}
                                                     onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_no: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
                                                 />
                                             </div>
                                             <div>
-                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Bank Name</label>
+                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Bank Name</label>
                                                 <input
                                                     type="text"
                                                     value={empRoleSetup.bank_name}
                                                     onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_name: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
                                                 />
                                             </div>
                                             <div>
-                                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Bank Account Number</label>
+                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Bank Account Number</label>
                                                 <input
                                                     type="text"
                                                     value={empRoleSetup.bank_account}
                                                     onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_account: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
                                                 />
                                             </div>
 
@@ -1283,36 +1283,36 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             <label style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 'bold', display: 'block', marginBottom: '0.75rem' }}>🎁 Monthly Leave Accrual Rate (days/month)</label>
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                                                 <div>
-                                                    <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>Privilege</label>
+                                                    <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block' }}>Privilege</label>
                                                     <input
                                                         type="number"
                                                         step="0.1"
                                                         disabled={empRoleSetup.employment_type === 'Intern'}
                                                         value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.privilege_leave_rate}
                                                         onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, privilege_leave_rate: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937', opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }}
+                                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937', opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }}
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>Sick</label>
+                                                    <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block' }}>Sick</label>
                                                     <input
                                                         type="number"
                                                         step="0.1"
                                                         disabled={empRoleSetup.employment_type === 'Intern'}
                                                         value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.sick_leave_rate}
                                                         onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, sick_leave_rate: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937', opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }}
+                                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937', opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }}
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>Casual</label>
+                                                    <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block' }}>Casual</label>
                                                     <input
                                                         type="number"
                                                         step="0.1"
                                                         disabled={empRoleSetup.employment_type === 'Intern'}
                                                         value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.casual_leave_rate}
                                                         onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, casual_leave_rate: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937', opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }}
+                                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937', opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }}
                                                     />
                                                 </div>
                                             </div>
@@ -1406,11 +1406,11 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 setIsDocGenModalOpen(true);
                                             }}
                                             className="btn btn-secondary"
-                                            style={{ color: '#10B981', borderColor: '#10B981' }}
+                                            style={{ color: '#ff4500', borderColor: '#ff4500' }}
                                         >
                                             💰 AI Payslip
                                         </button>
-                                        <button onClick={() => handleUpdateEmployee(selectedApprovedEmp.employee_id)} className="btn btn-primary" style={{ backgroundColor: '#0a66c2' }}>Save Profile Changes</button>
+                                        <button onClick={() => handleUpdateEmployee(selectedApprovedEmp.employee_id)} className="btn btn-primary" style={{ backgroundColor: '#ff4500' }}>Save Profile Changes</button>
                                     </div>
                                 </div>
                             )}
@@ -1421,10 +1421,10 @@ const AdminDashboard = ({ activeTab, user }) => {
                     {activeTab === 'leaves' && (
                         <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <h2 className="card-title">Leave Requests</h2>
-                            {leaves.length === 0 ? <p style={{ color: '#6b7280' }}>No leaves found (Try applying from Employee view).</p> : (
+                            {leaves.length === 0 ? <p style={{ color: '#000000' }}>No leaves found (Try applying from Employee view).</p> : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     {leaves.map((l, idx) => (
-                                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: '1rem', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '1rem', background: '#ffffff' }}>
+                                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', background: '#ffffff' }}>
                                             <div style={{ flex: 1 }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
                                                     <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--primary)' }}>{l.leave_type}</div>
@@ -1455,14 +1455,14 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 </div>
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                <span style={{ fontSize: '0.875rem', color: l.status.includes('Approved') ? '#0a66c2' : '#c84cff' }}>{l.status}</span>
+                                                <span style={{ fontSize: '0.875rem', color: l.status.includes('Approved') ? '#ff4500' : '#c84cff' }}>{l.status}</span>
                                                 {l.status.includes('Pending') && (
                                                     user?.role === 'hr_responsible' ? (
-                                                        <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>View Only</span>
+                                                        <span style={{ fontSize: '0.8rem', color: '#000000' }}>View Only</span>
                                                     ) : (
                                                         <>
                                                             <button onClick={() => handleLeaveStatus(l.id, 'Rejected')} className="btn btn-secondary" style={{ padding: '0.5rem', fontSize: '0.75rem' }}>Reject</button>
-                                                            <button onClick={() => handleLeaveStatus(l.id, 'Approved by Admin')} className="btn btn-primary" style={{ padding: '0.5rem', fontSize: '0.75rem', background: '#0a66c2' }}>Approve</button>
+                                                            <button onClick={() => handleLeaveStatus(l.id, 'Approved by Admin')} className="btn btn-primary" style={{ padding: '0.5rem', fontSize: '0.75rem', background: '#ff4500' }}>Approve</button>
                                                         </>
                                                     )
                                                 )}
@@ -1481,16 +1481,16 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 <h2 className="card-title" style={{ fontSize: '1.25rem', marginBottom: '1.25rem' }}>{editingHoliday ? "Edit Holiday" : "Add Holiday"}</h2>
                                 <form onSubmit={submitHoliday} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     <div>
-                                        <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Holiday Name</label>
-                                        <input required type="text" placeholder="Ugadi, New Year..." value={newHoliday.name} onChange={e => setNewHoliday({ ...newHoliday, name: e.target.value })} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937' }} />
+                                        <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Holiday Name</label>
+                                        <input required type="text" placeholder="Ugadi, New Year..." value={newHoliday.name} onChange={e => setNewHoliday({ ...newHoliday, name: e.target.value })} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f9fafb', color: '#1f2937' }} />
                                     </div>
                                     <div>
-                                        <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Date</label>
-                                        <input required type="date" value={newHoliday.date} onChange={e => setNewHoliday({ ...newHoliday, date: e.target.value })} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937' }} />
+                                        <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Date</label>
+                                        <input required type="date" value={newHoliday.date} onChange={e => setNewHoliday({ ...newHoliday, date: e.target.value })} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f9fafb', color: '#1f2937' }} />
                                     </div>
                                     <div>
-                                        <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Type</label>
-                                        <select required value={newHoliday.type} onChange={e => setNewHoliday({ ...newHoliday, type: e.target.value })} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937', fontWeight: 'bold' }}>
+                                        <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Type</label>
+                                        <select required value={newHoliday.type} onChange={e => setNewHoliday({ ...newHoliday, type: e.target.value })} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f9fafb', color: '#1f2937', fontWeight: 'bold' }}>
                                             <option>Public Holiday</option>
                                             <option>Optional Holiday</option>
                                         </select>
@@ -1521,7 +1521,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     </div>
                                 </div>
                                 
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.5rem', marginBottom: '0.5rem', textAlign: 'center', fontWeight: 'bold', color: '#6b7280' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.5rem', marginBottom: '0.5rem', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>
                                     <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
                                 </div>
                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: 'var(--border-color)', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
@@ -1551,10 +1551,10 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 <div style={{ 
                                                     fontWeight: '800', 
                                                     marginBottom: '0.75rem', 
-                                                    color: isToday ? '#0a66c2' : '#9ca3af',
+                                                    color: isToday ? '#ff4500' : '#000000',
                                                     fontSize: '0.875rem'
                                                 }}>
-                                                    {isToday && <span style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', width: '8px', height: '8px', background: '#0a66c2', borderRadius: '50%' }}></span>}
+                                                    {isToday && <span style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', width: '8px', height: '8px', background: '#ff4500', borderRadius: '50%' }}></span>}
                                                     {day}
                                                 </div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
@@ -1583,17 +1583,17 @@ const AdminDashboard = ({ activeTab, user }) => {
                             {/* Workday Overrides / Holiday Swapping */}
                             <div className="card shadow-sm" style={{ marginTop: '2rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                 <h2 className="card-title">🔄 Holiday Swapping & Workday Overrides</h2>
-                                <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+                                <p style={{ color: '#000000', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
                                     Force a specific date to be a **Working Day** (e.g., for deadlines) or a **Holiday** (e.g., as a substitute for a worked holiday).
                                 </p>
 
                                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                                    <input type="date" id="override-date" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', width: '200px' }} />
-                                    <select id="override-type" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', width: '200px' }}>
+                                    <input type="date" id="override-date" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', width: '200px' }} />
+                                    <select id="override-type" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', width: '200px' }}>
                                         <option value="forced_working">Mark as Working Day</option>
                                         <option value="forced_holiday">Mark as Holiday</option>
                                     </select>
-                                    <input type="text" id="override-reason" placeholder="Reason (e.g., Ugadi Swap)" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', flex: 1 }} />
+                                    <input type="text" id="override-reason" placeholder="Reason (e.g., Ugadi Swap)" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', flex: 1 }} />
                                     <button
                                         className="btn btn-primary"
                                         style={{ backgroundColor: 'var(--primary)' }}
@@ -1610,9 +1610,9 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
                                     {workdayOverrides.map((ov, i) => (
-                                        <div key={i} style={{ padding: '1rem', border: '1px solid #E5E7EB', borderRadius: '8px', background: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div key={i} style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <div>
-                                                <div style={{ fontWeight: '600', color: ov.type === 'forced_working' ? '#0a66c2' : '#ff7a00' }}>
+                                                <div style={{ fontWeight: '600', color: ov.type === 'forced_working' ? '#ff4500' : '#ff7a00' }}>
                                                     {ov.type === 'forced_working' ? '💼 Forced Working' : '🎉 Forced Holiday'}
                                                 </div>
                                                 <div style={{ fontSize: '0.875rem' }}>{ov.date} {ov.reason && `(${ov.reason})`}</div>
@@ -1632,22 +1632,22 @@ const AdminDashboard = ({ activeTab, user }) => {
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
                                 <div style={{ padding: '2rem', background: '#ffffff', borderRadius: '8px', textAlign: 'center' }}>
                                     <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary)' }}>{reports.total_employees}</div>
-                                    <div style={{ color: '#6b7280' }}>Total Employees</div>
+                                    <div style={{ color: '#000000' }}>Total Employees</div>
                                 </div>
                                 <div style={{ padding: '2rem', background: '#ffffff', borderRadius: '8px', textAlign: 'center' }}>
-                                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#0a66c2' }}>{reports.present_today}</div>
-                                    <div style={{ color: '#6b7280' }}>Present Today</div>
+                                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ff4500' }}>{reports.present_today}</div>
+                                    <div style={{ color: '#000000' }}>Present Today</div>
                                 </div>
                                 <div style={{ padding: '2rem', background: '#ffffff', borderRadius: '8px', textAlign: 'center' }}>
                                     <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#c84cff' }}>{reports.on_leave}</div>
-                                    <div style={{ color: '#6b7280' }}>On Leave</div>
+                                    <div style={{ color: '#000000' }}>On Leave</div>
                                 </div>
                                 <div style={{ padding: '2rem', background: '#ffffff', borderRadius: '8px', textAlign: 'center' }}>
                                     <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary)' }}>{reports.average_engagement_score}%</div>
-                                    <div style={{ color: '#6b7280' }}>Engagement</div>
+                                    <div style={{ color: '#000000' }}>Engagement</div>
                                 </div>
                             </div>
-                            <div style={{ marginTop: '2rem', padding: '2rem', border: '1px dashed #E5E7EB', borderRadius: '8px', textAlign: 'center', color: '#6b7280' }}>
+                            <div style={{ marginTop: '2rem', padding: '2rem', border: '1px dashed #e2e8f0', borderRadius: '8px', textAlign: 'center', color: '#000000' }}>
                                 <span style={{ fontSize: '2rem' }}>📊</span>
                                 <p style={{ marginTop: '1rem' }}>Deep integrations for Data visualization can be powered by AI Analytics Agent soon.</p>
                             </div>
@@ -1661,12 +1661,12 @@ const AdminDashboard = ({ activeTab, user }) => {
                             {notifications.length === 0 ? <p>No new notifications.</p> : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     {notifications.map((n, i) => (
-                                        <div key={i} style={{ padding: '1rem', border: '1px solid #E5E7EB', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div key={i} style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <div>
                                                 <span style={{ fontWeight: '600', color: '#ff7a00', marginRight: '1rem', textTransform: 'uppercase', fontSize: '0.75rem' }}>{n.type}</span>
                                                 <span>{n.message}</span>
                                             </div>
-                                            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{new Date(n.created_at).toLocaleString()}</div>
+                                            <div style={{ fontSize: '0.75rem', color: '#000000' }}>{new Date(n.created_at).toLocaleString()}</div>
                                         </div>
                                     ))}
                                 </div>
@@ -1683,7 +1683,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 {/* TABLE REMOVED FOR BREVITY IN CHUNK BUT IT SHOULD BE THERE */}
                                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                     <thead>
-                                        <tr style={{ borderBottom: '1px solid #E5E7EB', color: '#6b7280', fontSize: '0.875rem' }}>
+                                        <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#000000', fontSize: '0.875rem' }}>
                                             <th style={{ padding: '1rem' }}>Employee</th>
                                             <th style={{ padding: '1rem' }}>Action</th>
                                             <th style={{ padding: '1rem' }}>Time</th>
@@ -1693,7 +1693,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     </thead>
                                     <tbody>
                                         {attendanceLogs.map((log, i) => (
-                                            <tr key={i} style={{ borderBottom: '1px solid #E5E7EB', fontSize: '0.875rem' }}>
+                                            <tr key={i} style={{ borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem' }}>
                                                 <td style={{ padding: '1rem' }}>{log.employee_id}</td>
                                                 <td style={{ padding: '1rem' }}>{log.action}</td>
                                                 <td style={{ padding: '1rem' }}>{(() => {
@@ -1708,7 +1708,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                     <img
                                                         src={`${apiUrl}/admin/photos/${log.s3_image_key}`}
                                                         alt="Capture"
-                                                        style={{ width: '60px', borderRadius: '4px', border: '1px solid #E5E7EB' }}
+                                                        style={{ width: '60px', borderRadius: '4px', border: '1px solid #e2e8f0' }}
                                                     />
                                                 </td>
                                             </tr>
@@ -1720,29 +1720,29 @@ const AdminDashboard = ({ activeTab, user }) => {
                             {/* NEW: Comp-Off Requests Section */}
                             <div style={{ marginTop: '2.5rem', borderTop: '2px solid var(--primary)', paddingTop: '2rem' }}>
                                 <h2 className="card-title">🎁 Pending Comp-Off Requests</h2>
-                                <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+                                <p style={{ color: '#000000', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
                                     Employees who worked on weekends or holidays for more than 9 hours. Approve to credit 1 day to their balance.
                                 </p>
 
-                                {compOffRequests.length === 0 ? <p style={{ color: '#9CA3AF' }}>No pending requests.</p> : (
+                                {compOffRequests.length === 0 ? <p style={{ color: '#000000' }}>No pending requests.</p> : (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem' }}>
                                         {compOffRequests.map((req, i) => (
                                             <div key={i} className="card shadow-sm" style={{ padding: '1.5rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                                                     <div>
                                                         <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{req.employee_id}</div>
-                                                        <div style={{ color: '#6b7280', fontSize: '0.875rem' }}>{new Date(req.date).toDateString()}</div>
+                                                        <div style={{ color: '#000000', fontSize: '0.875rem' }}>{new Date(req.date).toDateString()}</div>
                                                     </div>
                                                     <div style={{ textAlign: 'right' }}>
-                                                        <div style={{ color: '#0a66c2', fontWeight: 'bold' }}>{req.hours} hrs</div>
-                                                        <div style={{ fontSize: '0.75rem', color: '#10B981' }}>Worked on Holiday</div>
+                                                        <div style={{ color: '#ff4500', fontWeight: 'bold' }}>{req.hours} hrs</div>
+                                                        <div style={{ fontSize: '0.75rem', color: '#ff4500' }}>Worked on Holiday</div>
                                                     </div>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                     <button
                                                         disabled={isProcessingCompOff}
                                                         onClick={() => handleCompOffAction(req.request_id, 'Approved')}
-                                                        className="btn btn-primary" style={{ flex: 1, backgroundColor: '#10B981', color: 'white' }}
+                                                        className="btn btn-primary" style={{ flex: 1, backgroundColor: '#ff4500', color: 'white' }}
                                                     >
                                                         {isProcessingCompOff ? '...' : 'Approve Credit'}
                                                     </button>
@@ -1760,30 +1760,30 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 )}
                             </div>
                             {/* Weekend/Holiday Work Requests Section (Moved here) */}
-                            <div style={{ marginTop: '2.5rem', borderTop: '2px solid #0a66c2', paddingTop: '2rem' }}>
+                            <div style={{ marginTop: '2.5rem', borderTop: '2px solid #ff4500', paddingTop: '2rem' }}>
                                 <h2 className="card-title">🗓️ Weekend/Holiday Work Requests</h2>
-                                <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+                                <p style={{ color: '#000000', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
                                     Pre-emptive requests from employees to work on non-working days.
                                 </p>
 
-                                {weekendWorkRequests.length === 0 ? <p style={{ color: '#9CA3AF' }}>No pending work requests.</p> : (
+                                {weekendWorkRequests.length === 0 ? <p style={{ color: '#000000' }}>No pending work requests.</p> : (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem' }}>
                                         {weekendWorkRequests.map((req, i) => (
                                             <div key={i} className="card shadow-sm" style={{ padding: '1.5rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                                                     <div>
                                                         <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{req.employee_id}</div>
-                                                        <div style={{ color: '#6b7280', fontSize: '0.875rem' }}>{new Date(req.date).toDateString()}</div>
+                                                        <div style={{ color: '#000000', fontSize: '0.875rem' }}>{new Date(req.date).toDateString()}</div>
                                                     </div>
                                                     <div style={{ textAlign: 'right' }}>
-                                                        <div style={{ color: '#0a66c2', fontWeight: 'bold' }}>Request to Work</div>
-                                                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Reason: {req.reason || "None"}</div>
+                                                        <div style={{ color: '#ff4500', fontWeight: 'bold' }}>Request to Work</div>
+                                                        <div style={{ fontSize: '0.75rem', color: '#000000' }}>Reason: {req.reason || "None"}</div>
                                                     </div>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                     <button
                                                         onClick={() => handleWeekendWorkAction(req.request_id, 'Approved')}
-                                                        className="btn btn-primary" style={{ flex: 1, backgroundColor: '#0a66c2' }}
+                                                        className="btn btn-primary" style={{ flex: 1, backgroundColor: '#ff4500' }}
                                                     >
                                                         Approve
                                                     </button>
@@ -1813,11 +1813,11 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 </p>
                                 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '1.5rem' }}>
-                                    <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+                                    <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                             <div>
-                                                <div style={{ fontWeight: 'bold', color: '#111827' }}>Enable Tax (TDS)</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Global tax deduction toggle</div>
+                                                <div style={{ fontWeight: 'bold', color: '#000000' }}>Enable Tax (TDS)</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#000000' }}>Global tax deduction toggle</div>
                                             </div>
                                             <input 
                                                 type="checkbox" 
@@ -1827,7 +1827,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             />
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <span style={{ fontSize: '0.85rem', color: '#374151' }}>Fixed Rate:</span>
+                                            <span style={{ fontSize: '0.85rem', color: '#000000' }}>Fixed Rate:</span>
                                             <input 
                                                 type="number" 
                                                 step="0.1"
@@ -1835,15 +1835,15 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 onChange={(e) => setSalarySettings({...salarySettings, tax_rate: parseFloat(e.target.value)})}
                                                 style={{ width: '70px', padding: '0.4rem', borderRadius: '6px', border: '1px solid #D1D5DB' }}
                                             />
-                                            <span style={{ fontSize: '0.85rem', color: '#6B7280' }}>%</span>
+                                            <span style={{ fontSize: '0.85rem', color: '#000000' }}>%</span>
                                         </div>
                                     </div>
 
-                                    <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+                                    <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                             <div>
-                                                <div style={{ fontWeight: 'bold', color: '#111827' }}>Enable PF & PT</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Global PF deduction toggle</div>
+                                                <div style={{ fontWeight: 'bold', color: '#000000' }}>Enable PF & PT</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#000000' }}>Global PF deduction toggle</div>
                                             </div>
                                             <input 
                                                 type="checkbox" 
@@ -1853,7 +1853,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             />
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <span style={{ fontSize: '0.85rem', color: '#374151' }}>Fixed Rate:</span>
+                                            <span style={{ fontSize: '0.85rem', color: '#000000' }}>Fixed Rate:</span>
                                             <input 
                                                 type="number" 
                                                 step="0.1"
@@ -1861,7 +1861,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 onChange={(e) => setSalarySettings({...salarySettings, pf_rate: parseFloat(e.target.value)})}
                                                 style={{ width: '70px', padding: '0.4rem', borderRadius: '6px', border: '1px solid #D1D5DB' }}
                                             />
-                                            <span style={{ fontSize: '0.85rem', color: '#6B7280' }}>%</span>
+                                            <span style={{ fontSize: '0.85rem', color: '#000000' }}>%</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1882,10 +1882,10 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     {['February 2026', 'March 2026'].map(month => {
                                         const isReleased = payrollStatus.some(p => p.month_year === month && p.released);
                                         return (
-                                            <div key={month} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                                            <div key={month} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                                                 <div>
                                                     <div style={{ fontWeight: 'bold' }}>{month}</div>
-                                                    <div style={{ fontSize: '0.8rem', color: isReleased ? '#0a66c2' : '#6b7280' }}>{isReleased ? 'Released to Employees' : 'Not yet released'}</div>
+                                                    <div style={{ fontSize: '0.8rem', color: isReleased ? '#ff4500' : '#000000' }}>{isReleased ? 'Released to Employees' : 'Not yet released'}</div>
                                                 </div>
                                                 <button
                                                     className={`btn ${isReleased ? 'btn-secondary' : 'btn-primary'}`}
@@ -1918,7 +1918,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     <select 
                                         value={salaryReportMonth} 
                                         onChange={(e) => setSalaryReportMonth(e.target.value)}
-                                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }}
+                                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }}
                                     >
                                         {['January 2026', 'February 2026', 'March 2026', 'April 2026'].map(m => (
                                             <option key={m} value={m}>{m}</option>
@@ -1931,7 +1931,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                             <div className="table-container">
                                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                     <thead>
-                                        <tr style={{ borderBottom: '2px solid #E5E7EB', textAlign: 'left', color: '#6b7280', fontSize: '0.85rem' }}>
+                                        <tr style={{ borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#000000', fontSize: '0.85rem' }}>
                                             <th style={{ padding: '1rem' }}>Employee</th>
                                             <th style={{ padding: '1rem' }}>Exp. Days</th>
                                             <th style={{ padding: '1rem' }}>Present</th>
@@ -1939,7 +1939,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             <th style={{ padding: '1rem' }}>Absent (LOP)</th>
                                             <th style={{ padding: '1rem' }}>Gross Salary</th>
                                             <th style={{ padding: '1rem' }}>Deductions</th>
-                                            <th style={{ padding: '1rem', color: '#0a66c2' }}>Net Payable</th>
+                                            <th style={{ padding: '1rem', color: '#ff4500' }}>Net Payable</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1947,15 +1947,15 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             <tr key={i} style={{ borderBottom: '1px solid #F3F4F6' }}>
                                                 <td style={{ padding: '1rem' }}>
                                                     <div style={{ fontWeight: '600' }}>{row.name}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: '#9CA3AF' }}>{row.employee_id}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: '#000000' }}>{row.employee_id}</div>
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>{row.expected_working_days}</td>
-                                                <td style={{ padding: '1rem', color: '#10B981' }}>{row.actual_presence}</td>
+                                                <td style={{ padding: '1rem', color: '#ff4500' }}>{row.actual_presence}</td>
                                                 <td style={{ padding: '1rem', color: '#6366F1' }}>{row.leaves_taken}</td>
-                                                <td style={{ padding: '1rem', color: row.absent_days > 0 ? '#EF4444' : '#9CA3AF' }}>{row.absent_days}</td>
+                                                <td style={{ padding: '1rem', color: row.absent_days > 0 ? '#EF4444' : '#000000' }}>{row.absent_days}</td>
                                                 <td style={{ padding: '1rem' }}>₹{row.monthly_salary.toLocaleString()}</td>
                                                 <td style={{ padding: '1rem', color: '#EF4444' }}>-₹{row.lop_deduction.toLocaleString()}</td>
-                                                <td style={{ padding: '1rem', fontWeight: 'bold', color: '#0a66c2' }}>₹{row.net_salary.toLocaleString()}</td>
+                                                <td style={{ padding: '1rem', fontWeight: 'bold', color: '#ff4500' }}>₹{row.net_salary.toLocaleString()}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1970,7 +1970,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                             <h2 className="card-title">📦 Item Requests ({itemRequests.length})</h2>
                             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
                                 <thead>
-                                    <tr style={{ textAlign: 'left', borderBottom: '2px solid rgba(255,255,255,0.1)', color: '#6b7280', fontSize: '0.85rem' }}>
+                                    <tr style={{ textAlign: 'left', borderBottom: '2px solid rgba(255,255,255,0.1)', color: '#000000', fontSize: '0.85rem' }}>
                                         <th style={{ padding: '1rem' }}>Employee ID</th>
                                         <th style={{ padding: '1rem' }}>Item</th>
                                         <th style={{ padding: '1rem' }}>Qty</th>
@@ -1982,7 +1982,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 <tbody>
                                     {itemRequests.length === 0 ? (
                                         <tr>
-                                            <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>No item requests found.</td>
+                                            <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: '#000000' }}>No item requests found.</td>
                                         </tr>
                                     ) : (
                                         itemRequests.map(req => (
@@ -2005,7 +2005,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 <td style={{ padding: '1rem' }}>
                                                     {req.status === 'Pending' ? (
                                                         (user?.role === 'hr' || user?.role === 'hr_responsible') ? (
-                                                            <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>View Only</span>
+                                                            <span style={{ fontSize: '0.8rem', color: '#000000' }}>View Only</span>
                                                         ) : (
                                                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                                 <button onClick={() => handleItemAction(req.id, 'Approved')} className="btn btn-primary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#10b981' }}>Approve</button>
@@ -2026,21 +2026,21 @@ const AdminDashboard = ({ activeTab, user }) => {
                     {activeTab === 'templates' && (
                         <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '1.5rem' }}>📄 AI Document Templates</h1>
-                            <p style={{ color: '#6b7280', marginBottom: '2rem' }}>Train our AI on your specific company documents. Upload any PDF/HTML format and we'll convert it into a dynamic system template.</p>
+                            <p style={{ color: '#000000', marginBottom: '2rem' }}>Train our AI on your specific company documents. Upload any PDF/HTML format and we'll convert it into a dynamic system template.</p>
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2.5rem' }}>
                                 {/* CARD 1: OFFER LETTERS */}
-                                <div className="card" style={{ background: '#ffffff', border: '1px solid #E5E7EB', display: 'flex', flexDirection: 'column' }}>
+                                <div className="card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
                                     <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <span style={{ fontSize: '1.5rem' }}>📑</span> Offer Letters
                                     </h3>
-                                    <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1.5rem', flex: 1 }}>Upload layouts for Intern and Full-Time appointment letters.</p>
+                                    <p style={{ fontSize: '0.85rem', color: '#000000', marginBottom: '1.5rem', flex: 1 }}>Upload layouts for Intern and Full-Time appointment letters.</p>
 
                                     <div style={{ marginBottom: '1rem' }}>
                                         <select
                                             value={selectedTemplateType}
                                             onChange={(e) => setSelectedTemplateType(e.target.value)}
-                                            style={{ width: '100%', padding: '0.7rem', borderRadius: '4px', border: '1px solid #E5E7EB', fontSize: '0.85rem' }}
+                                            style={{ width: '100%', padding: '0.7rem', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}
                                         >
                                             <option value="Intern">Intern Format</option>
                                             <option value="Full-Time">Full-Time Format</option>
@@ -2057,18 +2057,18 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             document.getElementById('template-upload-input').click();
                                         }}
                                         className="btn btn-primary"
-                                        style={{ width: '100%', background: '#0a66c2' }}
+                                        style={{ width: '100%', background: '#ff4500' }}
                                     >
                                         Upload Offer Template
                                     </button>
                                 </div>
 
                                 {/* CARD 2: PAYSLIPS */}
-                                <div className="card" style={{ background: '#ffffff', border: '1px solid #E5E7EB', display: 'flex', flexDirection: 'column' }}>
+                                <div className="card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
                                     <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <span style={{ fontSize: '1.5rem' }}>💰</span> Payslip Design
                                     </h3>
-                                    <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1.5rem', flex: 1 }}>Train AI to recognize your payslip components and ROI investment fields.</p>
+                                    <p style={{ fontSize: '0.85rem', color: '#000000', marginBottom: '1.5rem', flex: 1 }}>Train AI to recognize your payslip components and ROI investment fields.</p>
 
                                     <button
                                         onClick={() => {
@@ -2077,24 +2077,24 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         }}
                                         disabled={uploadingTemplate}
                                         className="btn btn-primary"
-                                        style={{ width: '100%', background: '#10B981' }}
+                                        style={{ width: '100%', background: '#ff4500' }}
                                     >
                                         {uploadingTemplate && selectedTemplateType === 'Payslip' ? "Analyzing..." : "Upload Payslip Template"}
                                     </button>
                                 </div>
 
                                 {/* CARD 3: EXIT DOCUMENTS */}
-                                <div className="card" style={{ background: '#ffffff', border: '1px solid #E5E7EB', display: 'flex', flexDirection: 'column' }}>
+                                <div className="card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
                                     <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <span style={{ fontSize: '1.5rem' }}>🚪</span> Exit Documents
                                     </h3>
-                                    <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1.5rem', flex: 1 }}>Upload professional formats for Relieving Letters and Experience Certificates.</p>
+                                    <p style={{ fontSize: '0.85rem', color: '#000000', marginBottom: '1.5rem', flex: 1 }}>Upload professional formats for Relieving Letters and Experience Certificates.</p>
 
                                     <div style={{ marginBottom: '1rem' }}>
                                         <select
                                             value={selectedTemplateType}
                                             onChange={(e) => setSelectedTemplateType(e.target.value)}
-                                            style={{ width: '100%', padding: '0.7rem', borderRadius: '4px', border: '1px solid #E5E7EB', fontSize: '0.85rem' }}
+                                            style={{ width: '100%', padding: '0.7rem', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}
                                         >
                                             <option value="Relieving">Relieving Letter</option>
                                             <option value="Experience">Experience Certificate</option>
@@ -2123,7 +2123,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                             <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.5rem' }}>
                                 <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Active System Templates</h3>
                                 {offerLetterTemplates.length === 0 ? (
-                                    <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#6b7280' }}>
+                                    <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#000000' }}>
                                         <div style={{ fontSize: '2.5rem', marginBottom: '1rem', opacity: 0.5 }}>📂</div>
                                         No templates configured yet.
                                     </div>
@@ -2135,22 +2135,22 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                                             return (
                                                 <div key={category}>
-                                                    <h4 style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#9CA3AF', letterSpacing: '0.1em', marginBottom: '1rem', borderBottom: '1px solid #E5E7EB', paddingBottom: '0.5rem' }}>
+                                                    <h4 style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#000000', letterSpacing: '0.1em', marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
                                                         {category} Templates
                                                     </h4>
                                                     <div style={{ display: 'grid', gap: '0.75rem' }}>
                                                         {categoryTemplates.map((temp, idx) => (
-                                                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                                                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                                                                 <div>
-                                                                    <div style={{ fontWeight: '600', color: '#111827' }}>{temp.employment_type} Format</div>
-                                                                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                                                    <div style={{ fontWeight: '600', color: '#000000' }}>{temp.employment_type} Format</div>
+                                                                    <div style={{ fontSize: '0.75rem', color: '#000000' }}>
                                                                         Format: <span style={{ textTransform: 'uppercase' }}>{temp.original_type}</span> •
                                                                         Placeholders: {temp.placeholders?.length || 0} •
                                                                         Updated: {new Date(temp.updated_at).toLocaleDateString()}
                                                                     </div>
                                                                 </div>
                                                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                                    <button className="btn" style={{ fontSize: '0.7rem', padding: '0.4rem 0.8rem', border: '1px solid #E5E7EB' }} onClick={() => setPreviewActiveTemplate(temp.html_content)}>Preview</button>
+                                                                    <button className="btn" style={{ fontSize: '0.7rem', padding: '0.4rem 0.8rem', border: '1px solid #e2e8f0' }} onClick={() => setPreviewActiveTemplate(temp.html_content)}>Preview</button>
                                                                     <button
                                                                         className="btn btn-danger"
                                                                         style={{ fontSize: '0.7rem', padding: '0.4rem 0.8rem' }}
@@ -2180,7 +2180,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                                         <div>
                                             <h2 className="card-title" style={{ margin: 0 }}>🧠 AI Analysis Complete</h2>
-                                            <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '0.5rem 0 0' }}>We've scanned your {selectedTemplateType} template and extracted the logic.</p>
+                                            <p style={{ fontSize: '0.8rem', color: '#000000', margin: '0.5rem 0 0' }}>We've scanned your {selectedTemplateType} template and extracted the logic.</p>
                                         </div>
                                         <button className="btn" onClick={() => setTemplateAnalysis(null)}>✕</button>
                                     </div>
@@ -2188,44 +2188,44 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                             <div style={{ padding: '1.5rem', background: '#eff6ff', borderRadius: '12px', border: '1px solid #bfdbfe' }}>
-                                                <h3 style={{ fontSize: '1rem', color: '#0a66c2', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <h3 style={{ fontSize: '1rem', color: '#ff4500', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                     <span>🏷️</span> Detected Placeholders
                                                 </h3>
                                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                                                     {templateAnalysis.placeholders?.map(p => (
-                                                        <span key={p} style={{ padding: '0.4rem 0.8rem', background: '#ffffff', color: '#1f2937', borderRadius: '4px', fontSize: '0.75rem', border: '1px solid #E5E7EB' }}>
+                                                        <span key={p} style={{ padding: '0.4rem 0.8rem', background: '#ffffff', color: '#1f2937', borderRadius: '4px', fontSize: '0.75rem', border: '1px solid #e2e8f0' }}>
                                                             {`{{${p}}}`}
                                                         </span>
                                                     ))}
                                                 </div>
-                                                <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '1rem' }}>
+                                                <p style={{ fontSize: '0.75rem', color: '#000000', marginTop: '1rem' }}>
                                                     * These markers will be replaced with real employee data during generation.
                                                 </p>
                                             </div>
 
                                             {templateAnalysis.roi_fields?.length > 0 && (
                                                 <div style={{ padding: '1.5rem', background: '#ecfdf5', borderRadius: '12px', border: '1px solid #a7f3d0' }}>
-                                                    <h3 style={{ fontSize: '1rem', color: '#10B981', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <h3 style={{ fontSize: '1rem', color: '#ff4500', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                         <span>💰</span> ROI / Investment Fields Found
                                                     </h3>
                                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                                                         {templateAnalysis.roi_fields.map(field => (
-                                                            <span key={field} style={{ padding: '0.4rem 0.8rem', background: '#d1fae5', color: '#065f46', borderRadius: '20px', fontSize: '0.75rem', border: '1px solid #10B981' }}>
+                                                            <span key={field} style={{ padding: '0.4rem 0.8rem', background: '#d1fae5', color: '#065f46', borderRadius: '20px', fontSize: '0.75rem', border: '1px solid #ff4500' }}>
                                                                 {field} detected
                                                             </span>
                                                         ))}
                                                     </div>
-                                                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '1rem' }}>
+                                                    <p style={{ fontSize: '0.75rem', color: '#000000', marginTop: '1rem' }}>
                                                         * These fields are mapped to automated tax and payroll processing.
                                                     </p>
                                                 </div>
                                             )}
                                         </div>
 
-                                        <div style={{ border: '1px solid #E5E7EB', borderRadius: '12px', overflow: 'hidden', background: '#ffffff' }}>
-                                            <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#6b7280' }}>🖥️ LIVE HTML PREVIEW</span>
-                                                <span style={{ fontSize: '0.6rem', color: '#10B981' }}>● Responsive AI Layout</span>
+                                        <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', background: '#ffffff' }}>
+                                            <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#000000' }}>🖥️ LIVE HTML PREVIEW</span>
+                                                <span style={{ fontSize: '0.6rem', color: '#ff4500' }}>● Responsive AI Layout</span>
                                             </div>
                                             <div style={{ padding: '0px', height: '450px', background: '#fff' }}>
                                                 {templateAnalysis.html_template ? (
@@ -2235,7 +2235,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                         title="AI Template Preview"
                                                     />
                                                 ) : (
-                                                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#6b7280' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#000000' }}>
                                                         No HTML preview generated for this file type.
                                                     </div>
                                                 )}
@@ -2243,7 +2243,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         </div>
                                     </div>
 
-                                    <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid #E5E7EB' }}>
+                                    <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
                                         <button className="btn btn-secondary" onClick={() => setTemplateAnalysis(null)}>Discard</button>
                                         <button
                                             className="btn btn-primary"
@@ -2292,7 +2292,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         <h2 className="card-title" style={{ margin: 0 }}>👁️ Template Preview</h2>
                                         <button className="btn" onClick={() => setPreviewActiveTemplate(null)}>✕</button>
                                     </div>
-                                    <div style={{ flex: 1, border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden', background: '#ffffff', minHeight: 0 }}>
+                                    <div style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', background: '#ffffff', minHeight: 0 }}>
                                         <iframe
                                             srcDoc={previewActiveTemplate}
                                             style={{ width: '100%', height: '100%', border: 'none' }}
@@ -2308,26 +2308,26 @@ const AdminDashboard = ({ activeTab, user }) => {
                     {activeTab === 'announcements' && (
                                 <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                 <h2 className="card-title">📢 Manage System Announcements</h2>
-                                <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>This message will be visible to all employees in their Engage module.</p>
+                                <p style={{ color: '#000000', marginBottom: '1.5rem' }}>This message will be visible to all employees in their Engage module.</p>
 
                                 <form onSubmit={handleUpdateAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px' }}>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#6b7280' }}>Announcement Title</label>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#000000' }}>Announcement Title</label>
                                         <input
                                             type="text"
                                             value={announcementMsg.title}
                                             onChange={(e) => setAnnouncementMsg({ ...announcementMsg, title: e.target.value })}
-                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
                                             placeholder="e.g. 📌 Essential Office Guidelines"
                                         />
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#6b7280' }}>Content</label>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#000000' }}>Content</label>
                                         <textarea
                                             rows="6"
                                             value={announcementMsg.content}
                                             onChange={(e) => setAnnouncementMsg({ ...announcementMsg, content: e.target.value })}
-                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937', lineHeight: '1.5' }}
+                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937', lineHeight: '1.5' }}
                                             placeholder="Type the announcement content here..."
                                         />
                                     </div>
@@ -2358,78 +2358,78 @@ const AdminDashboard = ({ activeTab, user }) => {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 <div>
-                                    <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Employment Type</label>
+                                    <label style={{ fontSize: '0.8rem', color: '#000000' }}>Employment Type</label>
                                     <select
                                         value={offerLetterParams.employment_type}
                                         onChange={(e) => setOfferLetterParams({ ...offerLetterParams, employment_type: e.target.value })}
-                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }}
+                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
                                     >
                                         <option value="Intern">Intern</option>
                                         <option value="Full-Time">Full-Time</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Offer Date</label>
-                                    <input type="date" value={offerLetterParams.date} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }} />
+                                    <label style={{ fontSize: '0.8rem', color: '#000000' }}>Offer Date</label>
+                                    <input type="date" value={offerLetterParams.date} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }} />
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>{offerLetterParams.employment_type === 'Intern' ? 'Internship Role' : 'Employee Role'}</label>
-                                    <input type="text" value={offerLetterParams.role} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, role: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }} />
+                                    <label style={{ fontSize: '0.8rem', color: '#000000' }}>{offerLetterParams.employment_type === 'Intern' ? 'Internship Role' : 'Employee Role'}</label>
+                                    <input type="text" value={offerLetterParams.role} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, role: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }} />
                                 </div>
 
                                 {offerLetterParams.employment_type === 'Intern' ? (
                                     <>
                                         <div>
-                                            <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Stipend / Benefits</label>
-                                            <input type="text" value={offerLetterParams.stipend} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, stipend: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }} />
+                                            <label style={{ fontSize: '0.8rem', color: '#000000' }}>Stipend / Benefits</label>
+                                            <input type="text" value={offerLetterParams.stipend} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, stipend: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }} />
                                         </div>
                                         <div>
-                                            <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Duration</label>
-                                            <input type="text" value={offerLetterParams.duration} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, duration: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }} />
+                                            <label style={{ fontSize: '0.8rem', color: '#000000' }}>Duration</label>
+                                            <input type="text" value={offerLetterParams.duration} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, duration: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }} />
                                         </div>
                                     </>
                                 ) : (
                                     <>
                                         <div>
-                                            <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Annual CTC (₹)</label>
+                                            <label style={{ fontSize: '0.8rem', color: '#000000' }}>Annual CTC (₹)</label>
                                             <input type="number" value={offerLetterParams.annual_ctc} onChange={(e) => {
                                                 const ctc = parseFloat(e.target.value);
                                                 setOfferLetterParams({ ...offerLetterParams, annual_ctc: ctc, in_hand_salary: ctc - offerLetterParams.pf_amount });
-                                            }} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }} />
+                                            }} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }} />
                                         </div>
                                         <div>
-                                            <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Notice Period</label>
-                                            <input type="text" value={offerLetterParams.notice_period} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, notice_period: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }} />
+                                            <label style={{ fontSize: '0.8rem', color: '#000000' }}>Notice Period</label>
+                                            <input type="text" value={offerLetterParams.notice_period} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, notice_period: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }} />
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
                                             <input type="checkbox" checked={offerLetterParams.has_pf} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, has_pf: e.target.checked })} id="pf-checkbox" />
-                                            <label htmlFor="pf-checkbox" style={{ fontSize: '0.8rem', color: '#6b7280' }}>Company has PF?</label>
+                                            <label htmlFor="pf-checkbox" style={{ fontSize: '0.8rem', color: '#000000' }}>Company has PF?</label>
                                         </div>
                                         {offerLetterParams.has_pf && (
                                             <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>PF Amount (Annual ₹)</label>
+                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>PF Amount (Annual ₹)</label>
                                                 <input type="number" value={offerLetterParams.pf_amount} onChange={(e) => {
                                                     const pf = parseFloat(e.target.value);
                                                     setOfferLetterParams({ ...offerLetterParams, pf_amount: pf, in_hand_salary: offerLetterParams.annual_ctc - pf });
-                                                }} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }} />
+                                                }} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }} />
                                             </div>
                                         )}
-                                        <div style={{ padding: '0.75rem', background: 'rgba(10, 102, 194, 0.1)', borderRadius: '6px', border: '1px solid #0a66c2', marginTop: '0.5rem' }}>
-                                            <p style={{ margin: 0, fontSize: '0.9rem', color: '#0a66c2', fontWeight: 'bold' }}>💰 In-Hand Amount: ₹{offerLetterParams.in_hand_salary}</p>
+                                        <div style={{ padding: '0.75rem', background: 'rgba(255, 69, 0, 0.1)', borderRadius: '6px', border: '1px solid #ff4500', marginTop: '0.5rem' }}>
+                                            <p style={{ margin: 0, fontSize: '0.9rem', color: '#ff4500', fontWeight: 'bold' }}>💰 In-Hand Amount: ₹{offerLetterParams.in_hand_salary}</p>
                                         </div>
                                     </>
                                 )}
 
                                 <div>
-                                    <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Role Description / Annexure Details</label>
-                                    <textarea rows="3" value={offerLetterParams.role_description} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, role_description: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB', background: '#ffffff', color: '#1f2937' }} />
+                                    <label style={{ fontSize: '0.8rem', color: '#000000' }}>Role Description / Annexure Details</label>
+                                    <textarea rows="3" value={offerLetterParams.role_description} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, role_description: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }} />
                                 </div>
                                 <button className="btn btn-primary" onClick={() => handleGenerateOfferLetter(viewedEmp.employee_id)} disabled={isGeneratingOL}>
                                     {isGeneratingOL ? 'Generating Draft...' : '🔄 Update/Generate Draft'}
                                 </button>
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '1rem', background: '#f9fafb' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', background: '#f9fafb' }}>
                                 <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#ff7a00' }}>📄 PREVIEW AREA</div>
                                 {viewedEmp.offer_letter_status === 'draft' ? (
                                     <iframe
@@ -2438,18 +2438,18 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         title="Offer Letter Preview"
                                     />
                                 ) : (
-                                    <div style={{ height: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', color: '#6b7280', border: '1px dashed #E5E7EB' }}>
+                                    <div style={{ height: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', color: '#000000', border: '1px dashed #e2e8f0' }}>
                                         Draft not generated yet.<br />Fill details and click Generate.
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid #E5E7EB' }}>
+                        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
                             <button className="btn btn-secondary" onClick={() => setIsOfferLetterModalOpen(false)}>Cancel</button>
                             <button
                                 className="btn btn-primary"
-                                style={{ backgroundColor: '#0a66c2' }}
+                                style={{ backgroundColor: '#ff4500' }}
                                 disabled={viewedEmp.offer_letter_status !== 'draft'}
                                 onClick={() => handleFinalizeOfferLetter(viewedEmp.employee_id)}
                             >
@@ -2466,39 +2466,39 @@ const AdminDashboard = ({ activeTab, user }) => {
                         <div className="modal-content shadow-2xl" style={{ maxWidth: '1000px', width: '95%', maxHeight: '95vh', overflowY: 'auto', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                 <h2 className="card-title">📄 Exit Documents: Relieving & Experience</h2>
-                                <button onClick={() => setIsRelievingLetterModalOpen(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.5rem' }}>✕</button>
+                                <button onClick={() => setIsRelievingLetterModalOpen(false)} style={{ background: 'none', border: 'none', color: '#000000', cursor: 'pointer', fontSize: '1.5rem' }}>✕</button>
                             </div>
 
                             {/* --- RELIEVING LETTER SECTION --- */}
                             <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem', background: '#fff9f5' }}>
-                                <h3 style={{ fontSize: '1.1rem', color: '#0a66c2', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <h3 style={{ fontSize: '1.1rem', color: '#ff4500', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     📑 1. Relieving Letter
                                 </h3>
                                 <div className="grid-2">
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                             <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Joining Date</label>
-                                                <input type="date" value={relievingLetterParams.joining_date} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, joining_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>Joining Date</label>
+                                                <input type="date" value={relievingLetterParams.joining_date} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, joining_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
                                             </div>
                                             <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Relieving Date</label>
-                                                <input type="date" value={relievingLetterParams.relieving_date} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, relieving_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>Relieving Date</label>
+                                                <input type="date" value={relievingLetterParams.relieving_date} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, relieving_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
                                             </div>
                                         </div>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                             <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Last Working Day</label>
-                                                <input type="date" value={relievingLetterParams.last_working_day} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, last_working_day: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>Last Working Day</label>
+                                                <input type="date" value={relievingLetterParams.last_working_day} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, last_working_day: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
                                             </div>
                                             <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Designation</label>
-                                                <input type="text" value={relievingLetterParams.designation} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, designation: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>Designation</label>
+                                                <input type="text" value={relievingLetterParams.designation} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, designation: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
                                             </div>
                                         </div>
                                         <div>
-                                            <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Reason for Leaving</label>
-                                            <textarea rows="2" value={relievingLetterParams.reason_for_leaving} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, reason_for_leaving: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                            <label style={{ fontSize: '0.8rem', color: '#000000' }}>Reason for Leaving</label>
+                                            <textarea rows="2" value={relievingLetterParams.reason_for_leaving} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, reason_for_leaving: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
                                         </div>
                                         <div style={{ display: 'flex', gap: '1rem' }}>
                                             <button className="btn btn-primary" onClick={() => handleGenerateRelievingLetter(selectedApprovedEmp.employee_id)} disabled={isGeneratingRL} style={{ backgroundColor: '#10b981', flex: 1 }}>
@@ -2506,7 +2506,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             </button>
                                             <button
                                                 className="btn btn-primary"
-                                                style={{ backgroundColor: '#0a66c2', flex: 1 }}
+                                                style={{ backgroundColor: '#ff4500', flex: 1 }}
                                                 disabled={selectedApprovedEmp?.relieving_letter_status !== 'draft'}
                                                 onClick={() => handleFinalizeRelievingLetter(selectedApprovedEmp.employee_id)}
                                             >
@@ -2514,12 +2514,12 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             </button>
                                         </div>
                                     </div>
-                                    <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '0.5rem', background: '#f9fafb' }}>
+                                    <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.5rem', background: '#f9fafb' }}>
                                         <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#ff7a00', marginBottom: '0.5rem' }}>DRAFT PREVIEW</div>
                                         {selectedApprovedEmp?.relieving_letter_status === 'draft' ? (
                                             <iframe src={`${apiUrl}/admin/employee/relieving-letter-preview/${selectedApprovedEmp.employee_id}?t=${previewTimestamp}`} style={{ width: '100%', height: '250px', border: 'none', background: '#fff' }} title="RL Preview" />
                                         ) : (
-                                            <div style={{ height: '250px', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', color: '#6b7280', border: '1px dashed #E5E7EB', background: '#fff', fontSize: '0.8rem' }}>Draft not generated yet.</div>
+                                            <div style={{ height: '250px', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', color: '#000000', border: '1px dashed #e2e8f0', background: '#fff', fontSize: '0.8rem' }}>Draft not generated yet.</div>
                                         )}
                                     </div>
                                 </div>
@@ -2527,34 +2527,34 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                             {/* --- EXPERIENCE CERTIFICATE SECTION --- */}
                             <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', background: '#f0f9ff' }}>
-                                <h3 style={{ fontSize: '1.1rem', color: '#0a66c2', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <h3 style={{ fontSize: '1.1rem', color: '#ff4500', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     🏆 2. Experience Certificate
                                 </h3>
                                 <div className="grid-2">
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                             <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Joining Date</label>
-                                                <input type="date" value={experienceCertificateParams.joining_date} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, joining_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>Joining Date</label>
+                                                <input type="date" value={experienceCertificateParams.joining_date} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, joining_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
                                             </div>
                                             <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Issue Date</label>
-                                                <input type="date" value={experienceCertificateParams.issue_date} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, issue_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>Issue Date</label>
+                                                <input type="date" value={experienceCertificateParams.issue_date} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, issue_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
                                             </div>
                                         </div>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                             <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Last Working Day</label>
-                                                <input type="date" value={experienceCertificateParams.last_working_day} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, last_working_day: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>Last Working Day</label>
+                                                <input type="date" value={experienceCertificateParams.last_working_day} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, last_working_day: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
                                             </div>
                                             <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Designation</label>
-                                                <input type="text" value={experienceCertificateParams.designation} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, designation: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }} />
+                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>Designation</label>
+                                                <input type="text" value={experienceCertificateParams.designation} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, designation: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
                                             </div>
                                         </div>
                                         <div>
-                                            <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Performance Summary</label>
-                                            <select value={experienceCertificateParams.performance_summary} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, performance_summary: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #E5E7EB' }}>
+                                            <label style={{ fontSize: '0.8rem', color: '#000000' }}>Performance Summary</label>
+                                            <select value={experienceCertificateParams.performance_summary} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, performance_summary: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
                                                 <option>Outstanding</option>
                                                 <option>Excellent</option>
                                                 <option>Good</option>
@@ -2562,12 +2562,12 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             </select>
                                         </div>
                                         <div style={{ display: 'flex', gap: '1rem' }}>
-                                            <button className="btn btn-primary" onClick={() => handleGenerateExperienceCertificate(selectedApprovedEmp.employee_id)} disabled={isGeneratingEC} style={{ backgroundColor: '#0a66c2', flex: 1 }}>
+                                            <button className="btn btn-primary" onClick={() => handleGenerateExperienceCertificate(selectedApprovedEmp.employee_id)} disabled={isGeneratingEC} style={{ backgroundColor: '#ff4500', flex: 1 }}>
                                                 {isGeneratingEC ? 'Generating...' : '🔄 Update/Generate Draft'}
                                             </button>
                                             <button
                                                 className="btn btn-primary"
-                                                style={{ backgroundColor: '#0a66c2', flex: 1 }}
+                                                style={{ backgroundColor: '#ff4500', flex: 1 }}
                                                 disabled={selectedApprovedEmp?.experience_cert_status !== 'draft'}
                                                 onClick={() => handleFinalizeExperienceCertificate(selectedApprovedEmp.employee_id)}
                                             >
@@ -2575,18 +2575,18 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             </button>
                                         </div>
                                     </div>
-                                    <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '0.5rem', background: '#f9fafb' }}>
-                                        <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#0a66c2', marginBottom: '0.5rem' }}>DRAFT PREVIEW</div>
+                                    <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.5rem', background: '#f9fafb' }}>
+                                        <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#ff4500', marginBottom: '0.5rem' }}>DRAFT PREVIEW</div>
                                         {selectedApprovedEmp?.experience_cert_status === 'draft' ? (
                                             <iframe src={`${apiUrl}/admin/employee/experience-certificate-preview/${selectedApprovedEmp.employee_id}?t=${previewTimestamp}`} style={{ width: '100%', height: '250px', border: 'none', background: '#fff' }} title="EC Preview" />
                                         ) : (
-                                            <div style={{ height: '250px', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', color: '#6b7280', border: '1px dashed #E5E7EB', background: '#fff', fontSize: '0.8rem' }}>Draft not generated yet.</div>
+                                            <div style={{ height: '250px', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', color: '#000000', border: '1px dashed #e2e8f0', background: '#fff', fontSize: '0.8rem' }}>Draft not generated yet.</div>
                                         )}
                                     </div>
                                 </div>
                             </div>
 
-                            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center', paddingTop: '1.5rem', borderTop: '1px solid #E5E7EB' }}>
+                            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
                                 <button className="btn btn-secondary" onClick={() => setIsRelievingLetterModalOpen(false)} style={{ minWidth: '200px' }}>Done / Close</button>
                             </div>
                         </div>
@@ -2601,15 +2601,15 @@ const AdminDashboard = ({ activeTab, user }) => {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                 <div>
                                     <h2 className="card-title" style={{ margin: 0 }}>💰 Release Payslips</h2>
-                                    <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0.25rem 0 0' }}>Month: <strong>{payslipManagerMonth}</strong></p>
+                                    <p style={{ fontSize: '0.875rem', color: '#000000', margin: '0.25rem 0 0' }}>Month: <strong>{payslipManagerMonth}</strong></p>
                                 </div>
                                 <button className="btn" onClick={() => setIsPayslipManagerOpen(false)}>✕</button>
                             </div>
 
-                            <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem' }}>Select employees to generate and send payslips for. You can preview individual payslips using the AI Generator before sending all.</p>
+                            <p style={{ color: '#000000', fontSize: '0.875rem', marginBottom: '1.5rem' }}>Select employees to generate and send payslips for. You can preview individual payslips using the AI Generator before sending all.</p>
 
-                            <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden', marginBottom: '1.5rem' }}>
-                                <div style={{ background: '#f9fafb', padding: '0.75rem 1rem', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', marginBottom: '1.5rem' }}>
+                                <div style={{ background: '#f9fafb', padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                     <input
                                         type="checkbox"
                                         checked={selectedPayslipEmployees.length === approvedEmployees.length && approvedEmployees.length > 0}
@@ -2619,10 +2619,10 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         }}
                                         style={{ width: '1rem', height: '1rem' }}
                                     />
-                                    <span style={{ fontSize: '0.875rem', fontWeight: 'bold', color: '#374151' }}>Select All ({approvedEmployees.length})</span>
+                                    <span style={{ fontSize: '0.875rem', fontWeight: 'bold', color: '#000000' }}>Select All ({approvedEmployees.length})</span>
                                 </div>
                                 <div style={{ maxHeight: '400px', overflowY: 'auto', background: '#ffffff' }}>
-                                    {approvedEmployees.length === 0 && <div style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>No employees found.</div>}
+                                    {approvedEmployees.length === 0 && <div style={{ padding: '1rem', color: '#000000', textAlign: 'center' }}>No employees found.</div>}
                                     {approvedEmployees.map(emp => (
                                         <div key={emp.employee_id} style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -2636,8 +2636,8 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                     style={{ width: '1rem', height: '1rem' }}
                                                 />
                                                 <div>
-                                                    <div style={{ fontWeight: '600', color: '#111827', fontSize: '0.875rem' }}>{emp.name}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                                    <div style={{ fontWeight: '600', color: '#000000', fontSize: '0.875rem' }}>{emp.name}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: '#000000' }}>
                                                         ID: {emp.employee_id} | Salary: ₹{emp.monthly_salary || 0}
                                                         {emp.pf_number && ` | PF: ${emp.pf_number}`}
                                                     </div>
@@ -2659,7 +2659,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                     setIsDocGenModalOpen(true);
                                                 }}
                                                 className="btn btn-secondary"
-                                                style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', color: '#0a66c2', borderColor: '#0a66c2' }}
+                                                style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', color: '#ff4500', borderColor: '#ff4500' }}
                                             >
                                                 👁️ AI Preview
                                             </button>
@@ -2668,11 +2668,11 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 </div>
                             </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '1px solid #E5E7EB', paddingTop: '1.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
                                 <button className="btn btn-secondary" onClick={() => setIsPayslipManagerOpen(false)} disabled={isBatchSending}>Cancel</button>
                                 <button
                                     className="btn btn-primary"
-                                    style={{ background: '#10B981', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                    style={{ background: '#ff4500', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                                     disabled={selectedPayslipEmployees.length === 0 || isBatchSending}
                                     onClick={async () => {
                                         setIsBatchSending(true);
@@ -2748,22 +2748,22 @@ const AdminDashboard = ({ activeTab, user }) => {
                     <div className="card shadow-2xl" style={{ width: '100%', maxWidth: '500px', padding: '2.5rem', border: '1px solid var(--border-color)', background: '#ffffff', animation: 'slideUp 0.3s ease-out' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                             <h2 style={{ fontSize: '1.5rem', color: 'var(--primary)', margin: 0, fontWeight: 800 }}>➕ Add New Employee</h2>
-                            <button onClick={() => setIsAddEmpModalOpen(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.25rem' }}>✕</button>
+                            <button onClick={() => setIsAddEmpModalOpen(false)} style={{ background: 'none', border: 'none', color: '#000000', cursor: 'pointer', fontSize: '1.25rem' }}>✕</button>
                         </div>
                         <form onSubmit={handleAddEmployee} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                             <div>
-                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Full Name</label>
+                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Full Name</label>
                                 <input 
                                     required 
                                     className="premium-input" 
                                     placeholder="John Doe"
                                     value={addEmpForm.name} 
                                     onChange={e => setAddEmpForm({...addEmpForm, name: e.target.value})} 
-                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937' }}
+                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f9fafb', color: '#1f2937' }}
                                 />
                             </div>
                             <div>
-                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Company Email (@dhanadurga.com)</label>
+                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Company Email (@dhanadurga.com)</label>
                                 <input 
                                     required 
                                     type="email" 
@@ -2771,53 +2771,53 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     placeholder="john@dhanadurga.com"
                                     value={addEmpForm.email} 
                                     onChange={e => setAddEmpForm({...addEmpForm, email: e.target.value})} 
-                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937' }}
+                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f9fafb', color: '#1f2937' }}
                                 />
                             </div>
                             <div>
-                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Temporary Password</label>
+                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Temporary Password</label>
                                 <input 
                                     required 
                                     type="password" 
                                     className="premium-input" 
                                     value={addEmpForm.password} 
                                     onChange={e => setAddEmpForm({...addEmpForm, password: e.target.value})} 
-                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937' }}
+                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f9fafb', color: '#1f2937' }}
                                 />
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div>
-                                    <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Employment Type</label>
+                                    <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Employment Type</label>
                                     <select 
                                         value={addEmpForm.employment_type} 
                                         onChange={e => setAddEmpForm({...addEmpForm, employment_type: e.target.value})}
-                                        style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937', fontWeight: 600 }}
+                                        style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f9fafb', color: '#1f2937', fontWeight: 600 }}
                                     >
                                         <option value="Full-Time">Full-Time</option>
                                         <option value="Intern">Intern</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Monthly Salary (₹)</label>
+                                    <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Monthly Salary (₹)</label>
                                     <input 
                                         required 
                                         type="number" 
                                         className="premium-input" 
                                         value={addEmpForm.monthly_salary} 
                                         onChange={e => setAddEmpForm({...addEmpForm, monthly_salary: e.target.value})} 
-                                        style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937' }}
+                                        style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f9fafb', color: '#1f2937' }}
                                     />
                                 </div>
                             </div>
                             <div>
-                                <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Designation / Position</label>
+                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Designation / Position</label>
                                 <input 
                                     required 
                                     className="premium-input" 
                                     placeholder="e.g. Sales Executive"
                                     value={addEmpForm.position} 
                                     onChange={e => setAddEmpForm({...addEmpForm, position: e.target.value})} 
-                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #E5E7EB', background: '#f9fafb', color: '#1f2937' }}
+                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f9fafb', color: '#1f2937' }}
                                 />
                             </div>
                             
@@ -2835,7 +2835,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     type="submit" 
                                     disabled={addEmpLoading}
                                     className="btn btn-primary" 
-                                    style={{ padding: '1rem', background: '#0a66c2', fontWeight: 'bold' }}
+                                    style={{ padding: '1rem', background: '#ff4500', fontWeight: 'bold' }}
                                 >
                                     {addEmpLoading ? 'Creating...' : '🚀 Create Only'}
                                 </button>

@@ -1,18 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {
-  --primary: #0a66c2;
-  --primary-hover: #084d91;
-  --secondary: #0a66c2;
-  --violet: #7c3aed;
+  --primary: #ff4500;
+  --primary-hover: #e63e00;
+  --secondary: #ff4500;
+  --violet: #f97316;
   --bg-color: #ffffff;
   --surface-color: #ffffff;
-  --text-light: #0f172a;
-  --text-muted: #64748b;
+  --text-light: #000000;
+  --text-muted: #000000;
   --border-color: #e2e8f0;
-  --accent-blue: #eff6ff;
-  --main-gradient: linear-gradient(135deg, #0a66c2 0%, #7c3aed 50%, #2563eb 100%);
-  --hover-gradient: linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #0a66c2 100%);
+  --accent-blue: #fff7ed;
+  --main-gradient: linear-gradient(135deg, #ff4500 0%, #ff8c00 50%, #ea580c 100%);
+  --hover-gradient: linear-gradient(135deg, #ea580c 0%, #ff8c00 50%, #ff4500 100%);
 
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -198,7 +198,7 @@ body {
 .brand-main {
   font-size: 1.5rem;
   font-weight: 800;
-  color: #1e293b;
+  color: #000000;
   line-height: 1;
   letter-spacing: -0.02em;
 }
@@ -231,7 +231,7 @@ body {
 
 .nav-item {
   padding: 0.75rem 1rem;
-  color: #64748b;
+  color: #000000;
   text-decoration: none;
   display: flex;
   align-items: center;
@@ -253,7 +253,7 @@ body {
 }
 
 .nav-icon-img {
-  color: #94a3b8;
+  color: #000000;
   transition: color 0.2s ease;
 }
 
@@ -266,24 +266,24 @@ body {
 .nav-title {
   font-size: 0.95rem;
   font-weight: 600;
-  color: #334155;
+  color: #000000;
 }
 
 .nav-subtitle {
   font-size: 0.65rem;
   font-weight: 700;
-  color: #94a3b8;
+  color: #000000;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
 .nav-item:hover {
-  background-color: #f8fafc;
+  background-color: #ffffff;
 }
 
 .nav-item.active {
-  background-color: rgba(10, 102, 194, 0.08);
-  border: 1px solid rgba(10, 102, 194, 0.1);
+  background-color: rgba(255, 69, 0, 0.08);
+  border: 1px solid rgba(255, 69, 0, 0.1);
 }
 
 .nav-item.active .nav-icon-wrapper {
@@ -316,7 +316,7 @@ body {
   gap: 0.15rem;
   margin-left: 1.25rem;
   padding-left: 0.5rem;
-  border-left: 1px solid #f1f5f9;
+  border-left: 1px solid var(--border-color);
   margin-bottom: 0.5rem;
 }
 
@@ -336,12 +336,12 @@ body {
 }
 
 .nav-item.group-expanded {
-  background-color: #f8fafc;
+  background-color: #ffffff;
 }
 
 .sidebar-footer {
   padding: 1.25rem 0.75rem;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--border-color);
 }
 
 .user-profile-card {
@@ -349,17 +349,18 @@ body {
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem;
-  background-color: #f8fafc;
+  background-color: #ffffff;
   border-radius: 16px;
   transition: background-color 0.2s;
+  border: 1px solid var(--border-color);
 }
 
 .user-avatar-orange {
   width: 40px;
   height: 40px;
-  background-color: #f1f5f9;
+  background-color: #ffffff;
   border-radius: 10px;
-  color: #64748b;
+  color: #000000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -375,7 +376,7 @@ body {
 
 .user-name-bold {
   font-weight: 700;
-  color: #1e293b;
+  color: #000000;
   font-size: 0.9rem;
 }
 
@@ -388,7 +389,7 @@ body {
 
 .logout-btn-wrapper {
   cursor: pointer;
-  color: #94a3b8;
+  color: #000000;
   transition: color 0.2s;
 }
 
@@ -427,8 +428,8 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background-color: #e2e8f0;
-  color: #64748b;
+  background-color: #ffffff;
+  color: #000000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -456,7 +457,7 @@ input, select, textarea {
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--primary) !important;
-  box-shadow: 0 0 0 2px rgba(10, 102, 194, 0.1);
+  box-shadow: 0 0 0 2px rgba(255, 69, 0, 0.1);
 }
 
 input::placeholder, textarea::placeholder {
@@ -498,7 +499,7 @@ label {
 .card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-lg);
-  border-color: rgba(10, 102, 194, 0.2);
+  border-color: rgba(255, 69, 0, 0.2);
 }
 
 .glass-card {
@@ -541,13 +542,13 @@ label {
   background-size: 200% auto;
   color: white;
   border: none;
-  box-shadow: 0 4px 15px rgba(10, 102, 194, 0.2);
+  box-shadow: 0 4px 15px rgba(255, 69, 0, 0.2);
 }
 
 .btn-primary:hover {
   background-position: right center;
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(10, 102, 194, 0.3);
+  box-shadow: 0 6px 20px rgba(255, 69, 0, 0.3);
 }
 
 .btn-secondary {
@@ -591,8 +592,8 @@ video {
 /* Landing Page Styles */
 .landing-page {
   min-height: 100vh;
-  background-color: #000;
-  color: #fff;
+  background-color: #ffffff;
+  color: #000000;
   font-family: inherit;
   overflow-x: hidden;
 }
@@ -602,9 +603,9 @@ video {
   top: 0;
   width: 100%;
   z-index: 50;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .navbar-container {
@@ -632,7 +633,7 @@ video {
   font-size: 1.25rem;
   font-weight: bold;
   letter-spacing: -0.025em;
-  background: linear-gradient(135deg, var(--primary), #c84cff, #0a66c2, var(--primary));
+  background: linear-gradient(135deg, var(--primary), #fb923c, #ea580c, var(--primary));
   background-size: 300% 300%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -658,7 +659,7 @@ video {
 }
 
 .nav-link {
-  color: #a1a1aa;
+  color: #000000;
   text-decoration: none;
   font-size: 0.875rem;
   transition: color 0.2s;
@@ -708,7 +709,7 @@ video {
 
 .hero-subtitle {
   font-size: 1.25rem;
-  color: #a1a1aa;
+  color: #000000;
   max-width: 600px;
   margin-bottom: 2.5rem;
 }
@@ -724,21 +725,21 @@ video {
 
 .feature-card {
   padding: 1.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid var(--border-color);
   border-radius: 1rem;
   transition: transform 0.3s ease;
 }
 
 .feature-card:hover {
   transform: translateY(-5px);
-  background: rgba(255, 255, 255, 0.08);
+  background: #f8fafc;
 }
 
 .feature-icon-container {
   width: 3rem;
   height: 3rem;
-  background: rgba(10, 102, 194, 0.1);
+  background: rgba(255, 69, 0, 0.1);
   border-radius: 0.75rem;
   display: flex;
   align-items: center;
@@ -757,7 +758,7 @@ video {
 }
 
 .feature-description {
-  color: #a1a1aa;
+  color: #000000;
   font-size: 0.875rem;
   line-height: 1.6;
 }
@@ -775,7 +776,7 @@ video {
 }
 
 .cta-subtitle {
-  color: #a1a1aa;
+  color: #000000;
   margin-bottom: 2rem;
 }
 
@@ -785,11 +786,11 @@ video {
   --pos-y: 140%;
   --spread-x: 150%;
   --spread-y: 180.06%;
-  --color-1: #000;
-  --color-2: #08012c;
-  --color-3: #4e1e40;
-  --color-4: #70464e;
-  --color-5: #88394c;
+  --color-1: #ff4500;
+  --color-2: #ff8c00;
+  --color-3: #ea580c;
+  --color-4: #fb923c;
+  --color-5: #ff4500;
   --border-angle: 20deg;
   --border-color-1: hsla(340, 75%, 60%, 0.2);
   --border-color-2: hsla(340, 75%, 40%, 0.75);
@@ -845,11 +846,11 @@ video {
   --pos-y: 95.51%;
   --spread-x: 120.24%;
   --spread-y: 110.06%;
-  --color-1: #000;
-  --color-2: #08012c;
-  --color-3: #4e1e40;
-  --color-4: #70464e;
-  --color-5: #88394c;
+  --color-1: #ff4500;
+  --color-2: #ff8c00;
+  --color-3: #ea580c;
+  --color-4: #fb923c;
+  --color-5: #ff4500;
   --stop-1: 0%;
   --stop-2: 8.47%;
   --stop-3: 18.96%;
@@ -937,15 +938,16 @@ video {
   position: relative;
   z-index: 10;
   padding: 1.5rem;
-  background: rgba(0, 0, 0, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid var(--border-color);
   border-radius: 1rem;
   height: 100%;
   transition: background 0.3s ease;
+  color: #000000;
 }
 
 .feature-card:hover .feature-card-content {
-  background: rgba(0, 0, 0, 0.9);
+  background: #f8fafc;
 }
 
 /* Animated Shader Hero Styles */
@@ -954,7 +956,7 @@ video {
   width: 100%;
   height: 100vh;
   overflow: hidden;
-  background-color: #000;
+  background-color: #ffffff;
 }
 
 .hero-shader-canvas {
@@ -976,8 +978,8 @@ video {
   justify-content: center;
   padding: 0 1.5rem;
   text-align: center;
-  color: #fff;
-  background: radial-gradient(circle at center, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.6) 100%);
+  color: #000000;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.6) 100%);
 }
 
 .trust-badge {
@@ -999,7 +1001,7 @@ video {
 }
 
 .trust-badge-text {
-  color: #ffe8cc;
+  color: #000000;
 }
 
 .hero-text-block {
@@ -1012,7 +1014,7 @@ video {
   font-weight: 900;
   line-height: 1.1;
   letter-spacing: -0.04em;
-  background: linear-gradient(135deg, #ff7a00 0%, #c84cff 100%);
+  background: linear-gradient(135deg, #ff4500 0%, #fb923c 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -1020,24 +1022,23 @@ video {
 }
 
 .hero-main-title.secondary {
-  background: linear-gradient(135deg, #c84cff 0%, #0a66c2 100%);
+  background: linear-gradient(135deg, #ea580c 0%, #ff4500 100%);
   -webkit-background-clip: text;
   background-clip: text;
 }
 
 .hero-subtitle {
   font-size: clamp(1rem, 4vw, 1.5rem);
-  color: #ffffff;
+  color: #000000;
   max-width: 800px;
   margin: 2rem auto;
   font-weight: 400;
   line-height: 1.6;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .hero-btn-primary {
   padding: 1.25rem 2.5rem;
-  background: linear-gradient(135deg, #ff7a00 0%, #c84cff 100%);
+  background: linear-gradient(135deg, #ff4500 0%, #ff8c00 100%);
   color: #fff;
   border-radius: 9999px;
   font-weight: 700;
@@ -1045,7 +1046,7 @@ video {
   border: none;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 10px 30px rgba(255, 122, 0, 0.3);
+  box-shadow: 0 10px 30px rgba(255, 69, 0, 0.2);
 }
 
 .hero-btn-primary:hover {
@@ -1055,16 +1056,15 @@ video {
 
 .hero-btn-secondary {
   padding: 1.25rem 2.5rem;
-  background: rgba(255, 146, 43, 0.1);
-  color: #fff;
+  background: #ffffff;
+  color: #000000;
   border-radius: 9999px;
   font-weight: 600;
   font-size: 1.125rem;
-  border: 1px solid rgba(255, 146, 43, 0.3);
+  border: 1px solid var(--border-color);
   cursor: pointer;
   transition: all 0.3s ease;
   margin-left: 1rem;
-  backdrop-filter: blur(4px);
 }
 
 .hero-btn-secondary:hover {

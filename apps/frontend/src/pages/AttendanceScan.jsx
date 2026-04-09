@@ -269,8 +269,8 @@ const AttendanceScan = ({ userId }) => {
                                 <div key={i} className="btn" style={{
                                     padding: '0.5rem 0', minWidth: 'auto', fontSize: '0.8rem',
                                     backgroundColor: d.status === 'Present' ? '#E6F0FF' : 'transparent',
-                                    borderColor: d.status === 'Present' ? '#0a66c2' : 'transparent',
-                                    color: d.status === 'Present' ? '#0a66c2' : 'var(--text-muted)'
+                                    borderColor: d.status === 'Present' ? '#ff4500' : 'transparent',
+                                    color: d.status === 'Present' ? '#ff4500' : 'var(--text-muted)'
                                 }}>{d.day}</div>
                             ))}
                         </div>

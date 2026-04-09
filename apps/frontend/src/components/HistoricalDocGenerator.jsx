@@ -313,7 +313,7 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                 <div className="card glass-card" style={{ padding: '2.5rem', animation: 'fadeInUp 0.5s ease-out' }}>
                     <div style={{ borderBottom: '1px solid #eee', paddingBottom: '1.5rem', marginBottom: '2rem' }}>
                         <h3 style={{ margin: 0 }}>📝 Complete Document Data</h3>
-                        <p style={{ color: '#6b7280', marginTop: '0.5rem' }}>Please provide the necessary values for the **{documentTypes.find(dt => dt.type === selectedDocType)?.name}**.</p>
+                        <p style={{ color: '#000000', marginTop: '0.5rem' }}>Please provide the necessary values for the **{documentTypes.find(dt => dt.type === selectedDocType)?.name}**.</p>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
                         {Object.entries(roiFields).map(([fieldName, fieldConfig]) => (
@@ -366,18 +366,18 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                         
                         <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', background: 'rgba(0,0,0,0.02)', borderRadius: '15px', marginBottom: '2rem', fontSize: '0.9rem' }}>
                             <div style={{ marginBottom: '1rem' }}>
-                                <div style={{ color: '#9ca3af', textTransform: 'uppercase', fontSize: '0.7rem', fontWeight: 800 }}>Employee</div>
+                                <div style={{ color: '#000000', textTransform: 'uppercase', fontSize: '0.7rem', fontWeight: 800 }}>Employee</div>
                                 <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{employeeData.name}</div>
                                 <div style={{ color: 'var(--secondary)' }}>ID: {employeeData.employee_id}</div>
                             </div>
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <div style={{ color: '#9ca3af', textTransform: 'uppercase', fontSize: '0.7rem', fontWeight: 800 }}>Document Type</div>
+                                <div style={{ color: '#000000', textTransform: 'uppercase', fontSize: '0.7rem', fontWeight: 800 }}>Document Type</div>
                                 <div style={{ fontWeight: 600 }}>{documentTypes.find(dt => dt.type === selectedDocType)?.name}</div>
                             </div>
                             <div style={{ borderTop: '1px solid #ddd', paddingTop: '1rem' }}>
                                 {Object.entries(formData).slice(0, 6).map(([k, v]) => (
                                     <div key={k} style={{ marginBottom: '0.5rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                        <span style={{ color: '#6b7280' }}>{k.replace(/_/g, ' ')}:</span> <strong>{v}</strong>
+                                        <span style={{ color: '#000000' }}>{k.replace(/_/g, ' ')}:</span> <strong>{v}</strong>
                                     </div>
                                 ))}
                                 {Object.keys(formData).length > 6 && <div style={{ textAlign: 'center', color: 'var(--secondary)', fontSize: '0.8rem' }}>+ more fields</div>}
@@ -410,7 +410,7 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem' }}>
                         <div>
                             <h3 style={{ fontSize: '1.75rem', fontWeight: 800 }}>🕒 Generated Documents History</h3>
-                            <p style={{ color: '#6b7280' }}>A complete list of manually generated records</p>
+                            <p style={{ color: '#000000' }}>A complete list of manually generated records</p>
                         </div>
                         <button className="btn btn-primary" onClick={resetGenerator} style={{ padding: '0.8rem 1.5rem', borderRadius: '12px' }}>
                             ➕ Create New Document
@@ -449,7 +449,7 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                             ))}
                         </div>
                     ) : (
-                        <div className="card glass-card" style={{ textAlign: 'center', padding: '5rem', color: '#9ca3af' }}>
+                        <div className="card glass-card" style={{ textAlign: 'center', padding: '5rem', color: '#000000' }}>
                             <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>📭</div>
                             No historical documents generated yet.
                         </div>
@@ -476,7 +476,7 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                         ✓
                     </div>
                     <h3 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>Mission Accomplished!</h3>
-                    <p style={{ color: '#6b7280', marginBottom: '3rem' }}>The document for <strong>{employeeData.name}</strong> has been generated and securely archived.</p>
+                    <p style={{ color: '#000000', marginBottom: '3rem' }}>The document for <strong>{employeeData.name}</strong> has been generated and securely archived.</p>
                     
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <button 

@@ -71,7 +71,7 @@
 
 .step-number.pending {
     background: #f3f4f6;
-    color: #9ca3af;
+    color: #000000;
     border-color: #e5e7eb;
 }
 
@@ -155,7 +155,7 @@
 
 .doc-type-card.selected {
     border: 2px solid var(--secondary);
-    background: rgba(10, 102, 194, 0.03);
+    background: rgba(255, 69, 0, 0.03);
     transform: scale(1.02);
 }
 
@@ -231,7 +231,7 @@
 .history-doc-badge {
     display: inline-block;
     padding: 0.25rem 0.75rem;
-    background: rgba(10, 102, 194, 0.1);
+    background: rgba(255, 69, 0, 0.1);
     color: var(--secondary);
     border-radius: 999px;
     font-size: 0.75rem;
@@ -273,7 +273,7 @@
     outline: none;
     border-color: var(--secondary);
     background: white;
-    box-shadow: 0 0 0 4px rgba(10, 102, 194, 0.1);
+    box-shadow: 0 0 0 4px rgba(255, 69, 0, 0.1);
 }
 
 /* Animations */

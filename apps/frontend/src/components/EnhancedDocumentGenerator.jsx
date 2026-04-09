@@ -175,7 +175,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                 {/* Header */}
                 <div style={{ 
                     padding: '1.5rem', 
-                    borderBottom: '1px solid #E5E7EB', 
+                    borderBottom: '1px solid #e2e8f0', 
                     display: 'flex', 
                     justifyContent: 'space-between', 
                     alignItems: 'center',
@@ -201,7 +201,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                 <div style={{ 
                     padding: '1rem 1.5rem', 
                     background: '#F8F9FA', 
-                    borderBottom: '1px solid #E5E7EB',
+                    borderBottom: '1px solid #e2e8f0',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '2rem'
@@ -218,7 +218,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                             gap: '0.5rem',
                             opacity: currentStep >= step ? 1 : 0.5,
                             fontWeight: currentStep === step ? 'bold' : 'normal',
-                            color: currentStep >= step ? '#10B981' : '#6B7280'
+                            color: currentStep >= step ? '#ff4500' : '#000000'
                         }}>
                             <span style={{ fontSize: '1.2rem' }}>{icon}</span>
                             <span style={{ fontSize: '0.9rem' }}>{label}</span>
@@ -235,7 +235,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                         width: currentStep >= 3 ? '50%' : '100%', 
                         display: 'flex', 
                         flexDirection: 'column',
-                        borderRight: currentStep >= 3 ? '1px solid #E5E7EB' : 'none',
+                        borderRight: currentStep >= 3 ? '1px solid #e2e8f0' : 'none',
                         transition: 'width 0.3s ease'
                     }}>
                         
@@ -246,13 +246,13 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                     
                                     {/* Employee Selection */}
                                     <div>
-                                        <h3 style={{ marginBottom: '1rem', color: '#374151' }}>
+                                        <h3 style={{ marginBottom: '1rem', color: '#000000' }}>
                                             👤 Select Employee
                                         </h3>
                                         <div style={{ 
                                             maxHeight: '400px', 
                                             overflowY: 'auto',
-                                            border: '1px solid #E5E7EB',
+                                            border: '1px solid #e2e8f0',
                                             borderRadius: '8px'
                                         }}>
                                             {employees.map(employee => (
@@ -264,13 +264,13 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                                         borderBottom: '1px solid #F3F4F6',
                                                         cursor: 'pointer',
                                                         background: selectedEmployee?.employee_id === employee.employee_id ? '#EBF8FF' : 'white',
-                                                        borderLeft: selectedEmployee?.employee_id === employee.employee_id ? '4px solid #3B82F6' : '4px solid transparent'
+                                                        borderLeft: selectedEmployee?.employee_id === employee.employee_id ? '4px solid #ff4500' : '4px solid transparent'
                                                     }}
                                                 >
                                                     <div style={{ fontWeight: 'bold', color: '#1F2937' }}>
                                                         {employee.name}
                                                     </div>
-                                                    <div style={{ fontSize: '0.8rem', color: '#6B7280', marginTop: '0.25rem' }}>
+                                                    <div style={{ fontSize: '0.8rem', color: '#000000', marginTop: '0.25rem' }}>
                                                         {employee.employee_id} • {employee.employment_type} • {employee.position}
                                                     </div>
                                                 </div>
@@ -280,7 +280,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
 
                                     {/* Document Type Selection */}
                                     <div>
-                                        <h3 style={{ marginBottom: '1rem', color: '#374151' }}>
+                                        <h3 style={{ marginBottom: '1rem', color: '#000000' }}>
                                             📄 Select Document Type
                                         </h3>
                                         <div style={{ 
@@ -294,7 +294,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                                     style={{
                                                         padding: '1rem',
                                                         border: '2px solid',
-                                                        borderColor: selectedDocType === docType.type ? '#3B82F6' : '#E5E7EB',
+                                                        borderColor: selectedDocType === docType.type ? '#ff4500' : '#e2e8f0',
                                                         borderRadius: '8px',
                                                         cursor: 'pointer',
                                                         background: selectedDocType === docType.type ? '#EBF8FF' : 'white',
@@ -304,7 +304,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                                     <div style={{ fontWeight: 'bold', color: '#1F2937' }}>
                                                         {docType.name}
                                                     </div>
-                                                    <div style={{ fontSize: '0.8rem', color: '#6B7280', marginTop: '0.25rem' }}>
+                                                    <div style={{ fontSize: '0.8rem', color: '#000000', marginTop: '0.25rem' }}>
                                                         {Object.keys(docType.roi_fields).length} fields to fill
                                                     </div>
                                                 </div>
@@ -322,7 +322,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                         style={{ 
                                             padding: '0.75rem 2rem',
                                             fontSize: '1rem',
-                                            background: canProceedToFill ? '#3B82F6' : '#9CA3AF'
+                                            background: canProceedToFill ? '#ff4500' : '#000000'
                                         }}
                                     >
                                         Next: Fill ROI Fields →
@@ -335,10 +335,10 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                         {currentStep === 2 && selectedDocConfig && (
                             <div style={{ padding: '1.5rem', overflowY: 'auto' }}>
                                 <div style={{ marginBottom: '1.5rem' }}>
-                                    <h3 style={{ color: '#374151', marginBottom: '0.5rem' }}>
+                                    <h3 style={{ color: '#000000', marginBottom: '0.5rem' }}>
                                         📝 Fill ROI Fields for {selectedDocConfig.name}
                                     </h3>
-                                    <p style={{ color: '#6B7280', fontSize: '0.9rem' }}>
+                                    <p style={{ color: '#000000', fontSize: '0.9rem' }}>
                                         Employee: <strong>{selectedEmployee.name}</strong> ({selectedEmployee.employee_id})
                                     </p>
                                 </div>
@@ -355,7 +355,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                                     display: 'block', 
                                                     marginBottom: '0.5rem', 
                                                     fontWeight: '500',
-                                                    color: '#374151'
+                                                    color: '#000000'
                                                 }}>
                                                     {fieldConfig.label}
                                                     {fieldConfig.required && <span style={{ color: '#EF4444' }}>*</span>}
@@ -405,7 +405,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                         disabled={!canPreview || isPreviewing}
                                         className="btn btn-primary"
                                         style={{ 
-                                            background: canPreview ? '#10B981' : '#9CA3AF'
+                                            background: canPreview ? '#ff4500' : '#000000'
                                         }}
                                     >
                                         {isPreviewing ? 'Generating Preview...' : 'Preview Document →'}
@@ -418,8 +418,8 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                         {currentStep === 4 && (
                             <div style={{ padding: '2rem', textAlign: 'center' }}>
                                 <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>✅</div>
-                                <h3 style={{ color: '#10B981', marginBottom: '1rem' }}>Document Generated Successfully!</h3>
-                                <p style={{ color: '#6B7280', marginBottom: '2rem' }}>
+                                <h3 style={{ color: '#ff4500', marginBottom: '1rem' }}>Document Generated Successfully!</h3>
+                                <p style={{ color: '#000000', marginBottom: '2rem' }}>
                                     The document has been generated and saved. The employee can now download it from their dashboard.
                                 </p>
                                 <button
@@ -440,13 +440,13 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                         <div style={{ width: '50%', display: 'flex', flexDirection: 'column', background: '#F9FAFB' }}>
                             <div style={{ 
                                 padding: '1rem', 
-                                borderBottom: '1px solid #E5E7EB', 
+                                borderBottom: '1px solid #e2e8f0', 
                                 background: 'white',
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center'
                             }}>
-                                <h4 style={{ margin: 0, color: '#374151' }}>📄 Document Preview</h4>
+                                <h4 style={{ margin: 0, color: '#000000' }}>📄 Document Preview</h4>
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                                     <button
                                         onClick={() => setCurrentStep(2)}
@@ -458,7 +458,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                         onClick={handleGenerate}
                                         disabled={isGenerating}
                                         className="btn btn-primary"
-                                        style={{ background: '#10B981' }}
+                                        style={{ background: '#ff4500' }}
                                     >
                                         {isGenerating ? 'Generating...' : '✅ Generate & Send'}
                                     </button>
@@ -483,7 +483,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                         justifyContent: 'center', 
                                         alignItems: 'center', 
                                         height: '100%',
-                                        color: '#9CA3AF'
+                                        color: '#000000'
                                     }}>
                                         <div style={{ textAlign: 'center' }}>
                                             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📄</div>

@@ -74,7 +74,7 @@ const AttendanceInfo = ({ userId }) => {
                 statusText = 'Off Day';
                 dayTypeIcon = '📺';
                 bgColor = '#EBF5FF';
-                statusColor = '#3B82F6';
+                statusColor = '#ff4500';
             } else if (dayOfWeek === 6) {
                 statusChar = 'R';
                 statusText = 'Rest Day';
@@ -214,7 +214,7 @@ const AttendanceInfo = ({ userId }) => {
                             <LegendItem char="PL" label="Paid Leave (LOP)" color="#ff7a00" />
                             <LegendItem char="CO" label="Comp-Off" color="#A855F7" />
                             <LegendItem char="A" label="Absent" color="#EF4444" />
-                            <LegendItem char="O" label="Off Day" color="#3B82F6" />
+                            <LegendItem char="O" label="Off Day" color="#ff4500" />
                             <LegendItem char="R" label="Rest Day" color="var(--violet)" />
                             <LegendItem char="H" label="Holiday" color="var(--secondary)" />
                         </div>

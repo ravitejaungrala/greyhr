@@ -435,7 +435,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                     
                                     {!referenceFace ? (
                                         streamActive ? (
-                                            <div style={{ position: 'relative', width: '100%', maxWidth: '400px', margin: '0 auto', borderRadius: '24px', overflow: 'hidden', background: '#000', border: '2px solid var(--primary)', aspectRatio: '4/3', boxShadow: '0 0 30px rgba(10, 102, 194, 0.2)' }}>
+                                            <div style={{ position: 'relative', width: '100%', maxWidth: '400px', margin: '0 auto', borderRadius: '24px', overflow: 'hidden', background: '#000', border: '2px solid var(--primary)', aspectRatio: '4/3', boxShadow: '0 0 30px rgba(255, 69, 0, 0.2)' }}>
                                                 <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                 
                                                 {/* HUD Overlay */}
@@ -459,7 +459,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                             </div>
                                         ) : (
                                             <div style={{ padding: '4rem 1rem', background: 'rgba(255,255,255,0.01)', borderRadius: '20px', border: '1px dashed var(--border-color)', transition: 'all 0.3s ease' }}>
-                                                <div style={{ width: '64px', height: '64px', background: 'rgba(10, 102, 194, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', fontSize: '1.5rem' }}>📷</div>
+                                                <div style={{ width: '64px', height: '64px', background: 'rgba(255, 69, 0, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', fontSize: '1.5rem' }}>📷</div>
                                                 <button type="button" onClick={startCamera} className="btn-submit-premium" style={{ width: 'auto', padding: '0.75rem 2rem' }}>Launch Identity Camera</button>
                                             </div>
                                         )
@@ -596,7 +596,7 @@ const HomeDashboard = ({ user, setUser }) => {
             <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
                 <span style={{ fontSize: '4rem' }}>⏳</span>
                 <h1 style={{ marginTop: '1.5rem' }}>Awaiting Admin Approval</h1>
-                <p style={{ color: '#6b7280', marginTop: '0.5rem' }}>Your profile has been submitted. Please check back later once an administrator reviews your details.</p>
+                <p style={{ color: '#000000', marginTop: '0.5rem' }}>Your profile has been submitted. Please check back later once an administrator reviews your details.</p>
             </div>
         );
     }
@@ -722,7 +722,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                 onClick={fetchLeaveData}
                                 className="btn-icon" 
                                 style={{ 
-                                    background: 'rgba(10, 102, 194, 0.1)', 
+                                    background: 'rgba(255, 69, 0, 0.1)', 
                                     borderRadius: '50%', 
                                     padding: '5px',
                                     cursor: 'pointer',
@@ -739,7 +739,7 @@ const HomeDashboard = ({ user, setUser }) => {
                         
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                             {leaveBalance?.types?.map((t, i) => (
-                                <div key={i} style={{ padding: '1rem', background: 'rgba(10, 102, 194, 0.05)', borderRadius: '12px', textAlign: 'center', border: '1px solid rgba(10, 102, 194, 0.1)' }}>
+                                <div key={i} style={{ padding: '1rem', background: 'rgba(255, 69, 0, 0.05)', borderRadius: '12px', textAlign: 'center', border: '1px solid rgba(255, 69, 0, 0.1)' }}>
                                     <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--primary)' }}>{t.remaining}</div>
                                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>{t.name}</div>
                                 </div>
@@ -827,10 +827,10 @@ const HomeDashboard = ({ user, setUser }) => {
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                             <div>
                                 <div style={{ fontWeight: 'bold' }}>{p.month}</div>
-                                <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Disbursed on {p.date}</div>
+                                <div style={{ fontSize: '0.8rem', color: '#000000' }}>Disbursed on {p.date}</div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-                                <div style={{ fontWeight: 'bold', color: '#0a66c2' }}>{p.amount}</div>
+                                <div style={{ fontWeight: 'bold', color: '#ff4500' }}>{p.amount}</div>
                                 <button className="btn btn-secondary" onClick={() => window.open(`${apiUrl}/employee/payslip/download/${p.month}?employee_id=${user.employee_id}`, '_blank')}>Download</button>
                             </div>
                         </div>
@@ -894,7 +894,7 @@ const HomeDashboard = ({ user, setUser }) => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {kudos.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Be the first to share appreciation!</p> :
                             kudos.map((k, i) => (
-                                <div key={i} style={{ padding: '1.25rem', background: 'rgba(10, 102, 194, 0.05)', borderLeft: '4px solid var(--primary)', borderRadius: '12px', borderRight: '1px solid var(--border-color)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
+                                <div key={i} style={{ padding: '1.25rem', background: 'rgba(255, 69, 0, 0.05)', borderLeft: '4px solid var(--primary)', borderRadius: '12px', borderRight: '1px solid var(--border-color)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
                                     <div style={{ fontSize: '0.9rem', color: 'var(--text-light)', marginBottom: '0.5rem' }}>
                                         <strong>{k.sender_name}</strong> recognized <strong>{k.receiver_name}</strong>
                                     </div>
@@ -930,14 +930,14 @@ const HomeDashboard = ({ user, setUser }) => {
         return (
             <div className="card shadow-sm" style={{ maxWidth: '800px', margin: '0 auto', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                 <h2 className="card-title">📅 Company Holiday Calendar</h2>
-                {hLoading ? <p style={{ color: '#6b7280' }}>Loading holidays...</p> : (
+                {hLoading ? <p style={{ color: '#000000' }}>Loading holidays...</p> : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {holidays.length === 0 ? <p style={{ color: '#6b7280' }}>No holidays scheduled.</p> :
+                        {holidays.length === 0 ? <p style={{ color: '#000000' }}>No holidays scheduled.</p> :
                             holidays.map((h, i) => (
                                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                                     <div>
-                                        <div style={{ fontWeight: 'bold', color: '#0a66c2' }}>{h.name}</div>
-                                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{h.type}</div>
+                                        <div style={{ fontWeight: 'bold', color: '#ff4500' }}>{h.name}</div>
+                                        <div style={{ fontSize: '0.8rem', color: '#000000' }}>{h.type}</div>
                                     </div>
                                     <div style={{ fontWeight: 'bold' }}>
                                         {new Date(h.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -997,13 +997,13 @@ const HomeDashboard = ({ user, setUser }) => {
                             </div>
                         </div>
 
-                        <div style={{ backgroundColor: 'rgba(10, 102, 194, 0.05)', padding: '1rem', borderRadius: '14px', marginBottom: '1rem', border: '1px solid rgba(10, 102, 194, 0.1)' }}>
+                        <div style={{ backgroundColor: 'rgba(255, 69, 0, 0.05)', padding: '1rem', borderRadius: '14px', marginBottom: '1rem', border: '1px solid rgba(255, 69, 0, 0.1)' }}>
                             <p style={{ fontSize: '0.85rem', color: 'var(--text-light)', lineHeight: '1.5', margin: 0 }}>
                                 <strong style={{ color: 'var(--primary)', display: 'block', marginBottom: '0.15rem', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>AI Insight</strong>
                                 {dashboardLoading ? 'Analyzing your workspace...' : (dashboardData?.insight_message || 'Loading your daily analysis...')}
                             </p>
                             {todayStatus && todayStatus.total_hours_today && (
-                                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px dashed rgba(10, 102, 194, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px dashed rgba(255, 69, 0, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Total Work Time Today</span>
                                     <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary)' }}>{todayStatus.total_hours_today}</span>
                                 </div>
@@ -1024,7 +1024,7 @@ const HomeDashboard = ({ user, setUser }) => {
                             ) : (
                                 <button 
                                     className="btn btn-primary" 
-                                    style={{ width: '100%', padding: '0.75rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', borderRadius: '14px', boxShadow: '0 4px 12px rgba(10, 102, 194, 0.2)', fontWeight: 600 }}
+                                    style={{ width: '100%', padding: '0.75rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', borderRadius: '14px', boxShadow: '0 4px 12px rgba(255, 69, 0, 0.2)', fontWeight: 600 }}
                                     onClick={() => handleDashboardPunch('sign_in')}
                                     disabled={punchLoading}
                                 >
@@ -1116,7 +1116,7 @@ const HomeDashboard = ({ user, setUser }) => {
                     {/* Policy Notice */}
                     <div className="card shadow-sm" style={{ borderLeft: '4px solid var(--primary)', background: '#ffffff', borderRight: '1px solid var(--border-color)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', padding: '1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                            <div style={{ width: '32px', height: '32px', background: 'rgba(10, 102, 194, 0.1)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ width: '32px', height: '32px', background: 'rgba(255, 69, 0, 0.1)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <span style={{ fontSize: '1.1rem' }}>📜</span>
                             </div>
                             <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1rem' }}>Company Policy</h2>

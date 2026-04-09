@@ -126,7 +126,7 @@ const Leaves = ({ userId, user }) => {
                         onClick={() => { fetchBalance(); fetchRecentLeaves(); }}
                         className="btn-icon" 
                         style={{ 
-                            background: 'rgba(10, 102, 194, 0.1)', 
+                            background: 'rgba(255, 69, 0, 0.1)', 
                             borderRadius: '50%', 
                             padding: '5px',
                             cursor: 'pointer',
@@ -269,7 +269,7 @@ const Leaves = ({ userId, user }) => {
                                         .filter(a => a.employee_id !== formData.approver_id && a.employee_id !== userId)
                                         .filter(a => a.name.toLowerCase().includes(ccSearch.toLowerCase()))
                                         .map(app => (
-                                            <label key={app.employee_id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem', borderRadius: '4px', cursor: 'pointer', backgroundColor: formData.cc_ids.includes(app.employee_id) ? 'rgba(10, 102, 194, 0.2)' : 'transparent' }}>
+                                            <label key={app.employee_id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem', borderRadius: '4px', cursor: 'pointer', backgroundColor: formData.cc_ids.includes(app.employee_id) ? 'rgba(255, 69, 0, 0.2)' : 'transparent' }}>
                                                 <input 
                                                     type="checkbox" 
                                                     checked={formData.cc_ids.includes(app.employee_id)}
@@ -300,7 +300,7 @@ const Leaves = ({ userId, user }) => {
                     )}
 
                     {status === 'submitted' && (
-                        <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: 'rgba(10, 102, 194, 0.1)', border: '1px solid var(--secondary)', borderRadius: '8px' }}>
+                        <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: 'rgba(255, 69, 0, 0.1)', border: '1px solid var(--secondary)', borderRadius: '8px' }}>
                             <p style={{ color: 'var(--secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>✓ Submitted Pending Admin Approval</p>
                             <p style={{ fontSize: '0.875rem', color: 'var(--text-light)' }}>The AI Smart Leave Agent has reviewed your request and forwarded it to the Administrator Space.</p>
                         </div>
