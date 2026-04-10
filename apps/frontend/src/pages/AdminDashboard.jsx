@@ -134,6 +134,12 @@ const AdminDashboard = ({ activeTab, user }) => {
     const [leaveFilterDate, setLeaveFilterDate] = useState('');
     const [inspectingLeave, setInspectingLeave] = useState(null);
 
+    // Holiday Fetch States
+    const [fetchedHolidays, setFetchedHolidays] = useState([]);
+    const [isFetchingHolidays, setIsFetchingHolidays] = useState(false);
+    const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
+    const [selectedHolidays, setSelectedHolidays] = useState([]);
+
     const apiUrl = API_URL;
 
     const fetchData = async () => {
@@ -672,6 +678,125 @@ const AdminDashboard = ({ activeTab, user }) => {
         }
     };
 
+    const fetchExternalHolidays = async () => {
+        setIsFetchingHolidays(true);
+        try {
+            // Fetching for the currently viewed calendar year
+            const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${calYear}/IN`);
+            if (res.ok) {
+                const data = await res.json();
+                setFetchedHolidays(data);
+                // Initially select all
+                setSelectedHolidays(data.map(h => h.date));
+                setIsHolidayModalOpen(true);
+            } else {
+                alert("Failed to fetch holidays from public API.");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error connecting to holiday API.");
+        } finally {
+            setIsFetchingHolidays(false);
+        }
+    };
+
+    const submitBulkHolidays = async () => {
+        const toAdd = fetchedHolidays
+            .filter(h => selectedHolidays.includes(h.date))
+            .map(h => ({
+                name: h.name,
+                date: h.date,
+                type: 'Public Holiday'
+            }));
+        
+        if (toAdd.length === 0) return;
+
+        try {
+            const res = await fetch(`${apiUrl}/admin/holidays/bulk`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(toAdd)
+            });
+            const data = await res.json();
+            alert(data.message);
+            setIsHolidayModalOpen(false);
+            fetchData();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const HolidayFetchModal = () => {
+        if (!isHolidayModalOpen) return null;
+        return (
+            <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+                <div className="card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', position: 'relative', maxWidth: '700px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
+                    <button onClick={() => setIsHolidayModalOpen(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', color: '#6b7280', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                        <div style={{ fontSize: '1.75rem' }}>🇮🇳</div>
+                        <h3 style={{ margin: 0, color: 'var(--primary)', fontSize: '1.5rem' }}>Official Holidays {calYear}</h3>
+                    </div>
+
+                    <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem' }}>We found {fetchedHolidays.length} official Indian holidays. Select the ones you want to add to your company calendar.</p>
+
+                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.75rem' }}>
+                        <button className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem' }} onClick={() => setSelectedHolidays(fetchedHolidays.map(h => h.date))}>Select All</button>
+                        <button className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem' }} onClick={() => setSelectedHolidays([])}>Deselect All</button>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2rem' }}>
+                        {fetchedHolidays.map((h, i) => {
+                            const isAlreadyAdded = holidays.some(exist => exist.date === h.date);
+                            return (
+                                <div key={i} style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'space-between', 
+                                    padding: '0.75rem 1rem', 
+                                    borderRadius: '8px', 
+                                    border: '1px solid #f1f5f9',
+                                    background: isAlreadyAdded ? '#f8fafc' : '#ffffff',
+                                    opacity: isAlreadyAdded ? 0.7 : 1
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedHolidays.includes(h.date)} 
+                                            disabled={isAlreadyAdded}
+                                            onChange={(e) => {
+                                                if (e.target.checked) setSelectedHolidays([...selectedHolidays, h.date]);
+                                                else setSelectedHolidays(selectedHolidays.filter(d => d !== h.date));
+                                            }}
+                                            style={{ width: '18px', height: '18px' }}
+                                        />
+                                        <div>
+                                            <div style={{ fontWeight: '600', fontSize: '0.9rem', color: '#1f2937' }}>{h.name}</div>
+                                            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{h.date}</div>
+                                        </div>
+                                    </div>
+                                    {isAlreadyAdded && <span style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: '700' }}>ALREADY ADDED</span>}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem' }}>
+                        <button onClick={() => setIsHolidayModalOpen(false)} className="btn btn-secondary">Cancel</button>
+                        <button 
+                            onClick={submitBulkHolidays} 
+                            className="btn btn-primary" 
+                            style={{ background: 'var(--secondary)' }}
+                            disabled={selectedHolidays.filter(d => !holidays.some(e => e.date === d)).length === 0}
+                        >
+                            Add {selectedHolidays.filter(d => !holidays.some(e => e.date === d)).length} Fixed Holidays
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     const DocPreviewModal = ({ doc, onClose }) => {
         if (!doc) return null;
         return (
@@ -761,6 +886,7 @@ const AdminDashboard = ({ activeTab, user }) => {
         <div className="admin-dashboard">
             <DocPreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />
             <LeaveDetailModal leave={inspectingLeave} onClose={() => setInspectingLeave(null)} />
+            <HolidayFetchModal />
             <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 {isSuperAdmin ? '🛡️ Super Admin' : '🛡️ Admin'} - {activeTab === 'overview' && '📈 Insight Dashboard'}
                 {activeTab === 'onboarding' && '📋 Pending Approvals'}
@@ -1635,7 +1761,16 @@ const AdminDashboard = ({ activeTab, user }) => {
                             <div className="card shadow-sm" style={{ gridColumn: 'span 2', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                     <h2 className="card-title" style={{ margin: 0 }}>Holiday Calendar</h2>
-                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                        <button 
+                                            className="btn btn-secondary" 
+                                            onClick={fetchExternalHolidays}
+                                            disabled={isFetchingHolidays}
+                                            style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid #e2e8f0' }}
+                                        >
+                                            {isFetchingHolidays ? "🔄 Fetching..." : "🔍 Fetch "+calYear+" Holidays"}
+                                        </button>
+                                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginLeft: '1rem' }}>
                                         <button className="btn btn-secondary" onClick={() => {
                                             if (calMonth === 0) { setCalMonth(11); setCalYear(calYear - 1); }
                                             else setCalMonth(calMonth - 1);
@@ -1647,6 +1782,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             if (calMonth === 11) { setCalMonth(0); setCalYear(calYear + 1); }
                                             else setCalMonth(calMonth + 1);
                                         }}>▶</button>
+                                        </div>
                                     </div>
                                 </div>
                                 

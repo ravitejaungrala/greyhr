@@ -1096,6 +1096,29 @@ def add_holiday(request: HolidayRequest):
     if "_id" in record: del record["_id"]
     return {"message": "Holiday added", "record": record}
 
+@router.post("/admin/holidays/bulk")
+def add_holidays_bulk(request: List[HolidayRequest]):
+    if mongo_db.db is None:
+        return {"error": "Database error"}
+    
+    records = []
+    for h in request:
+        # Check if already exists to avoid redundant inserts
+        exists = mongo_db.holidays.find_one({"date": h.date})
+        if not exists:
+            records.append({
+                "date": h.date,
+                "name": h.name,
+                "type": h.type,
+                "id": uuid.uuid4().hex[:8]
+            })
+    
+    if records:
+        mongo_db.holidays.insert_many(records)
+        return {"message": f"Successfully added {len(records)} holidays", "count": len(records)}
+    
+    return {"message": "No new holidays to add (all already exist)", "count": 0}
+
 @router.get("/admin/holidays")
 def get_holidays():
     if mongo_db.db is None:
