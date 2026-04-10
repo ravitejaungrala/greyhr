@@ -682,20 +682,22 @@ const AdminDashboard = ({ activeTab, user }) => {
     const fetchExternalHolidays = async () => {
         setIsFetchingHolidays(true);
         try {
-            // Fetching for the currently viewed calendar year
-            const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${calYear}/IN`);
-            if (res.ok) {
+            // Fetching from our own AI backend endpoint for better reliability
+            const res = await fetch(`${apiUrl}/admin/holidays/ai-fetch?year=${calYear}`);
+            if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
                 const data = await res.json();
                 setFetchedHolidays(data);
                 // Initially select all
                 setSelectedHolidays(data.map(h => h.date));
                 setIsHolidayModalOpen(true);
             } else {
-                alert("Failed to fetch holidays from public API.");
+                const text = await res.text().catch(() => "Unknown error");
+                console.error("Holiday Fetch Failure:", text);
+                alert("Failed to fetch official holidays from AI service. Adding manually is recommended.");
             }
         } catch (err) {
-            console.error(err);
-            alert("Error connecting to holiday API.");
+            console.error("Fetch Holidays Error:", err);
+            alert("Error connecting to holiday service.");
         } finally {
             setIsFetchingHolidays(false);
         }

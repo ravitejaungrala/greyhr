@@ -1119,6 +1119,45 @@ def add_holidays_bulk(request: List[HolidayRequest]):
     
     return {"message": "No new holidays to add (all already exist)", "count": 0}
 
+@router.get("/admin/holidays/ai-fetch")
+def get_ai_holidays(year: int = 2026):
+    """
+    Experimental: Uses Google Gemini to fetch official holidays for India for a specific year.
+    This replaces the external Nager.Date API when it's unstable.
+    """
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        prompt = (
+            f"List all official public and national holidays in India for the year {year}. "
+            "Return ONLY a raw JSON array of objects. "
+            "Each object must have exactly two fields: 'name' and 'date' (format: YYYY-MM-DD). "
+            "Do not include any extra text, markdown blocks, or formatting."
+        )
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+        
+        # Robust JSON extraction from markdown if present
+        if "```json" in text:
+            text = text.split("```json")[1].split("```")[0].strip()
+        elif "```" in text:
+            text = text.split("```")[1].split("```")[0].strip()
+            
+        holidays = json.loads(text)
+        # Ensure it's a list
+        if not isinstance(holidays, list):
+            raise ValueError("AI response was not a list")
+            
+        return holidays
+    except Exception as e:
+        print(f"AI Holiday Fetching Failed: {e}")
+        # Fallback to some common ones if AI completely fails
+        return [
+            {"name": "New Year's Day", "date": f"{year}-01-01"},
+            {"name": "Republic Day", "date": f"{year}-01-26"},
+            {"name": "Independence Day", "date": f"{year}-08-15"},
+            {"name": "Gandhi Jayanti", "date": f"{year}-10-02"}
+        ]
+
 @router.get("/admin/holidays")
 def get_holidays():
     if mongo_db.db is None:
