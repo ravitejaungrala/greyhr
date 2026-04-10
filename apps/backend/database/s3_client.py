@@ -9,8 +9,8 @@ load_dotenv()
 class S3Database:
     def __init__(self):
         # In a real environment, load from environment variables
-        self.bucket_name = os.getenv("S3_BUCKET_NAME", "neuzenai-hrms-storage")
-        self.region = os.getenv("AWS_REGION", "ap-south-1")
+        self.bucket_name = os.getenv("S3_BUCKET_NAME")
+        self.region = os.getenv("AWS_REGION")
         
         # Detect if we're on AWS Lambda or have explicit credentials
         is_lambda = os.getenv("AWS_LAMBDA_FUNCTION_NAME") is not None
@@ -52,9 +52,10 @@ class S3Database:
                 Body=image_bytes,
                 ContentType=content_type
             )
+            print(f"S3 Success: Uploaded to Bucket '{self.bucket_name}' at Key '{key}'")
             return True
         except ClientError as e:
-            print(f"Error saving image to S3: {e}")
+            print(f"Error saving image to S3 Bucket '{self.bucket_name}': {e}")
             return False
 
     def save_file(self, key: str, file_bytes: bytes, content_type: str):
@@ -87,7 +88,7 @@ class S3Database:
             )
             return response['Body'].read()
         except ClientError as e:
-            print(f"Error reading image from S3: {e}")
+            print(f"Error reading from S3 Bucket '{self.bucket_name}' at Key '{key}': {e}")
             return None
 
 s3_db = S3Database()

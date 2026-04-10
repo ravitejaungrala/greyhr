@@ -7,9 +7,9 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-SMTP_USER = os.getenv("SMTP_USER", "raviteja.ungarala2003@gmail.com")
-SMTP_PASS = os.getenv("SMTP_PASS", "jcxm cagd ckss xpkq")
-BACKEND_URL = os.getenv("BACKEND_URL", "https://on3uxagkjotqw27olp3gsqyr7i0wvcjn.lambda-url.ap-south-1.on.aws/api")
+SMTP_USER = os.getenv("SMTP_USER")
+SMTP_PASS = os.getenv("SMTP_PASS")
+BACKEND_URL = os.getenv("BACKEND_URL")
 
 def get_admin_emails(approver_id=None):
     """Fetch emails of admins or a specific approver. Includes fallback the general admin list."""
@@ -30,9 +30,9 @@ def get_admin_emails(approver_id=None):
         ))
         emails = [a["email"] for a in admins if "email" in a]
     
-    # Ultimate fallback to hardcoded admin if still none found
+    # Ultimate fallback to empty if still none found
     if not emails:
-        emails = ["contact@neuzenai.com"]
+        emails = [] # No hardcoded fallback as per user request
     return emails
 
 def send_approval_email(recipient_emails, subject, body_html, cc_emails=None):
@@ -40,8 +40,9 @@ def send_approval_email(recipient_emails, subject, body_html, cc_emails=None):
     # Ensure recipient_emails is a valid non-empty list of strings
     if not recipient_emails or not isinstance(recipient_emails, list):
         print(f"SMTP Error: Invalid recipients list provided: {recipient_emails}")
-        # Final emergency fallback if list is totally empty or corrupted
-        recipient_emails = ["contact@neuzenai.com"]
+        # Final emergency fallback - logic should handle empty lists safely
+        recipient_emails = [] 
+
 
     # Sanitize CC emails
     safe_cc = []

@@ -16,8 +16,8 @@ except Exception as e:
 
 class MongoDBClient:
     def __init__(self):
-        self.uri = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
-        self.db_name = os.getenv("MONGODB_DB_NAME", "greyhr_db")
+        self.uri = os.getenv("MONGODB_URI")
+        self.db_name = os.getenv("MONGODB_DB_NAME")
         self.last_error = None
         
         try:

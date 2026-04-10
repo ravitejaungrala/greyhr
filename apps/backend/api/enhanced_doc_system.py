@@ -255,8 +255,14 @@ def generate_and_save_document(request: DocumentGenerationRequest):
             s3_key = f"generated_docs/{request.employee_id}_{doc_name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
             
             # Save to S3
-            s3_db.save_image(s3_key, html_bytes, content_type='text/html')
+            upload_success = s3_db.save_image(s3_key, html_bytes, content_type='text/html')
             
+            if not upload_success:
+                return {
+                    "error": f"Failed to upload document to S3 bucket '{s3_db.bucket_name}'. Please verify your AWS credentials and S3 bucket existence.",
+                    "status": "failure"
+                }
+
             # Update employee record with document reference
             # ISSUE 6: Ensure all documents are indexed for visibility
             doc_field = f"{request.doc_type}_document_key"

@@ -127,6 +127,12 @@ const AdminDashboard = ({ activeTab, user }) => {
     const [salarySettings, setSalarySettings] = useState({ enable_tax: true, enable_pf: true, tax_rate: 8.0, pf_rate: 5.0 });
     const [isSavingSalarySettings, setIsSavingSalarySettings] = useState(false);
     const [overviewData, setOverviewData] = useState(null);
+    
+    // Leave Management Filter States
+    const [leaveFilterName, setLeaveFilterName] = useState('');
+    const [leaveFilterType, setLeaveFilterType] = useState('All');
+    const [leaveFilterDate, setLeaveFilterDate] = useState('');
+    const [inspectingLeave, setInspectingLeave] = useState(null);
 
     const apiUrl = API_URL;
 
@@ -685,9 +691,76 @@ const AdminDashboard = ({ activeTab, user }) => {
         );
     };
 
+    const LeaveDetailModal = ({ leave, onClose }) => {
+        if (!leave) return null;
+        return (
+            <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+                <div className="card" style={{ backgroundColor: 'white', borderRadius: '12px', padding: '2rem', position: 'relative', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto', color: '#1f2937' }}>
+                    <button onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', color: '#6b7280', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
+                        <div style={{ fontSize: '2rem' }}>🌴</div>
+                        <div>
+                            <h3 style={{ margin: 0, color: 'var(--primary)', fontSize: '1.25rem' }}>{leave.leave_type}</h3>
+                            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Requested by <b>{leave.employee_name} ({leave.employee_id})</b></p>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                        <div>
+                            <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#6b7280', fontWeight: 'bold' }}>Start Date</label>
+                            <div style={{ fontSize: '1rem', fontWeight: '600' }}>{leave.start_date}</div>
+                        </div>
+                        <div>
+                            <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#6b7280', fontWeight: 'bold' }}>End Date</label>
+                            <div style={{ fontSize: '1rem', fontWeight: '600' }}>{leave.end_date}</div>
+                        </div>
+                    </div>
+
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#6b7280', fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>Reason / Explanation</label>
+                        <div style={{ padding: '1rem', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e2e8f0', fontStyle: 'italic', lineHeight: '1.5' }}>
+                            "{leave.reason}"
+                        </div>
+                    </div>
+
+                    {leave.employee_balance && (
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#6b7280', fontWeight: 'bold', display: 'block', marginBottom: '0.75rem' }}>Employee Leave Balance</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                                {leave.employee_balance.types?.map((t, i) => (
+                                    <div key={i} style={{ padding: '0.75rem', borderRadius: '8px', background: t.remaining <= 0 ? '#FEF2F2' : '#F0F9FF', border: `1px solid ${t.remaining <= 0 ? '#FEE2E2' : '#E0F2FE'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ fontSize: '0.8rem', color: '#4b5563' }}>{t.name}</span>
+                                        <span style={{ fontWeight: 'bold', color: t.remaining <= 0 ? '#EF4444' : '#0369A1' }}>{t.remaining} Days</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
+                        <div style={{ fontSize: '0.875rem' }}>
+                           Status: <span style={{ fontWeight: 'bold', color: leave.status.includes('Approved') ? '#22C55E' : leave.status.includes('Rejected') ? '#EF4444' : '#F59E0B' }}>{leave.status}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                            {leave.status.includes('Pending') && (
+                                <>
+                                    <button onClick={() => { handleLeaveStatus(leave.id, 'Rejected'); onClose(); }} className="btn btn-secondary">Reject</button>
+                                    <button onClick={() => { handleLeaveStatus(leave.id, 'Approved by Admin'); onClose(); }} className="btn btn-primary" style={{ background: '#ff4500' }}>Approve</button>
+                                </>
+                            )}
+                            <button onClick={onClose} className="btn btn-secondary" style={{ border: 'none' }}>Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="admin-dashboard">
             <DocPreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />
+            <LeaveDetailModal leave={inspectingLeave} onClose={() => setInspectingLeave(null)} />
             <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 {isSuperAdmin ? '🛡️ Super Admin' : '🛡️ Admin'} - {activeTab === 'overview' && '📈 Insight Dashboard'}
                 {activeTab === 'onboarding' && '📋 Pending Approvals'}
@@ -1420,52 +1493,108 @@ const AdminDashboard = ({ activeTab, user }) => {
                     {/* TAB: LEAVES */}
                     {activeTab === 'leaves' && (
                         <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                            <h2 className="card-title">Leave Requests</h2>
-                            {leaves.length === 0 ? <p style={{ color: '#000000' }}>No leaves found (Try applying from Employee view).</p> : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    {leaves.map((l, idx) => (
-                                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', background: '#ffffff' }}>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
-                                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--primary)' }}>{l.leave_type}</div>
-                                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Request by <b style={{ color: 'var(--text-main)', textTransform: 'capitalize' }}>{l.employee_name || 'Employee'} ({l.employee_id})</b></span>
-                                                </div>
-                                                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>📅 {l.start_date} to {l.end_date}</div>
-                                                
-                                                {/* Balance Context for Admin */}
-                                                {l.employee_balance && (
-                                                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                                                        {l.employee_balance.types?.map((t, idx) => (
-                                                            <div key={idx} style={{ 
-                                                                fontSize: '0.7rem', 
-                                                                padding: '0.15rem 0.4rem', 
-                                                                borderRadius: '4px', 
-                                                                backgroundColor: t.remaining <= 0 ? '#FEF2F2' : '#F0F9FF',
-                                                                color: t.remaining <= 0 ? '#EF4444' : 'var(--text-muted)',
-                                                                border: `1px solid ${t.remaining <= 0 ? '#EF444444' : 'var(--border-color)'}`
-                                                            }}>
-                                                                {t.name.split(' ')[0]}: <b>{t.remaining}</b>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
+                                <h2 className="card-title" style={{ margin: 0 }}>Leave Management</h2>
+                                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                    <div style={{ position: 'relative' }}>
+                                        <input 
+                                            type="text" 
+                                            placeholder="Search Employee..." 
+                                            value={leaveFilterName}
+                                            onChange={(e) => setLeaveFilterName(e.target.value)}
+                                            style={{ padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem', width: '200px' }}
+                                        />
+                                    </div>
+                                    <select 
+                                        value={leaveFilterType}
+                                        onChange={(e) => setLeaveFilterType(e.target.value)}
+                                        style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }}
+                                    >
+                                        <option value="All">All Types</option>
+                                        <option value="Sick Leave">Sick Leave</option>
+                                        <option value="Casual Leave">Casual Leave</option>
+                                        <option value="Paid Leave">Paid Leave</option>
+                                        <option value="Compensatory Off">Compensatory Off</option>
+                                    </select>
+                                    <input 
+                                        type="date" 
+                                        value={leaveFilterDate}
+                                        onChange={(e) => setLeaveFilterDate(e.target.value)}
+                                        style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }}
+                                    />
+                                    <button 
+                                        onClick={() => { setLeaveFilterName(''); setLeaveFilterType('All'); setLeaveFilterDate(''); }}
+                                        style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}
+                                        title="Clear Filters"
+                                    >
+                                        🧹
+                                    </button>
+                                </div>
+                            </div>
 
-                                                <div style={{ fontSize: '0.875rem', p: '0.75rem', background: '#f8fafc', borderRadius: '4px', borderLeft: '3px solid var(--primary)', borderRight: '1px solid var(--border-color)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', padding: '0.75rem' }}>
-                                                    " {l.reason} "
+                            {leaves.length === 0 ? <p style={{ color: '#000000' }}>No leaves found (Try applying from Employee view).</p> : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    {leaves
+                                        .filter(l => {
+                                            const nameMatch = (l.employee_name || '').toLowerCase().includes(leaveFilterName.toLowerCase()) || (l.employee_id || '').toLowerCase().includes(leaveFilterName.toLowerCase());
+                                            const typeMatch = leaveFilterType === 'All' || l.leave_type === leaveFilterType;
+                                            const dateMatch = !leaveFilterDate || l.start_date === leaveFilterDate || l.end_date === leaveFilterDate;
+                                            return nameMatch && typeMatch && dateMatch;
+                                        })
+                                        .map((l, idx) => (
+                                        <div key={idx} className="hover-shadow-sm" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #f1f5f9', borderRadius: '10px', padding: '0.75rem 1.25rem', background: '#ffffff', transition: 'all 0.2s' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flex: 1 }}>
+                                                {/* Status Indicator Dot */}
+                                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: l.status.includes('Approved') ? '#22C55E' : l.status.includes('Rejected') ? '#EF4444' : '#F59E0B' }}></div>
+                                                
+                                                <div style={{ minWidth: '180px' }}>
+                                                    <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#1f2937', textTransform: 'capitalize' }}>{l.employee_name || 'Employee'}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>ID: {l.employee_id}</div>
+                                                </div>
+
+                                                <div style={{ minWidth: '150px' }}>
+                                                    <div style={{ fontWeight: '600', fontSize: '0.85rem', color: 'var(--primary)' }}>{l.leave_type}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{l.start_date} → {l.end_date}</div>
+                                                </div>
+
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <span style={{ 
+                                                        padding: '0.25rem 0.75rem', 
+                                                        borderRadius: '20px', 
+                                                        fontSize: '0.7rem', 
+                                                        fontWeight: '700',
+                                                        backgroundColor: l.status.includes('Approved') ? '#DCFCE7' : l.status.includes('Rejected') ? '#FEE2E2' : '#FEF3C7',
+                                                        color: l.status.includes('Approved') ? '#166534' : l.status.includes('Rejected') ? '#991B1B' : '#92400E'
+                                                    }}>
+                                                        {l.status}
+                                                    </span>
                                                 </div>
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                <span style={{ fontSize: '0.875rem', color: l.status.includes('Approved') ? '#ff4500' : '#c84cff' }}>{l.status}</span>
-                                                {l.status.includes('Pending') && (
-                                                    user?.role === 'hr_responsible' ? (
-                                                        <span style={{ fontSize: '0.8rem', color: '#000000' }}>View Only</span>
-                                                    ) : (
-                                                        <>
-                                                            <button onClick={() => handleLeaveStatus(l.id, 'Rejected')} className="btn btn-secondary" style={{ padding: '0.5rem', fontSize: '0.75rem' }}>Reject</button>
-                                                            <button onClick={() => handleLeaveStatus(l.id, 'Approved by Admin')} className="btn btn-primary" style={{ padding: '0.5rem', fontSize: '0.75rem', background: '#ff4500' }}>Approve</button>
-                                                        </>
-                                                    )
+
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                {l.status.includes('Pending') && !user?.role.includes('hr_responsible') && (
+                                                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                                        <button onClick={() => handleLeaveStatus(l.id, 'Rejected')} className="btn" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '6px' }}>Reject</button>
+                                                        <button onClick={() => handleLeaveStatus(l.id, 'Approved by Admin')} className="btn" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', background: '#ff4500', color: 'white', border: 'none', borderRadius: '6px' }}>Approve</button>
+                                                    </div>
                                                 )}
+                                                
+                                                <button 
+                                                    onClick={() => setInspectingLeave(l)}
+                                                    className="btn-icon" 
+                                                    style={{ 
+                                                        fontSize: '1.25rem', 
+                                                        padding: '0.25rem 0.5rem', 
+                                                        cursor: 'pointer', 
+                                                        background: 'none', 
+                                                        border: 'none',
+                                                        color: '#9ca3af',
+                                                        borderRadius: '50%'
+                                                    }}
+                                                    title="View Full Details"
+                                                >
+                                                    ⋮
+                                                </button>
                                             </div>
                                         </div>
                                     ))}
