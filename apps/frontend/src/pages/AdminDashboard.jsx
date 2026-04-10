@@ -332,11 +332,19 @@ const AdminDashboard = ({ activeTab, user }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(addEmpForm)
             });
+            
+            if (!response.ok) {
+                const text = await response.text();
+                console.error("Create Employee Failed:", text);
+                alert("Failed to create employee. See console for details.");
+                return;
+            }
+
             const data = await response.json();
             if (data.error) {
                 alert(data.error);
             } else {
-                alert(`Employee ${data.employee_id} created successfully! They can now login and complete onboarding.`);
+                alert(`Employee ${data.employee_id} created successfully!`);
                 setIsAddEmpModalOpen(false);
                 
                 if (shouldGenDoc) {
@@ -559,31 +567,33 @@ const AdminDashboard = ({ activeTab, user }) => {
     const submitHoliday = async (e) => {
         e.preventDefault();
         try {
-            if (editingHoliday) {
-                const response = await fetch(`${apiUrl}/admin/holidays/${editingHoliday.originalDate}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(newHoliday)
-                });
-                if (response.ok) {
-                    setHolidays(prev => prev.map(h => h.date === editingHoliday.originalDate ? { ...newHoliday } : h));
-                    setNewHoliday({ name: '', date: '', type: 'Public Holiday' });
-                    setEditingHoliday(null);
-                }
-            } else {
-                const response = await fetch(`${apiUrl}/admin/holidays`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(newHoliday)
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    setHolidays(prev => [...prev, data.record]);
-                    setNewHoliday({ name: '', date: '', type: 'Public Holiday' });
-                }
+            const url = editingHoliday ? `${apiUrl}/admin/holidays/${editingHoliday.originalDate}` : `${apiUrl}/admin/holidays`;
+            const method = editingHoliday ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newHoliday)
+            });
+
+            if (!response.ok) {
+                const msg = await response.text();
+                alert("Failed to save holiday: " + msg);
+                return;
             }
+
+            const data = await response.json();
+            if (editingHoliday) {
+                setHolidays(prev => prev.map(h => h.date === editingHoliday.originalDate ? { ...newHoliday } : h));
+            } else {
+                setHolidays(prev => [...prev, data.record]);
+            }
+            setNewHoliday({ name: '', date: '', type: 'Public Holiday' });
+            setEditingHoliday(null);
+            fetchData();
         } catch (err) {
             console.error("Error saving holiday: ", err);
+            alert("Connection error.");
         }
     };
 
@@ -595,6 +605,9 @@ const AdminDashboard = ({ activeTab, user }) => {
             });
             if (response.ok) {
                 setHolidays(prev => prev.filter(h => h.date !== date));
+                fetchData();
+            } else {
+                alert("Failed to delete holiday.");
             }
         } catch (err) {
             console.error("Error deleting holiday: ", err);
@@ -705,12 +718,20 @@ const AdminDashboard = ({ activeTab, user }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(toAdd)
             });
-            const data = await res.json();
-            alert(data.message);
-            setIsHolidayModalOpen(false);
-            fetchData();
+            
+            if (res.ok) {
+                const data = await res.json();
+                alert(data.message || "Bulk holidays added successfully!");
+                setIsHolidayModalOpen(false);
+                fetchData();
+            } else {
+                const text = await res.text();
+                console.error("Bulk Add Failed:", text);
+                alert("Failed to add bulk holidays. See console.");
+            }
         } catch (err) {
-            console.error(err);
+            console.error("Bulk Add Error:", err);
+            alert("Connection error during bulk add.");
         }
     };
 
