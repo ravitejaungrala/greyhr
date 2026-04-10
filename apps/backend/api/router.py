@@ -1126,9 +1126,12 @@ def get_ai_holidays(year: int = 2026):
     This replaces the external Nager.Date API when it's unstable.
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # Read the model from .env, replace spaces with dashes as the API expects no spaces
+        model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").replace(" ", "-").lower()
+        model = genai.GenerativeModel(model_name)
         prompt = (
-            f"List all official public and national holidays in India for the year {year}. "
+            f"List a comprehensive set of at least 25 official public, national, regional, and restricted holidays in India for the year {year}. "
+            "Make sure to include Sankranti, Pongal, Republic Day, Holi, Ugadi, Good Friday, Eid al-Fitr, Independence Day, Raksha Bandhan, Gandhi Jayanti, Diwali, Christmas, and other major festivals. "
             "Return ONLY a raw JSON array of objects. "
             "Each object must have exactly two fields: 'name' and 'date' (format: YYYY-MM-DD). "
             "Do not include any extra text, markdown blocks, or formatting."
@@ -1150,12 +1153,29 @@ def get_ai_holidays(year: int = 2026):
         return holidays
     except Exception as e:
         print(f"AI Holiday Fetching Failed: {e}")
-        # Fallback to some common ones if AI completely fails
+        # Comprehensive fallback list of Indian holidays if AI fails
         return [
             {"name": "New Year's Day", "date": f"{year}-01-01"},
+            {"name": "Bhogi", "date": f"{year}-01-13"},
+            {"name": "Makar Sankranti / Pongal", "date": f"{year}-01-14"},
             {"name": "Republic Day", "date": f"{year}-01-26"},
+            {"name": "Maha Shivaratri", "date": f"{year}-02-14"},
+            {"name": "Holi", "date": f"{year}-03-03"},
+            {"name": "Ugadi / Gudi Padwa", "date": f"{year}-03-19"},
+            {"name": "Good Friday", "date": f"{year}-04-03"},
+            {"name": "Eid al-Fitr", "date": f"{year}-03-20"},
+            {"name": "Ambedkar Jayanti", "date": f"{year}-04-14"},
+            {"name": "May Day", "date": f"{year}-05-01"},
+            {"name": "Bakrid / Eid al-Adha", "date": f"{year}-05-27"},
             {"name": "Independence Day", "date": f"{year}-08-15"},
-            {"name": "Gandhi Jayanti", "date": f"{year}-10-02"}
+            {"name": "Raksha Bandhan", "date": f"{year}-08-28"},
+            {"name": "Krishna Janmashtami", "date": f"{year}-09-04"},
+            {"name": "Vinayaka Chaturthi", "date": f"{year}-09-14"},
+            {"name": "Gandhi Jayanti", "date": f"{year}-10-02"},
+            {"name": "Maha Navami", "date": f"{year}-10-18"},
+            {"name": "Vijaya Dashami (Dussehra)", "date": f"{year}-10-19"},
+            {"name": "Diwali (Deepavali)", "date": f"{year}-11-08"},
+            {"name": "Christmas Day", "date": f"{year}-12-25"}
         ]
 
 @router.get("/admin/holidays")
