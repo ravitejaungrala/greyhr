@@ -2551,7 +2551,8 @@ def calculate_month_salary(user, year, month, settings=None):
                         leaves_taken += 1
     except: pass
 
-    lop_deduction = round(lop_days * daily_salary, 2)
+    # LOP Deduction is now informational only (Requested: dont reduce or cut the salary)
+    lop_deduction = 0.0 
     
     # Dynamic Deductions based on Admin Toggles and Fixed Rates
     emp_tax_rate = user.get("tax_deduction_rate")
@@ -2560,7 +2561,7 @@ def calculate_month_salary(user, year, month, settings=None):
     tax = int(base_salary * (float(emp_tax_rate) / 100)) if emp_tax_rate is not None else 0
     pf_pt = int(base_salary * (float(emp_pf_rate) / 100)) if emp_pf_rate is not None else 0
     
-    net = round(base_salary - lop_deduction - tax - pf_pt, 2)
+    net = round(base_salary - tax - pf_pt, 2)
     
     return {
         "monthly_salary": monthly_salary,
