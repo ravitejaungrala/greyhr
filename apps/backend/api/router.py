@@ -3311,22 +3311,22 @@ def get_admin_overview():
     
     # Leaves (Today)
     today_str = datetime.date.today().strftime("%Y-%m-%d")
-    active_leaves = mongo_db.db.leaves.count_documents({
+    active_leaves = mongo_db.leaves.count_documents({
         "status": "Approved",
         "start_date": {"$lte": today_str},
         "end_date": {"$gte": today_str}
     })
-    pending_leaves = mongo_db.db.leaves.count_documents({"status": "Pending"})
+    pending_leaves = mongo_db.leaves.count_documents({"status": "Pending"})
 
     # Requests
-    item_requests = mongo_db.db.item_requests.count_documents({"status": "Pending"})
+    item_requests = mongo_db.item_requests.count_documents({"status": "Pending"})
     
     # Recent Activity (Last 5)
     # We'll pull from notifications or last few users
     recent_users = list(mongo_db.users.find({}, {"_id": 0, "name": 1, "employee_id": 1, "status": 1, "created_at": 1}).sort("created_at", -1).limit(5))
     
     # Announcement
-    announcement = mongo_db.db.announcements.find_one({}, {"_id": 0})
+    announcement = mongo_db.announcements.find_one({}, {"_id": 0})
     
     return jsonable_encoder({
         "status": "success",

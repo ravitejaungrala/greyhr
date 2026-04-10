@@ -145,83 +145,71 @@ const AdminDashboard = ({ activeTab, user }) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            if (activeTab === 'overview') {
-                const res = await fetch(`${apiUrl}/admin/overview`);
-                const data = await res.json();
-                setOverviewData(data);
-            } else if (activeTab === 'onboarding') {
-                const res = await fetch(`${apiUrl}/auth/admin/pending`);
-                const data = await res.json();
-                setPendingEmployees(data.employees || []);
-                setViewedEmp(prev => prev && data.employees?.some(e => e.employee_id === prev.employee_id) ? data.employees.find(e => e.employee_id === prev.employee_id) : null);
-            } else if (activeTab === 'employees') {
-                const res = await fetch(`${apiUrl}/auth/admin/employees`);
-                const data = await res.json();
-                setApprovedEmployees(data.employees || []);
-            } else if (activeTab === 'items') {
-                const res = await fetch(`${apiUrl}/admin/items/all`);
-                const data = await res.json();
-                setItemRequests(data.requests || []);
-            } else if (activeTab === 'leaves') {
-                const res = await fetch(`${apiUrl}/admin/leaves`);
-                const data = await res.json();
-                setLeaves(data.leaves || []);
-            } else if (activeTab === 'holidays') {
-                const res = await fetch(`${apiUrl}/admin/holidays`);
-                const data = await res.json();
-                setHolidays(data.holidays || []);
-                const oRes = await fetch(`${apiUrl}/admin/workday-overrides`);
-                const oData = await oRes.json();
-                setWorkdayOverrides(oData.overrides || []);
-            } else if (activeTab === 'reports') {
-                const res = await fetch(`${apiUrl}/admin/reports`);
-                const data = await res.json();
-                setReports(data);
-            } else if (activeTab === 'notifications') {
-                const res = await fetch(`${apiUrl}/admin/notifications`);
-                const data = await res.json();
-                setNotifications(data.notifications || []);
-            } else if (activeTab === 'attendance') {
-                const res = await fetch(`${apiUrl}/admin/attendance`);
-                const data = await res.json();
-                setAttendanceLogs(data.logs || []);
-                const cRes = await fetch(`${apiUrl}/admin/comp-off-requests`);
-                const cData = await cRes.json();
-                setCompOffRequests(cData.requests || []);
-                const wwRes = await fetch(`${apiUrl}/admin/weekend-work/requests`);
-                if (wwRes.ok) {
-                    const wwData = await wwRes.json();
-                    setWeekendWorkRequests(wwData.requests || []);
+            const fetchWithCheck = async (url) => {
+                const res = await fetch(url);
+                if (!res.ok) {
+                    const text = await res.text();
+                    console.error(`Fetch failed for ${url}: ${res.status} ${res.statusText}`, text);
+                    return null;
                 }
-            } else if (activeTab === 'payroll') {
-                const res = await fetch(`${apiUrl}/admin/payslips/status`);
-                const data = await res.json();
-                setPayrollStatus(data.releases || []);
-                
-                // Fetch Global Salary Settings
-                const sRes = await fetch(`${apiUrl}/admin/salary/settings`);
-                const sData = await sRes.json();
-                setSalarySettings(sData);
+                return await res.json();
+            };
 
-                // Fetch Employees for Payslip Manager
-                const eRes = await fetch(`${apiUrl}/auth/admin/employees`);
-                const eData = await eRes.json();
-                setApprovedEmployees(eData.employees || []);
+            if (activeTab === 'overview') {
+                const data = await fetchWithCheck(`${apiUrl}/admin/overview`);
+                if (data) setOverviewData(data);
+            } else if (activeTab === 'onboarding') {
+                const data = await fetchWithCheck(`${apiUrl}/auth/admin/pending`);
+                if (data) {
+                    setPendingEmployees(data.employees || []);
+                    setViewedEmp(prev => prev && data.employees?.some(e => e.employee_id === prev.employee_id) ? data.employees.find(e => e.employee_id === prev.employee_id) : null);
+                }
+            } else if (activeTab === 'employees') {
+                const data = await fetchWithCheck(`${apiUrl}/auth/admin/employees`);
+                if (data) setApprovedEmployees(data.employees || []);
+            } else if (activeTab === 'items') {
+                const data = await fetchWithCheck(`${apiUrl}/admin/items/all`);
+                if (data) setItemRequests(data.requests || []);
+            } else if (activeTab === 'leaves') {
+                const data = await fetchWithCheck(`${apiUrl}/admin/leaves`);
+                if (data) setLeaves(data.leaves || []);
+            } else if (activeTab === 'holidays') {
+                const data = await fetchWithCheck(`${apiUrl}/admin/holidays`);
+                if (data) setHolidays(data.holidays || []);
+                const oData = await fetchWithCheck(`${apiUrl}/admin/workday-overrides`);
+                if (oData) setWorkdayOverrides(oData.overrides || []);
+            } else if (activeTab === 'reports') {
+                const data = await fetchWithCheck(`${apiUrl}/admin/reports`);
+                if (data) setReports(data);
+            } else if (activeTab === 'notifications') {
+                const data = await fetchWithCheck(`${apiUrl}/admin/notifications`);
+                if (data) setNotifications(data.notifications || []);
+            } else if (activeTab === 'attendance') {
+                const data = await fetchWithCheck(`${apiUrl}/admin/attendance`);
+                if (data) setAttendanceLogs(data.logs || []);
+                const cData = await fetchWithCheck(`${apiUrl}/admin/comp-off-requests`);
+                if (cData) setCompOffRequests(cData.requests || []);
+                const wwData = await fetchWithCheck(`${apiUrl}/admin/weekend-work/requests`);
+                if (wwData) setWeekendWorkRequests(wwData.requests || []);
+            } else if (activeTab === 'payroll') {
+                const pData = await fetchWithCheck(`${apiUrl}/admin/payslips/status`);
+                if (pData) setPayrollStatus(pData.releases || []);
+                const sData = await fetchWithCheck(`${apiUrl}/admin/salary/settings`);
+                if (sData) setSalarySettings(sData);
+                const eData = await fetchWithCheck(`${apiUrl}/auth/admin/employees`);
+                if (eData) setApprovedEmployees(eData.employees || []);
             } else if (activeTab === 'announcements') {
-                const res = await fetch(`${apiUrl}/announcement`);
-                const data = await res.json();
-                setAnnouncementMsg(data);
+                const data = await fetchWithCheck(`${apiUrl}/announcement`);
+                if (data) setAnnouncementMsg(data);
             } else if (activeTab === 'salary_report') {
-                const res = await fetch(`${apiUrl}/admin/salary-report/${salaryReportMonth}`);
-                const data = await res.json();
-                setSalaryReport(data.report || []);
+                const data = await fetchWithCheck(`${apiUrl}/admin/salary-report/${salaryReportMonth}`);
+                if (data) setSalaryReport(data.report || []);
             } else if (activeTab === 'templates') {
-                const res = await fetch(`${apiUrl}/admin/templates`);
-                const data = await res.json();
-                setOfferLetterTemplates(data || []);
+                const data = await fetchWithCheck(`${apiUrl}/admin/templates`);
+                if (data) setOfferLetterTemplates(data || []);
             }
         } catch (err) {
-            console.error(err);
+            console.error("Fetch Data Error:", err);
         } finally {
             setLoading(false);
         }
@@ -1658,8 +1646,8 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 </div>
                             </div>
 
-                            {leaves.length === 0 ? <p style={{ color: '#000000' }}>No leaves found (Try applying from Employee view).</p> : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {leaves.length === 0 ? <p style={{ color: '#000000', padding: '1rem' }}>No leave requests found.</p> : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     {leaves
                                         .filter(l => {
                                             const nameMatch = (l.employee_name || '').toLowerCase().includes(leaveFilterName.toLowerCase()) || (l.employee_id || '').toLowerCase().includes(leaveFilterName.toLowerCase());
@@ -1668,26 +1656,34 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             return nameMatch && typeMatch && dateMatch;
                                         })
                                         .map((l, idx) => (
-                                        <div key={idx} className="hover-shadow-sm" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #f1f5f9', borderRadius: '10px', padding: '0.75rem 1.25rem', background: '#ffffff', transition: 'all 0.2s' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flex: 1 }}>
-                                                {/* Status Indicator Dot */}
-                                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: l.status.includes('Approved') ? '#22C55E' : l.status.includes('Rejected') ? '#EF4444' : '#F59E0B' }}></div>
+                                        <div key={idx} className="hover-shadow-sm" style={{ 
+                                            display: 'flex', 
+                                            justifyContent: 'space-between', 
+                                            alignItems: 'center', 
+                                            border: '1px solid #f1f5f9', 
+                                            borderRadius: '8px', 
+                                            padding: '0.5rem 1rem', 
+                                            background: '#ffffff', 
+                                            transition: 'all 0.2s' 
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+                                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: l.status.includes('Approved') ? '#22C55E' : l.status.includes('Rejected') ? '#EF4444' : '#F59E0B' }}></div>
                                                 
-                                                <div style={{ minWidth: '180px' }}>
-                                                    <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#1f2937', textTransform: 'capitalize' }}>{l.employee_name || 'Employee'}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>ID: {l.employee_id}</div>
+                                                <div style={{ minWidth: '150px' }}>
+                                                    <div style={{ fontWeight: '700', fontSize: '0.875rem', color: '#1f2937' }}>{l.employee_name || 'Employee'}</div>
+                                                    <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>{l.employee_id}</div>
                                                 </div>
 
-                                                <div style={{ minWidth: '150px' }}>
-                                                    <div style={{ fontWeight: '600', fontSize: '0.85rem', color: 'var(--primary)' }}>{l.leave_type}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{l.start_date} → {l.end_date}</div>
+                                                <div style={{ minWidth: '130px' }}>
+                                                    <div style={{ fontWeight: '600', fontSize: '0.8rem', color: 'var(--primary)' }}>{l.leave_type}</div>
+                                                    <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>{l.start_date} ({l.days || 1}d)</div>
                                                 </div>
 
                                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                     <span style={{ 
-                                                        padding: '0.25rem 0.75rem', 
-                                                        borderRadius: '20px', 
-                                                        fontSize: '0.7rem', 
+                                                        padding: '0.15rem 0.5rem', 
+                                                        borderRadius: '4px', 
+                                                        fontSize: '0.65rem', 
                                                         fontWeight: '700',
                                                         backgroundColor: l.status.includes('Approved') ? '#DCFCE7' : l.status.includes('Rejected') ? '#FEE2E2' : '#FEF3C7',
                                                         color: l.status.includes('Approved') ? '#166534' : l.status.includes('Rejected') ? '#991B1B' : '#92400E'
@@ -1697,26 +1693,30 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 </div>
                                             </div>
 
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                 {l.status.includes('Pending') && !user?.role.includes('hr_responsible') && (
-                                                    <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                                        <button onClick={() => handleLeaveStatus(l.id, 'Rejected')} className="btn" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '6px' }}>Reject</button>
-                                                        <button onClick={() => handleLeaveStatus(l.id, 'Approved by Admin')} className="btn" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', background: '#ff4500', color: 'white', border: 'none', borderRadius: '6px' }}>Approve</button>
+                                                    <div style={{ display: 'flex', gap: '0.3rem' }}>
+                                                        <button onClick={() => handleLeaveStatus(l.id, 'Rejected')} className="btn" style={{ padding: '0.25rem 0.6rem', fontSize: '0.7rem', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '4px' }}>Reject</button>
+                                                        <button onClick={() => handleLeaveStatus(l.id, 'Approved by Admin')} className="btn" style={{ padding: '0.25rem 0.6rem', fontSize: '0.7rem', background: '#ff4500', color: 'white', border: 'none', borderRadius: '4px' }}>Approve</button>
                                                     </div>
                                                 )}
                                                 
                                                 <button 
                                                     onClick={() => setInspectingLeave(l)}
-                                                    className="btn-icon" 
                                                     style={{ 
                                                         fontSize: '1.25rem', 
-                                                        padding: '0.25rem 0.5rem', 
+                                                        width: '32px',
+                                                        height: '32px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
                                                         cursor: 'pointer', 
                                                         background: 'none', 
                                                         border: 'none',
                                                         color: '#9ca3af',
                                                         borderRadius: '50%'
                                                     }}
+                                                    className="btn-hover-light"
                                                     title="View Full Details"
                                                 >
                                                     ⋮
