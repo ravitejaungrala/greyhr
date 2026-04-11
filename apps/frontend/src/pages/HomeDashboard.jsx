@@ -964,8 +964,8 @@ const HomeDashboard = ({ user, setUser }) => {
     return (
         <div className="home-dashboard">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h1 className="card-title" style={{ fontSize: '1.75rem', margin: 0 }}>
-                    {activeTab === 'dashboard' ? <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>Good Evening, {user.name}! <Sun size={24} color="#f59e0b" /></span> :
+                <h1 className="card-title" style={{ fontSize: '1.5rem', margin: 0 }}>
+                    {activeTab === 'dashboard' ? <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>Good Evening, {user.name}! <Sun size={20} color="#f59e0b" /></span> :
                         activeTab === 'leave' ? 'Leave Management' :
                             activeTab === 'payslips' ? 'Payroll & Payslips' :
                                 activeTab === 'holidays' ? 'Holiday Calendar' : 'Appreciation Wall'}
@@ -976,14 +976,14 @@ const HomeDashboard = ({ user, setUser }) => {
             {activeTab === 'dashboard' ? (
                 <div className="grid-3">
                     {/* Daily Assistant Agent */}
-                    <div className="card glass-card" style={{ borderTop: '4px solid var(--primary)', position: 'relative', overflow: 'hidden', padding: '1rem' }}>
+                    <div className="card glass-card" style={{ borderTop: '4px solid var(--primary)', position: 'relative', overflow: 'hidden', padding: '0.75rem' }}>
                         <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: 'var(--primary)', opacity: 0.05, borderRadius: '50%' }}></div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                 <div style={{ width: '32px', height: '32px', background: 'var(--accent-blue)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-                                     <Bot size={18} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                 <div style={{ width: '28px', height: '28px', background: 'var(--accent-blue)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                                     <Bot size={16} />
                                  </div>
-                                <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1rem' }}>Smart Daily Assistant</h2>
+                                <h2 className="card-title" style={{ marginBottom: 0, fontSize: '0.9rem' }}>Smart Daily Assistant</h2>
                             </div>
                             
                             <div style={{ position: 'relative' }}>
@@ -991,7 +991,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                     onClick={(e) => { e.stopPropagation(); setShowDotsMenu(!showDotsMenu); }}
                                     style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', padding: '0.25rem', color: 'var(--text-muted)' }}
                                 >
-                                     <MoreVertical size={20} />
+                                     <MoreVertical size={18} />
                                 </button>
                                 {showDotsMenu && (
                                     <div style={{ position: 'absolute', top: '100%', right: 0, background: '#fff', border: '1px solid var(--border-color)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100, minWidth: '120px', padding: '0.5rem 0' }}>
@@ -1008,43 +1008,43 @@ const HomeDashboard = ({ user, setUser }) => {
                             </div>
                         </div>
 
-                        <div style={{ backgroundColor: 'rgba(255, 69, 0, 0.05)', padding: '1rem', borderRadius: '14px', marginBottom: '1rem', border: '1px solid rgba(255, 69, 0, 0.1)' }}>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-light)', lineHeight: '1.5', margin: 0 }}>
-                                <strong style={{ color: 'var(--primary)', display: 'block', marginBottom: '0.15rem', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>AI Insight</strong>
+                        <div style={{ backgroundColor: 'rgba(255, 69, 0, 0.05)', padding: '0.75rem', borderRadius: '12px', marginBottom: '0.75rem', border: '1px solid rgba(255, 69, 0, 0.1)' }}>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', lineHeight: '1.5', margin: 0 }}>
+                                <strong style={{ color: 'var(--primary)', display: 'block', marginBottom: '0.15rem', fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>AI Insight</strong>
                                 {dashboardLoading ? 'Analyzing your workspace...' : (dashboardData?.insight_message || 'Loading your daily analysis...')}
                             </p>
                             {todayStatus && todayStatus.total_hours_today && (
-                                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px dashed rgba(255, 69, 0, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Total Work Time Today</span>
-                                    <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary)' }}>{todayStatus.total_hours_today}</span>
+                                <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed rgba(255, 69, 0, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Total Work Time Today</span>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)' }}>{todayStatus.total_hours_today}</span>
                                 </div>
                             )}
                         </div>
 
                         {/* Integrated Attendance Controls - Consolidated Toggle Button */}
-                        <div style={{ marginBottom: '1.25rem' }}>
+                        <div style={{ marginBottom: '1rem' }}>
                             {todayStatus.status === 'Signed In' ? (
                                 <button 
                                     className="btn" 
-                                    style={{ width: '100%', padding: '0.75rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', borderRadius: '14px', backgroundColor: '#EF4444', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                                    style={{ width: '100%', padding: '0.6rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', borderRadius: '12px', backgroundColor: '#EF4444', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 600 }}
                                     onClick={() => handleDashboardPunch('sign_out')}
                                     disabled={punchLoading}
                                 >
-                                     {punchAction === 'sign_out' ? 'Processing...' : <><ToggleRight size={18} /> Sign Out</>}
+                                     {punchAction === 'sign_out' ? 'Processing...' : <><ToggleRight size={16} /> Sign Out</>}
                                 </button>
                             ) : (
                                 <button 
                                     className="btn btn-primary" 
-                                    style={{ width: '100%', padding: '0.75rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', borderRadius: '14px', boxShadow: '0 4px 12px rgba(255, 69, 0, 0.2)', fontWeight: 600 }}
+                                    style={{ width: '100%', padding: '0.6rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', borderRadius: '12px', boxShadow: '0 4px 12px rgba(255, 69, 0, 0.2)', fontWeight: 600 }}
                                     onClick={() => handleDashboardPunch('sign_in')}
                                     disabled={punchLoading}
                                 >
-                                     {punchAction === 'sign_in' ? 'Processing...' : todayStatus.status === 'Signed Out' ? <><ToggleRight size={18} /> Sign In Again</> : <><ToggleRight size={18} /> Sign In for Today</>}
+                                     {punchAction === 'sign_in' ? 'Processing...' : todayStatus.status === 'Signed Out' ? <><ToggleRight size={16} /> Sign In Again</> : <><ToggleRight size={16} /> Sign In for Today</>}
                                 </button>
                             )}
                         </div>
 
-                        <h3 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Upcoming Highlights</h3>
+                        <h3 style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Upcoming Highlights</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             {dashboardLoading ? (
                                 <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Synchronizing...</div>
@@ -1080,8 +1080,8 @@ const HomeDashboard = ({ user, setUser }) => {
                                             }` : 'none'
                                         }}></div>
                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-light)' }}>{h.title}</span>
-                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{h.time}</span>
+                                            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-light)' }}>{h.title}</span>
+                                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{h.time}</span>
                                         </div>
                                     </div>
                                 )) || <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No upcoming highlights</div>
@@ -1090,26 +1090,26 @@ const HomeDashboard = ({ user, setUser }) => {
                     </div>
 
                     {/* AI Workforce Insights */}
-                    <div className="card glass-card" style={{ padding: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                            <div style={{ width: '32px', height: '32px', background: 'rgba(124, 58, 237, 0.1)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                 <BarChart3 size={18} color="#7c3aed" />
+                    <div className="card glass-card" style={{ padding: '0.75rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                            <div style={{ width: '28px', height: '28px', background: 'rgba(124, 58, 237, 0.1)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                 <BarChart3 size={16} color="#7c3aed" />
                             </div>
-                            <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1rem' }}>Workforce Insights</h2>
+                            <h2 className="card-title" style={{ marginBottom: 0, fontSize: '0.9rem' }}>Workforce Insights</h2>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                            <div style={{ padding: '0.75rem', background: 'var(--bg-color)', borderRadius: '16px', textAlign: 'center' }}>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '-0.02em' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                            <div style={{ padding: '0.5rem', background: 'var(--bg-color)', borderRadius: '12px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '-0.02em' }}>
                                     {dashboardLoading ? '--' : (dashboardData?.productivity_score || 0)}%
                                 </div>
-                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Productivity</div>
+                                <div style={{ fontSize: '0.55rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Productivity</div>
                             </div>
-                            <div style={{ padding: '0.75rem', background: 'var(--bg-color)', borderRadius: '16px', textAlign: 'center' }}>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#10b981', letterSpacing: '-0.02em' }}>
+                            <div style={{ padding: '0.5rem', background: 'var(--bg-color)', borderRadius: '12px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981', letterSpacing: '-0.02em' }}>
                                     {dashboardLoading ? '--' : (dashboardData?.attendance_percentage || 0)}%
                                 </div>
-                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Attendance</div>
+                                <div style={{ fontSize: '0.55rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Attendance</div>
                             </div>
                         </div>
 
@@ -1125,12 +1125,12 @@ const HomeDashboard = ({ user, setUser }) => {
                     </div>
 
                     {/* Policy Notice */}
-                    <div className="card shadow-sm" style={{ borderLeft: '4px solid var(--primary)', background: '#ffffff', borderRight: '1px solid var(--border-color)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', padding: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                            <div style={{ width: '32px', height: '32px', background: 'rgba(255, 69, 0, 0.1)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                 <ScrollText size={20} color="var(--primary)" />
+                    <div className="card shadow-sm" style={{ borderLeft: '4px solid var(--primary)', background: '#ffffff', borderRight: '1px solid var(--border-color)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', padding: '0.75rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                            <div style={{ width: '28px', height: '28px', background: 'rgba(255, 69, 0, 0.1)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                 <ScrollText size={16} color="var(--primary)" />
                             </div>
-                            <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1rem' }}>Company Policy</h2>
+                            <h2 className="card-title" style={{ marginBottom: 0, fontSize: '0.9rem' }}>Company Policy</h2>
                         </div>
                         <div style={{ fontSize: '0.85rem', lineHeight: '1.6', color: 'var(--text-light)' }}>
                             <div style={{ marginBottom: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
@@ -1148,23 +1148,23 @@ const HomeDashboard = ({ user, setUser }) => {
                     </div>
 
                     {/* Quick Actions */}
-                    <div className="card shadow-sm" style={{ borderTop: '4px solid var(--secondary)', background: '#ffffff', border: '1px solid var(--border-color)', padding: '1rem' }}>
-                        <h2 className="card-title" style={{ fontSize: '1rem', marginBottom: '1rem' }}>Quick Access</h2>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.85rem' }} onClick={() => setActiveTab('payslips')}>
-                                 <FileText size={16} /> View Latest Payslip
+                    <div className="card shadow-sm" style={{ borderTop: '4px solid var(--secondary)', background: '#ffffff', border: '1px solid var(--border-color)', padding: '0.75rem' }}>
+                        <h2 className="card-title" style={{ fontSize: '0.9rem', marginBottom: '0.75rem' }}>Quick Access</h2>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.5rem 0.75rem' }} onClick={() => setActiveTab('payslips')}>
+                                 <FileText size={14} /> View Latest Payslip
                             </button>
-                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.85rem', position: 'relative' }} onClick={() => setActiveTab('leave')}>
-                                 <TreePalm size={16} /> Apply for Leave
+                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.5rem 0.75rem', position: 'relative' }} onClick={() => setActiveTab('leave')}>
+                                 <TreePalm size={14} /> Apply for Leave
                                 {dashboardData?.highlights?.some(h => h.type === 'leave' && h.status === 'warning') && (
                                     <span style={{ position: 'absolute', top: '-5px', right: '-5px', width: '10px', height: '10px', background: '#F59E0B', borderRadius: '50%', border: '2px solid white', animation: 'pulse 1.5s infinite' }}></span>
                                 )}
                             </button>
-                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.85rem' }} onClick={() => setActiveTab('kudos')}>
-                                 <Sun size={16} /> Give Kudos
+                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.5rem 0.75rem' }} onClick={() => setActiveTab('kudos')}>
+                                 <Sun size={14} /> Give Kudos
                             </button>
-                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.85rem' }} onClick={() => setActiveTab('holidays')}>
-                                 <Calendar size={16} /> View Holiday Calendar
+                            <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.5rem 0.75rem' }} onClick={() => setActiveTab('holidays')}>
+                                 <Calendar size={14} /> View Holiday Calendar
                             </button>
                         </div>
                     </div>

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 12px;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 850px;
+            border: 1px solid #000;
+            margin: 20px auto;
+            padding: 15px;
+            background: #fff;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Background Logo Watermark */
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            opacity: 0.05;
+            pointer-events: none;
+            width: 450px;
+            z-index: -1;
+            display: flex;
+            justify-content: center;
+        }
+
+        .watermark img {
+            width: 100%;
+            height: auto;
+        }
+
+        /* Header & Logo Section */
+        .header-container {
+            display: flex;
+            align-items: center;
+            border-bottom: 2px solid #E87132;
+            padding-bottom: 10px;
+        }
+
+        .logo-section {
+            width: 25%;
+            text-align: left;
+        }
+
+        .logo-section img {
+            max-height: 60px;
+            max-width: 180px;
+        }
+
+        /* Adjust size to fit your NeuzenAI logo */
+
+        .company-details {
+            width: 75%;
+            text-align: center;
+            margin-right: 15%;
+        }
+
+        .company-name {
+            color: #E87132;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .address {
+            font-size: 11px;
+            font-weight: bold;
+            color: #000;
+            line-height: 1.3;
+            margin-top: 5px;
+        }
+
+        /* Title Bar */
+        .title-bar {
+            text-align: center;
+            font-weight: bold;
+            padding: 5px;
+            border-bottom: 1px solid #000;
+            border-top: 1px solid #000;
+            background: #fff;
+            margin-top: 2px;
+        }
+
+        /* Table Formatting */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .info-table td {
+            padding: 5px;
+            width: 25%;
+            border: 0.5px solid #ddd;
+        }
+
+        .label {
+            font-weight: normal;
+        }
+
+        .value {
+            font-weight: normal;
+        }
+
+        /* Financial Section */
+        .financial-grid {
+            display: flex;
+            border: 1px solid #000;
+            margin-top: 10px;
+        }
+
+        .side {
+            width: 50%;
+        }
+
+        .side:first-child {
+            border-right: 1px solid #000;
+        }
+
+        .side-title {
+            font-weight: bold;
+            color: #E87132;
+            padding: 5px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 5px;
+            text-align: left;
+        }
+
+        .amount {
+            text-align: right;
+        }
+
+        .total-row {
+            font-weight: bold;
+            border-top: 1px solid #000;
+        }
+
+        /* Net Salary & Footer */
+        .net-box {
+            border: 1px solid #000;
+            border-top: none;
+            padding: 10px;
+            font-weight: bold;
+        }
+
+        .net-amount {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .in-words {
+            font-weight: normal;
+            font-size: 11px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="watermark">
+            <img src="https://cb5nstyqdgybs667cpwyjpqcsq0heexz.lambda-url.ap-south-1.on.aws/static/company-logo.png" alt="Background Watermark">
+        </div>
+        <div class="header-container">
+            <div class="logo-section">
+                <img src="https://cb5nstyqdgybs667cpwyjpqcsq0heexz.lambda-url.ap-south-1.on.aws/static/company-logo.png" alt="Company Logo">
+            </div>
+            <div class="company-details">
+                <h1 class="company-name">NEUZENAI PVT LTD.</h1>
+                <div class="address">
+                    T Hub Phase 2, Inorbit Mall Rd, Vittal Rao Nagar,<br>
+                    Hyderabad, Telangana-500081
+                </div>
+            </div>
+        </div>
+
+        <div class="title-bar">Pay slip for the month of April 2026</div>
+
+        <table class="info-table">
+            <tr>
+                <td class="label">Employee Code</td>
+                <td class="value">EMPBB2319</td>
+                <td class="label">Employee Name</td>
+                <td class="value">vennala</td>
+
+            </tr>
+            <tr>
+                <td class="label">Bank Name</td>
+                <td class="value">qwertyuioxcvbn</td>
+                <td class="label">Bank Account Number</td>
+                <td class="value">123456789</td>
+
+            </tr>
+            <tr>
+                <td class="label">Permanent Account Number</td>
+                <td class="value">asdfgh234</td>
+                <td class="label">PF Account Number</td>
+                <td class="value"></td>
+
+            </tr>
+            <tr>
+                <td class="label">Date of Joining</td>
+                <td class="value">2026-03-23</td>
+                <td class="label">Date of Birth</td>
+                <td class="value">2003-04-30</td>
+
+
+            </tr>
+            <tr>
+                <td class="label">Days Worked</td>
+                <td class="value">30</td>
+                <td class="label">LWP (Leave Without Pay)</td>
+                <td class="value">0</td>
+
+            </tr>
+            <tr>
+                <td class="label">Arrears Days</td>
+                <td class="value">0</td>
+                <td class="label">UAN Number</td>
+                <td class="value"></td>
+
+            </tr>
+            <tr>
+                <td class="label">Designation</td>
+                <td class="value">Software Engineer</td>
+                <td class="label">Department</td>
+                <td class="value"></td>
+
+            </tr>
+            <tr>
+                <td class="label">Location</td>
+                <td class="value">Hyderabad</td>
+                <td class="label">Band/Grade</td>
+                <td class="value"></td>
+
+            </tr>
+        </table>
+
+        <div class="financial-grid">
+            <div class="side">
+                <div class="side-title">Earnings</div>
+                <table class="data-table">
+                    <tr>
+                        <td><b>Particulars</b></td>
+                        <td><b>Amount</b></td>
+                    </tr>
+                    <tr>
+                        <td>Basic Salary</td>
+                        <td class="amount">20000</td>
+                    </tr>
+                    <tr>
+                        <td>House Rent Allowance</td>
+                        <td class="amount">15000</td>
+                    </tr>
+                    <tr>
+                        <td>Leave Travel Allowance (LTA)</td>
+                        <td class="amount">0</td>
+                    </tr>
+                    <tr>
+                        <td>Special Allowance</td>
+                        <td class="amount">15000</td>
+                    </tr>
+                    <tr>
+                        <td>Medical Insurance (E)</td>
+                        <td class="amount">0</td>
+                    </tr>
+
+                    <tr class="total-row">
+                        <td>Total Earnings</td>
+                        <td class="amount">50000</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="side">
+                <div class="side-title">Deductions</div>
+                <table class="data-table">
+                    <tr>
+                        <td><b>Particulars</b></td>
+                        <td><b>Amount</b></td>
+                    </tr>
+                    <tr>
+                        <td>Professional Tax</td>
+                        <td class="amount">200</td>
+                    </tr>
+                    <tr>
+                        <td>Provident Fund</td>
+                        <td class="amount">6000</td>
+                    </tr>
+                    <tr>
+                        <td>Income Tax (TDS)</td>
+                        <td class="amount">5000</td>
+                    </tr>
+
+                    <tr>
+                        <td>LWF Deduction</td>
+                        <td class="amount">0</td>
+                    </tr>
+                    <tr>
+                        <td>Medical Insurance (D)</td>
+                        <td class="amount">0</td>
+                    </tr>
+
+                    <tr class="total-row">
+                        <td>Total Deductions</td>
+                        <td class="amount">11200</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="net-box">
+            <div class="net-amount">Net Salary: 38800</div>
+            <div class="in-words">In words: 50000 Only (All Amount Is In ₹ )</div>
+            <div style="margin-top: 20px; text-align: right;">
+                <img src="https://cb5nstyqdgybs667cpwyjpqcsq0heexz.lambda-url.ap-south-1.on.aws/static/signature.png" alt="Authorized Signature" style="height: 50px;"><br>
+                <strong>Authorized Signatory</strong><br>
+                NEUZENAI PVT LTD.
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

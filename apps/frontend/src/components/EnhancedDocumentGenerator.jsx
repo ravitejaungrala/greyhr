@@ -162,41 +162,53 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
             left: 0, 
             right: 0, 
             bottom: 0, 
-            background: 'rgba(0,0,0,0.7)', 
+            background: 'rgba(0,0,0,0.45)', 
+            backdropFilter: 'blur(12px)',
             display: 'flex', 
             justifyContent: 'center', 
             alignItems: 'center', 
             zIndex: 9999,
-            padding: '1rem'
+            padding: '1.5rem',
+            animation: 'fadeIn 0.3s ease-out'
         }}>
-            <div className="card glass-panel" style={{ 
+            <div className="card glass-panel shadow-premium animate-zoom-in" style={{ 
                 width: '100%', 
-                maxWidth: '1400px', 
-                height: '90vh', 
+                maxWidth: '1200px', 
+                height: '85vh', 
                 display: 'flex', 
                 flexDirection: 'column',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                border: '1px solid rgba(255,255,255,0.2)',
+                background: 'rgba(255,255,255,0.95)',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                borderRadius: '24px'
             }}>
                 {/* Header */}
                 <div style={{ 
-                    padding: '1.5rem', 
-                    borderBottom: '1px solid #e2e8f0', 
+                    padding: '1.75rem 2rem', 
+                    borderBottom: '1px solid rgba(0,0,0,0.05)', 
                     display: 'flex', 
                     justifyContent: 'space-between', 
                     alignItems: 'center',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: 'white'
+                    background: 'var(--main-gradient)',
+                    color: 'white',
+                    position: 'relative',
+                    overflow: 'hidden'
                 }}>
-                    <div>
-                        <h2 style={{ margin: 0, fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}><FileText size={28} /> Enhanced Document Generator</h2>
-                        <p style={{ margin: '0.5rem 0 0 0', opacity: 0.9, fontSize: '0.9rem' }}>
-                            Select employee → Choose document type → Fill ROI fields → Preview → Generate & Send
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.15) 0%, transparent 50%)', pointerEvents: 'none' }} />
+                    <div style={{ position: 'relative', zIndex: 1 }}>
+                        <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.75rem', letterSpacing: '-0.02em' }}>
+                             <div style={{ background: 'rgba(255,255,255,0.2)', padding: '0.4rem', borderRadius: '12px', display: 'flex' }}><FileText size={28} /></div>
+                             Enhanced Document Generator
+                        </h2>
+                        <p style={{ margin: '0.4rem 0 0 0', opacity: 0.85, fontSize: '0.85rem', fontWeight: 500 }}>
+                            Intelligent ROI-based automated document generation system.
                         </p>
                     </div>
                     <button 
-                        className="btn" 
+                        className="btn-close-premium" 
                         onClick={onClose}
-                        style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white' }}
+                        style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', cursor: 'pointer', padding: '0.6rem', borderRadius: '12px', display: 'flex', transition: 'all 0.2s' }}
                     >
                         <X size={20} />
                     </button>
@@ -204,31 +216,54 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
 
                 {/* Progress Steps */}
                 <div style={{ 
-                    padding: '1rem 1.5rem', 
-                    background: '#F8F9FA', 
-                    borderBottom: '1px solid #e2e8f0',
+                    padding: '0 2rem', 
+                    background: '#ffffff', 
+                    borderBottom: '1px solid #f1f5f9',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '2rem'
+                    height: '70px',
+                    position: 'relative'
                 }}>
                     {[
-                        { step: 1, label: 'Select Employee & Document', icon: <User size={20} /> },
-                        { step: 2, label: 'Fill ROI Fields', icon: <FileSignature size={20} /> },
-                        { step: 3, label: 'Preview Document', icon: <Eye size={20} /> },
-                        { step: 4, label: 'Generate & Send', icon: <CheckCircle2 size={20} /> }
-                    ].map(({ step, label, icon }) => (
-                        <div key={step} style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '0.5rem',
-                            opacity: currentStep >= step ? 1 : 0.5,
-                            fontWeight: currentStep === step ? 'bold' : 'normal',
-                            color: currentStep >= step ? '#ff4500' : '#000000'
-                        }}>
-                            <span style={{ display: 'flex' }}>{icon}</span>
-                            <span style={{ fontSize: '0.9rem' }}>{label}</span>
-                            {step < 4 && <span style={{ margin: '0 0.5rem', color: '#D1D5DB' }}>→</span>}
-                        </div>
+                        { step: 1, label: 'Identify', icon: <User size={18} /> },
+                        { step: 2, label: 'Configure', icon: <FileSignature size={18} /> },
+                        { step: 3, label: 'Verify', icon: <Eye size={18} /> },
+                        { step: 4, label: 'Dispatch', icon: <CheckCircle2 size={18} /> }
+                    ].map(({ step, label, icon }, idx) => (
+                        <React.Fragment key={step}>
+                            <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '0.75rem',
+                                position: 'relative',
+                                opacity: currentStep >= step ? 1 : 0.4,
+                                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                            }}>
+                                <div style={{ 
+                                    width: '36px', 
+                                    height: '36px', 
+                                    borderRadius: '10px', 
+                                    background: currentStep === step ? 'var(--main-gradient)' : (currentStep > step ? '#22c55e' : '#f1f5f9'),
+                                    color: currentStep >= step ? 'white' : '#64748b',
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    boxShadow: currentStep === step ? '0 4px 12px rgba(255, 69, 0, 0.3)' : 'none',
+                                    transition: 'all 0.4s'
+                                }}>
+                                    {currentStep > step ? <CheckCircle2 size={18} /> : icon}
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Step {step}</span>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: currentStep === step ? '#000' : '#64748b' }}>{label}</span>
+                                </div>
+                            </div>
+                            {idx < 3 && (
+                                <div style={{ flex: 1, height: '2px', margin: '0 1.5rem', background: currentStep > step ? '#22c55e' : '#f1f5f9', borderRadius: '10px', position: 'relative' }}>
+                                    <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: currentStep > step ? '100%' : '0%', background: '#22c55e', transition: 'width 0.4s ease' }} />
+                                </div>
+                            )}
+                        </React.Fragment>
                     ))}
                 </div>
 
@@ -237,11 +272,12 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                     
                     {/* Left Panel - Selection & Form */}
                     <div style={{ 
-                        width: currentStep >= 3 ? '50%' : '100%', 
+                        width: currentStep >= 4 ? '100%' : (currentStep === 3 ? '50%' : '100%'), 
                         display: 'flex', 
                         flexDirection: 'column',
-                        borderRight: currentStep >= 3 ? '1px solid #e2e8f0' : 'none',
-                        transition: 'width 0.3s ease'
+                        borderRight: currentStep === 3 ? '1px solid #f1f5f9' : 'none',
+                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                        overflow: 'hidden'
                     }}>
                         
                         {/* Step 1: Employee & Document Selection */}
@@ -264,20 +300,31 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                                 <div 
                                                     key={employee.employee_id}
                                                     onClick={() => handleEmployeeSelect(employee)}
+                                                    className="employee-card-premium"
                                                     style={{
-                                                        padding: '1rem',
-                                                        borderBottom: '1px solid #F3F4F6',
+                                                        padding: '1.25rem',
+                                                        borderBottom: '1px solid #f1f5f9',
                                                         cursor: 'pointer',
-                                                        background: selectedEmployee?.employee_id === employee.employee_id ? '#EBF8FF' : 'white',
-                                                        borderLeft: selectedEmployee?.employee_id === employee.employee_id ? '4px solid #ff4500' : '4px solid transparent'
+                                                        background: selectedEmployee?.employee_id === employee.employee_id ? 'rgba(34, 197, 94, 0.05)' : 'white',
+                                                        borderLeft: selectedEmployee?.employee_id === employee.employee_id ? '4px solid #22c55e' : '4px solid transparent',
+                                                        position: 'relative'
                                                     }}
                                                 >
-                                                    <div style={{ fontWeight: 'bold', color: '#1F2937' }}>
+                                                    <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>
                                                         {employee.name}
                                                     </div>
-                                                    <div style={{ fontSize: '0.8rem', color: '#000000', marginTop: '0.25rem' }}>
-                                                        {employee.employee_id} • {employee.employment_type} • {employee.position}
+                                                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.4rem', borderRadius: '4px', display: 'flex', gap: '0.5rem' }}>
+                                                        <span>{employee.employee_id}</span>
+                                                        <span>•</span>
+                                                        <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{employee.employment_type}</span>
+                                                        <span>•</span>
+                                                        <span>{employee.position}</span>
                                                     </div>
+                                                    {selectedEmployee?.employee_id === employee.employee_id && (
+                                                        <div style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#22c55e' }}>
+                                                            <CheckCircle2 size={18} />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>
@@ -290,28 +337,47 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                         </h3>
                                         <div style={{ 
                                             display: 'grid', 
-                                            gap: '0.75rem'
+                                            gap: '1rem'
                                         }}>
                                             {documentTypes.map(docType => (
                                                 <div 
                                                     key={docType.type}
                                                     onClick={() => handleDocTypeSelect(docType.type)}
+                                                    className="doc-type-card-premium"
                                                     style={{
-                                                        padding: '1rem',
+                                                        padding: '1.25rem',
                                                         border: '2px solid',
-                                                        borderColor: selectedDocType === docType.type ? '#ff4500' : '#e2e8f0',
-                                                        borderRadius: '8px',
+                                                        borderColor: selectedDocType === docType.type ? '#ff4500' : '#f1f5f9',
+                                                        borderRadius: '16px',
                                                         cursor: 'pointer',
-                                                        background: selectedDocType === docType.type ? '#EBF8FF' : 'white',
-                                                        transition: 'all 0.2s ease'
+                                                        background: selectedDocType === docType.type ? 'rgba(255, 69, 0, 0.04)' : '#ffffff',
+                                                        transition: 'all 0.3s ease',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '1rem'
                                                     }}
                                                 >
-                                                    <div style={{ fontWeight: 'bold', color: '#1F2937' }}>
-                                                        {docType.name}
+                                                    <div style={{ 
+                                                        width: '44px', 
+                                                        height: '44px', 
+                                                        background: selectedDocType === docType.type ? 'var(--main-gradient)' : '#f8fafc',
+                                                        borderRadius: '12px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        color: selectedDocType === docType.type ? 'white' : '#64748b'
+                                                    }}>
+                                                        <FileText size={20} />
                                                     </div>
-                                                    <div style={{ fontSize: '0.8rem', color: '#000000', marginTop: '0.25rem' }}>
-                                                        {Object.keys(docType.roi_fields).length} fields to fill
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '1rem' }}>
+                                                            {docType.name}
+                                                        </div>
+                                                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>
+                                                            Auto-populates {Object.keys(docType.roi_fields).length} key data points
+                                                        </div>
                                                     </div>
+                                                    <ChevronRight size={18} color={selectedDocType === docType.type ? '#ff4500' : '#cbd5e1'} />
                                                 </div>
                                             ))}
                                         </div>
@@ -339,13 +405,16 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                         {/* Step 2: ROI Fields Form */}
                         {currentStep === 2 && selectedDocConfig && (
                             <div style={{ padding: '1.5rem', overflowY: 'auto' }}>
-                                <div style={{ marginBottom: '1.5rem' }}>
-                                    <h3 style={{ color: '#000000', marginBottom: '0.5rem' }}>
-                                        <FileSignature size={20} /> Fill ROI Fields for {selectedDocConfig.name}
+                                <div style={{ marginBottom: '2.5rem', background: '#f8fafc', padding: '1.5rem', borderRadius: '20px', border: '1px solid #f1f5f9' }}>
+                                    <h3 style={{ color: '#0f172a', marginBottom: '0.5rem', fontWeight: 800, fontSize: '1.25rem' }}>
+                                        Configure {selectedDocConfig.name}
                                     </h3>
-                                    <p style={{ color: '#000000', fontSize: '0.9rem' }}>
-                                        Employee: <strong>{selectedEmployee.name}</strong> ({selectedEmployee.employee_id})
-                                    </p>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e' }} />
+                                        <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0, fontWeight: 500 }}>
+                                            Editing profile for <strong>{selectedEmployee.name}</strong> • {selectedEmployee.employee_id}
+                                        </p>
+                                    </div>
                                 </div>
 
                                 {isLoading ? (
@@ -421,21 +490,55 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
 
                         {/* Step 4: Success */}
                         {currentStep === 4 && (
-                            <div style={{ padding: '2rem', textAlign: 'center' }}>
-                                <div style={{ marginBottom: '1rem' }}><CheckCircle2 size={64} color="#22c55e" /></div>
-                                <h3 style={{ color: '#ff4500', marginBottom: '1rem' }}>Document Generated Successfully!</h3>
-                                <p style={{ color: '#000000', marginBottom: '2rem' }}>
-                                    The document has been generated and saved. The employee can now download it from their dashboard.
-                                </p>
-                                <button
-                                    onClick={() => {
-                                        resetForm();
-                                        onClose();
-                                    }}
-                                    className="btn btn-primary"
-                                >
-                                    Generate Another Document
-                                </button>
+                            <div className="animate-fade-in" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem', background: 'radial-gradient(circle at center, rgba(34, 197, 94, 0.05) 0%, transparent 70%)' }}>
+                                <div style={{ maxWidth: '500px', width: '100%', textAlign: 'center' }}>
+                                    <div className="success-icon-container" style={{ position: 'relative', width: '100px', height: '100px', margin: '0 auto 2rem' }}>
+                                        <div className="success-circle" style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#f0fdf4', border: '4px solid #bbf7d0' }} />
+                                        <div className="success-icon" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e', animation: 'successPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
+                                            <CheckCircle2 size={64} strokeWidth={2.5} />
+                                        </div>
+                                    </div>
+
+                                    <h3 style={{ fontSize: '2rem', fontWeight: 800, color: '#000', marginBottom: '1rem', letterSpacing: '-0.03em' }}>
+                                        Success! Document Dispatched
+                                    </h3>
+                                    
+                                    <div className="summary-card" style={{ background: '#ffffff', padding: '1.5rem', borderRadius: '20px', border: '1px solid rgba(0,0,0,0.05)', marginBottom: '2.5rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.02)', textAlign: 'left' }}>
+                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                               <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>Employee</span>
+                                               <span style={{ fontSize: '0.85rem', color: '#000', fontWeight: 700 }}>{selectedEmployee?.name}</span>
+                                           </div>
+                                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                               <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>Document Type</span>
+                                               <span style={{ fontSize: '0.85rem', color: '#000', fontWeight: 700 }}>{selectedDocConfig?.name}</span>
+                                           </div>
+                                           <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid #f1f5f9', fontSize: '0.8rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
+                                               <CheckCircle2 size={14} /> Available for download in Employee Dashboard
+                                           </div>
+                                       </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                                        <button
+                                            onClick={() => {
+                                                resetForm();
+                                                onClose();
+                                            }}
+                                            className="btn btn-secondary"
+                                            style={{ padding: '0.85rem 1.5rem', borderRadius: '12px', fontWeight: 600 }}
+                                        >
+                                            Done
+                                        </button>
+                                        <button
+                                            onClick={() => resetForm()}
+                                            className="btn btn-primary"
+                                            style={{ padding: '0.85rem 2rem', borderRadius: '12px', fontWeight: 700, background: 'var(--main-gradient)' }}
+                                        >
+                                            <FileText size={18} /> Generate Another
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>

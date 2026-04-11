@@ -114,26 +114,49 @@ class ExperienceDetail(BaseModel):
 
 class ProfileUpdateRequest(BaseModel):
     employee_id: str
-    full_name: str
+    full_name: Optional[str] = None
     dob: str
-    father_name: str
-    mother_name: str
-    siblings_details: str
-    # Bank
-    bank_name: str
-    account_number: str
-    ifsc_code: str
-    cif_number: str
-    bank_passbook_base64: str
+    father_name: Optional[str] = None
+    mother_name: Optional[str] = None
+    siblings_details: Optional[str] = None
+    employment_type: Optional[str] = "Full-Time"
+    
+    # Financial/Bank
+    bank_name: Optional[str] = None
+    account_number: Optional[str] = None
+    bank_account: Optional[str] = None # Alias for account_number used in some paths
+    bank_ifsc: Optional[str] = None
+    ifsc_code: Optional[str] = None # Alias
+    cif_number: Optional[str] = None
+    bank_photo_base64: Optional[str] = None
+    bank_passbook_base64: Optional[str] = None # Alias
+    
     # Education
-    ug_details: EducationDetail
-    inter_details: EducationDetail
-    ssc_details: EducationDetail
+    education_degree: Optional[str] = None
+    ug_details: Optional[EducationDetail] = None
+    inter_details: Optional[EducationDetail] = None
+    ssc_details: Optional[EducationDetail] = None
+    education_cert_base64: Optional[str] = None
+    
     # Experience
-    has_experience: bool
+    is_experienced: bool = False
+    has_experience: bool = False # Alias
+    prev_company: Optional[str] = None
+    prev_role: Optional[str] = None
+    experience_years: Optional[str] = None
     experience_list: List[ExperienceDetail] = []
+    
+    # IDs & Keys
     pf_number: Optional[str] = None
     uan_number: Optional[str] = None
+    pan_no: Optional[str] = None
+    
+    # Biometric/Files
+    image_base64: Optional[str] = None
+    image_left_base64: Optional[str] = None
+    image_right_base64: Optional[str] = None
+    passport_photo_base64: Optional[str] = None
+    last_company_payslip_base64: Optional[str] = None
     # Files
 class PassportPhotoUpload(BaseModel):
     employee_id: str
@@ -145,9 +168,47 @@ class DocumentRequest(BaseModel):
     reason: Optional[str] = ""
 
 
-def parse_base64(b64_string: str) -> bytes:
+def parse_base64_with_meta(b64_string: str):
+    """Parses base64 and returns (bytes, extension, mime_type)"""
+    ext = ".jpg"
+    mime = "image/jpeg"
+    
     if ',' in b64_string:
-        b64_string = b64_string.split(',')[1]
+        header, b64_string = b64_string.split(',', 1)
+        if 'image/png' in header:
+            ext = ".png"
+            mime = "image/png"
+        elif 'image/jpeg' in header or 'image/jpg' in header:
+            ext = ".jpg"
+            mime = "image/jpeg"
+        elif 'application/pdf' in header:
+            ext = ".pdf"
+            mime = "application/pdf"
+            
+    try:
+        data = base64.b64decode(b64_string)
+        # Magic bytes check for robust detection
+        if data.startswith(b'%PDF-'):
+            ext = ".pdf"
+            mime = "application/pdf"
+        elif data.startswith(b'\x89PNG\r\n\x1a\n'):
+            ext = ".png"
+            mime = "image/png"
+        elif data.startswith(b'\xff\xd8\xff'):
+            ext = ".jpg"
+            mime = "image/jpeg"
+            
+        return data, ext, mime
+    except:
+        # Fallback for corrupted base64 or other issues
+        try:
+            return base64.b64decode(b64_string + "==="), ext, mime
+        except:
+            return b"", ext, mime
+
+def parse_base64(b64_string: str) -> bytes:
+    data, _, _ = parse_base64_with_meta(b64_string)
+    return data
     return base64.b64decode(b64_string)
 
 @router.post("/auth/register")
@@ -220,28 +281,36 @@ def complete_profile(request: ProfileUpdateRequest):
         live_photo_bytes = parse_base64(request.image_base64)
         live_photo_left_bytes = parse_base64(request.image_left_base64) if request.image_left_base64 else None
         live_photo_right_bytes = parse_base64(request.image_right_base64) if request.image_right_base64 else None
-        bank_photo_bytes = parse_base64(request.bank_photo_base64)
-        edu_cert_bytes = parse_base64(request.education_cert_base64)
-        payslip_bytes = parse_base64(request.last_company_payslip_base64) if request.last_company_payslip_base64 else None
+        
+        # Detect Meta for Onboarding Docs (using aliased fields)
+        bank_b64 = request.bank_photo_base64 or request.bank_passbook_base64
+        edu_b64 = request.education_cert_base64
+        
+        bank_bytes, bank_ext, bank_mime = parse_base64_with_meta(bank_b64)
+        edu_bytes, edu_ext, edu_mime = parse_base64_with_meta(edu_b64)
+        
+        payslip_bytes, payslip_ext, payslip_mime = (None, None, None)
+        if request.last_company_payslip_base64:
+            payslip_bytes, payslip_ext, payslip_mime = parse_base64_with_meta(request.last_company_payslip_base64)
     except Exception as e:
-        return {"error": "Invalid base64 image or document upload"}
-
+        return {"error": f"Invalid base64 image or document upload: {str(e)}"}
 
     reference_image_key = f"reference_faces/{request.employee_id}.jpg"
     reference_image_left_key = f"reference_faces/{request.employee_id}_left.jpg" if live_photo_left_bytes else None
     reference_image_right_key = f"reference_faces/{request.employee_id}_right.jpg" if live_photo_right_bytes else None
-    bank_photo_key = f"documents/{request.employee_id}_bank.jpg"
-    edu_cert_key = f"documents/{request.employee_id}_edu.jpg"
-    payslip_key = f"documents/{request.employee_id}_last_payslip.jpg" if payslip_bytes else None
+    bank_photo_key = f"documents/{request.employee_id}_bank{bank_ext}"
+    edu_cert_key = f"documents/{request.employee_id}_edu{edu_ext}"
+    payslip_key = f"documents/{request.employee_id}_last_payslip{payslip_ext}" if payslip_bytes else None
     
     # Save files to S3
     s3_db.save_image(reference_image_key, live_photo_bytes, content_type='image/jpeg')
     if live_photo_left_bytes: s3_db.save_image(reference_image_left_key, live_photo_left_bytes, content_type='image/jpeg')
     if live_photo_right_bytes: s3_db.save_image(reference_image_right_key, live_photo_right_bytes, content_type='image/jpeg')
-    s3_db.save_image(bank_photo_key, bank_photo_bytes, content_type='image/jpeg')
-    s3_db.save_image(edu_cert_key, edu_cert_bytes, content_type='image/jpeg')
+    
+    s3_db.save_image(bank_photo_key, bank_bytes, content_type=bank_mime)
+    s3_db.save_image(edu_cert_key, edu_bytes, content_type=edu_mime)
     if payslip_bytes:
-        s3_db.save_image(payslip_key, payslip_bytes, content_type='image/jpeg')
+        s3_db.save_image(payslip_key, payslip_bytes, content_type=payslip_mime)
 
     
     # Update Record
@@ -1214,6 +1283,91 @@ def get_employee_holidays():
     # Employees see the same holidays as admin
     return get_holidays()
 
+@router.get("/admin/analytics/trend")
+def get_analytics_trend():
+    if mongo_db.db is None:
+        return {"trend": []}
+    
+    # Calculate last 6 months
+    now = datetime.datetime.utcnow()
+    months = []
+    for i in range(5, -1, -1):
+        m = now - relativedelta(months=i)
+        months.append(m.strftime("%Y-%m"))
+
+    trend_data = []
+    for m_prefix in months:
+        # 1. Joins
+        joins = mongo_db.users.count_documents({
+            "onboarding_completed_at": {"$regex": f"^{m_prefix}"},
+            "status": "approved"
+        })
+        
+        # 2. Exits
+        exits = mongo_db.users.count_documents({
+            "status": {"$in": ["separated", "inactive"]},
+            "deactivated_at": {"$regex": f"^{m_prefix}"}
+        })
+
+        # 3. Aggregation Data
+        total_emps = mongo_db.users.count_documents({"status": "approved"})
+        avg_attendance = 0
+        avg_absentees = 0
+        leaves_vol = 0
+        
+        if total_emps > 0:
+            # Group all sign-ins by day
+            punches = list(mongo_db.attendance.find({
+                "timestamp": {"$regex": f"^{m_prefix}"},
+                "action": "sign_in"
+            }))
+            days = {}
+            for p in punches:
+                d = p["timestamp"][:10]
+                if d not in days: days[d] = set()
+                days[d].add(p["employee_id"])
+            
+            if days:
+                attendance_vals = []
+                absentee_vals = []
+                
+                for d, emps_present in days.items():
+                    # count unique people on leave this specific day
+                    on_leave_distinct = mongo_db.leaves.distinct("employee_id", {
+                        "status": {"$regex": "Approved"},
+                        "start_date": {"$lte": d},
+                        "end_date": {"$gte": d}
+                    })
+                    
+                    present_count = len(emps_present)
+                    on_leave_count = len(on_leave_distinct)
+                    unaccounted = max(0, total_emps - (present_count + on_leave_count))
+                    
+                    attendance_vals.append((present_count / total_emps) * 100)
+                    absentee_vals.append(unaccounted)
+                
+                avg_attendance = round(sum(attendance_vals) / len(attendance_vals), 1)
+                avg_absentees = round(sum(absentee_vals) / len(absentee_vals), 1)
+
+        # 4. Total Approved Leaves (Unique users who had at least one leave start this month)
+        leaves_vol = mongo_db.leaves.count_documents({
+            "status": {"$regex": "Approved"},
+            "start_date": {"$regex": f"^{m_prefix}"}
+        })
+
+        month_name = datetime.datetime.strptime(m_prefix, "%Y-%m").strftime("%b")
+        
+        trend_data.append({
+            "month": month_name,
+            "joins": joins,
+            "exits": exits,
+            "attendance": avg_attendance,
+            "leaves": leaves_vol,
+            "absentees": avg_absentees
+        })
+
+    return {"trend": trend_data}
+
 @router.get("/admin/reports")
 def get_reports_summary():
     if mongo_db.users is None:
@@ -1229,24 +1383,25 @@ def get_reports_summary():
     
     total_employees = mongo_db.users.count_documents({"status": "approved"})
     
-    # Count sign-ins today
+    # Count distinct sign-ins today
     present_today = 0
     if mongo_db.attendance is not None:
-        # We look for sign_in actions today
-        present_today = mongo_db.attendance.count_documents({
+        # We look for unique employee_ids with sign_in actions today
+        present_today_list = mongo_db.attendance.distinct("employee_id", {
             "timestamp": {"$regex": f"^{today_str}"},
             "action": "sign_in"
         })
+        present_today = len(present_today_list)
         
-    # Count approved leaves for today
+    # Count distinct approved employees on leave for today
     on_leave = 0
     if mongo_db.db is not None:
-        # Check for approved leaves where today is between start and end date
-        on_leave = mongo_db.leaves.count_documents({
+        on_leave_list = mongo_db.leaves.distinct("employee_id", {
             "status": {"$regex": "Approved"},
             "start_date": {"$lte": today_str},
             "end_date": {"$gte": today_str}
         })
+        on_leave = len(on_leave_list)
 
     return {
         "total_employees": total_employees,
@@ -1332,34 +1487,21 @@ def get_admin_photo(photo_key: str):
     Serves images directly from S3. 
     Crucial for displaying employee photos and attendance scans.
     """
-    image_bytes = s3_db.get_image(photo_key)
-    if not image_bytes:
+    data = s3_db.get_image(photo_key)
+    if not data:
         return Response(status_code=404)
+    
+    # Sniff content type
+    mime = "image/jpeg"
+    if photo_key.lower().endswith(".pdf") or data.startswith(b'%PDF-'):
+        mime = "application/pdf"
+    elif photo_key.lower().endswith(".png") or data.startswith(b'\x89PNG\r\n\x1a\n'):
+        mime = "image/png"
         
-    return Response(content=image_bytes, media_type="image/jpeg")
+    return Response(content=data, media_type=mime)
 
 # --- Attendance ---
-class ProfileUpdateRequest(BaseModel):
-    employee_id: str
-    employment_type: Optional[str] = "Full-Time"
-    dob: str
-    is_experienced: bool
-    bank_name: str
-    bank_account: str
-    bank_ifsc: str
-    cif_number: str
-    education_degree: str
-    prev_company: Optional[str] = None
-    prev_role: Optional[str] = None
-    experience_years: Optional[str] = None
-    pf_number: Optional[str] = None
-    pan_no: Optional[str] = None
-    image_base64: str
-    image_left_base64: Optional[str] = None
-    image_right_base64: Optional[str] = None
-    bank_photo_base64: str
-    education_cert_base64: str
-    last_company_payslip_base64: Optional[str] = None
+# ProfileUpdateRequest consolidated at top
 class AttendanceScanRequest(BaseModel):
     employee_id: str
     image_base64: Optional[str] = None
@@ -1443,10 +1585,12 @@ def process_face_scan(request: AttendanceScanRequest):
 
     # NEW: Admin Notification for attendance
     if mongo_db.db["notifications"] is not None:
+        action_verb = "signed in" if request.action_type == "sign_in" else "signed out"
         mongo_db.db["notifications"].insert_one({
             "type": "attendance",
-            "message": f"Employee {request.employee_id} signed in.",
+            "message": f"Employee {request.employee_id} {action_verb}.",
             "employee_id": request.employee_id,
+            "action": request.action_type,
             "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
         })
 
@@ -1499,27 +1643,26 @@ def complete_onboarding(request: ProfileUpdateRequest):
     # 1. Process Files and Save to S3
     try:
         # Passport Photo
-        passport_bytes = parse_base64(request.passport_photo_base64)
-        passport_key = f"profile_photos/{request.employee_id}_passport.jpg"
-        s3_db.save_image(passport_key, passport_bytes, content_type='image/jpeg')
+        passport_b64 = request.passport_photo_base64 or request.image_base64
+        passport_bytes, passport_ext, passport_mime = parse_base64_with_meta(passport_b64)
+        passport_key = f"profile_photos/{request.employee_id}_passport{passport_ext}"
+        s3_db.save_image(passport_key, passport_bytes, content_type=passport_mime)
         
         # Bank Passbook
-        bank_bytes = parse_base64(request.bank_passbook_base64)
-        bank_key = f"onboarding_docs/{request.employee_id}_bank_passbook.pdf"
-        s3_db.save_image(bank_key, bank_bytes, content_type='application/pdf')
+        bank_b64 = request.bank_passbook_base64 or request.bank_photo_base64
+        bank_bytes, bank_ext, bank_mime = parse_base64_with_meta(bank_b64)
+        bank_key = f"onboarding_docs/{request.employee_id}_bank_passbook{bank_ext}"
+        s3_db.save_image(bank_key, bank_bytes, content_type=bank_mime)
         
         # Education Certs
-        ug_bytes = parse_base64(request.ug_details.certificate_base64)
-        ug_key = f"onboarding_docs/{request.employee_id}_ug_cert.pdf"
-        s3_db.save_image(ug_key, ug_bytes, content_type='application/pdf')
-        
-        inter_bytes = parse_base64(request.inter_details.certificate_base64)
-        inter_key = f"onboarding_docs/{request.employee_id}_inter_cert.pdf"
-        s3_db.save_image(inter_key, inter_bytes, content_type='application/pdf')
-
-        ssc_bytes = parse_base64(request.ssc_details.certificate_base64)
-        ssc_key = f"onboarding_docs/{request.employee_id}_ssc_cert.pdf"
-        s3_db.save_image(ssc_key, ssc_bytes, content_type='application/pdf')
+        # Handle both list and direct cert base64
+        edu_b64 = request.education_cert_base64
+        if not edu_b64 and request.ug_details:
+            edu_b64 = request.ug_details.certificate_base64
+            
+        ug_bytes, ug_ext, ug_mime = parse_base64_with_meta(edu_b64)
+        ug_key = f"onboarding_docs/{request.employee_id}_edu_cert{ug_ext}"
+        s3_db.save_image(ug_key, ug_bytes, content_type=ug_mime)
         
     except Exception as e:
         return {"error": f"Document processing failed: {str(e)}"}
@@ -3335,8 +3478,15 @@ def update_announcement(request: AnnouncementRequest):
 def get_admin_notifications():
     if mongo_db.db is None:
         return {"notifications": []}
-    notes = list(mongo_db.db.notifications.find({}, {"_id": 0}).sort("created_at", -1).limit(20))
+    notes = list(mongo_db.db.notifications.find({}, {"_id": 0}).sort("created_at", -1).limit(50))
     return {"notifications": notes}
+
+@router.delete("/admin/notifications")
+def delete_admin_notifications():
+    if mongo_db.db is None:
+        return {"error": "Database error"}
+    mongo_db.db.notifications.delete_many({})
+    return {"message": "All notifications cleared"}
 
 @router.post("/employee/request-document")
 def request_document(request: DocumentRequest):

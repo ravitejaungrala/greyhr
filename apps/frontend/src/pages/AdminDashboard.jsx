@@ -5,8 +5,12 @@ import {
     ChevronLeft, ChevronRight, ShieldCheck, TrendingUp, ClipboardList, Users,
     TreePalm, Bell, Camera, Brain, Gift, CalendarDays, Settings, Rocket,
     Banknote, LogOut, FolderOpen, Sparkles, Building2, Package, BrainCircuit, Tag,
-    GraduationCap, ClipboardCheck
+    GraduationCap, ClipboardCheck, MoreVertical, UserMinus, Activity
 } from 'lucide-react';
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
+    ResponsiveContainer, LineChart, Line, AreaChart, Area, Legend
+} from 'recharts';
 import { API_URL } from '../config';
 import DocumentGeneratorModal from '../components/DocumentGeneratorModal';
 import EnhancedDocumentGenerator from '../components/EnhancedDocumentGenerator';
@@ -141,6 +145,9 @@ const AdminDashboard = ({ activeTab, user }) => {
     const [leaveFilterType, setLeaveFilterType] = useState('All');
     const [leaveFilterDate, setLeaveFilterDate] = useState('');
     const [inspectingLeave, setInspectingLeave] = useState(null);
+    const [inspectingNotification, setInspectingNotification] = useState(null);
+    const [inspectingEmpHistory, setInspectingEmpHistory] = useState(null);
+    const [analyticsTrend, setAnalyticsTrend] = useState([]);
 
     // Holiday Fetch States
     const [fetchedHolidays, setFetchedHolidays] = useState([]);
@@ -189,9 +196,13 @@ const AdminDashboard = ({ activeTab, user }) => {
             } else if (activeTab === 'reports') {
                 const data = await fetchWithCheck(`${apiUrl}/admin/reports`);
                 if (data) setReports(data);
+                const trendData = await fetchWithCheck(`${apiUrl}/admin/analytics/trend`);
+                if (trendData) setAnalyticsTrend(trendData.trend || []);
             } else if (activeTab === 'notifications') {
                 const data = await fetchWithCheck(`${apiUrl}/admin/notifications`);
                 if (data) setNotifications(data.notifications || []);
+                const eData = await fetchWithCheck(`${apiUrl}/auth/admin/employees`);
+                if (eData) setApprovedEmployees(eData.employees || []);
             } else if (activeTab === 'attendance') {
                 const data = await fetchWithCheck(`${apiUrl}/admin/attendance`);
                 if (data) setAttendanceLogs(data.logs || []);
@@ -814,23 +825,53 @@ const AdminDashboard = ({ activeTab, user }) => {
                             style={{ background: 'var(--secondary)' }}
                             disabled={selectedHolidays.filter(d => !holidays.some(e => e.date === d)).length === 0}
                         >
-                            Add {selectedHolidays.filter(d => !holidays.some(e => e.date === d)).length} Fixed Holidays
                         </button>
                     </div>
                 </div>
             </div>
+        )}
+
+    {/* Helper component for document thumbnails */}
+    const DocThumbnail = ({ fileKey, title, apiUrl, setPreviewDoc, icon, bgColor, borderColor, textColor }) => {
+        const [isPdf, setIsPdf] = useState(fileKey?.toLowerCase().endsWith('.pdf'));
+        const [loadError, setLoadError] = useState(false);
+
+        if (isPdf || loadError) {
+            return (
+                <div 
+                    onClick={() => setPreviewDoc({ title, url: `${apiUrl}/admin/photos/${fileKey}`, isPDF: true })}
+                    style={{ width: '100%', aspectRatio: '4/3', borderRadius: '12px', border: `1px solid ${borderColor}`, background: bgColor, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: '0.5rem' }}
+                >
+                    {icon}
+                    <span style={{ fontSize: '0.6rem', color: textColor, fontWeight: 'bold' }}>VIEW DOC</span>
+                </div>
+            );
+        }
+
+        return (
+            <img
+                src={`${apiUrl}/admin/photos/${fileKey}`}
+                alt={title}
+                style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', borderRadius: '12px', border: '1px solid var(--border-color)', cursor: 'pointer' }}
+                onClick={() => setPreviewDoc({ title, url: `${apiUrl}/admin/photos/${fileKey}` })}
+                onError={() => setLoadError(true)}
+            />
         );
     };
 
     const DocPreviewModal = ({ doc, onClose }) => {
         if (!doc) return null;
+        
+        // Robust PDF detection: check extension OR if we've flagged it as PDF
+        const isActuallyPDF = doc.url.toLowerCase().endsWith('.pdf') || doc.isPDF;
+
         return (
-            <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-                <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '1.5rem', position: 'relative', maxWidth: '900px', width: '90%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}>
+                <div className="modal-content animate-zoom-in" style={{ width: '90%', maxWidth: '1000px', height: '90vh', background: '#ffffff', borderRadius: '32px', padding: '2.5rem', position: 'relative', display: 'flex', flexDirection: 'column' }}>
                     <button onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', color: '#000000', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
                     <h3 style={{ marginBottom: '1.5rem', color: '#000000', fontWeight: 'bold' }}>{doc.title}</h3>
                     <div style={{ overflow: 'auto', flex: 1, display: 'flex', justifyContent: 'center' }}>
-                        {doc.url.toLowerCase().endsWith('.pdf') ? (
+                        {isActuallyPDF ? (
                             <iframe src={doc.url} style={{ width: '100%', height: '70vh', border: 'none' }} title="PDF Preview"></iframe>
                         ) : (
                             <img src={doc.url} alt="Document" style={{ maxWidth: '100%', borderRadius: '8px', border: '1px solid #eee' }} />
@@ -906,11 +947,148 @@ const AdminDashboard = ({ activeTab, user }) => {
             </div>
         );
     };
+    
+    const NotificationDetailModal = ({ employeeId, notifications, onClose }) => {
+        if (!employeeId) return null;
+        
+        const empHistory = notifications.filter(n => n.employee_id === employeeId).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+        const employeeName = approvedEmployees.find(e => e.employee_id === employeeId)?.name || employeeId;
+
+        return (
+            <div 
+                className="modal-overlay" 
+                style={{ 
+                    position: 'fixed', 
+                    inset: 0, 
+                    background: 'rgba(15, 23, 42, 0.8)', 
+                    backdropFilter: 'blur(16px)', 
+                    zIndex: 9999, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    padding: '1.5rem'
+                }}
+                onClick={onClose}
+            >
+                <div 
+                    className="modal-content animate-zoom-in" 
+                    style={{ 
+                        width: '100%', 
+                        maxWidth: '550px', 
+                        maxHeight: '85vh',
+                        background: '#ffffff',
+                        borderRadius: '32px', 
+                        padding: '2.5rem', 
+                        position: 'relative',
+                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden'
+                    }}
+                    onClick={e => e.stopPropagation()}
+                >
+                    <button 
+                        onClick={onClose} 
+                        style={{ 
+                            position: 'absolute', 
+                            top: '1.5rem', 
+                            right: '1.5rem', 
+                            color: '#94a3b8', 
+                            background: '#f1f5f9', 
+                            border: 'none', 
+                            width: '32px', 
+                            height: '32px', 
+                            borderRadius: '50%',
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            zIndex: 10
+                        }}
+                    >✕</button>
+                    
+                    <div style={{ marginBottom: '2rem' }}>
+                        <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.02em' }}>Activity Timeline</h3>
+                        <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontWeight: '600' }}>{employeeName} • {employeeId}</p>
+                    </div>
+
+                    <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
+                        {empHistory.length === 0 ? (
+                            <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
+                                <Clock size={48} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
+                                <p>No historical activity found for this period.</p>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                {(() => {
+                                    const groups = empHistory.reduce((acc, n) => {
+                                        const date = new Date(n.created_at).toLocaleDateString('en-US', { 
+                                            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+                                        });
+                                        if (!acc[date]) acc[date] = [];
+                                        acc[date].push(n);
+                                        return acc;
+                                    }, {});
+
+                                    return Object.entries(groups).map(([date, items]) => (
+                                        <div key={date}>
+                                            <div style={{ fontSize: '0.7rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                {date}
+                                                <div style={{ flex: 1, height: '1px', background: '#f1f5f9' }}></div>
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingLeft: '0.5rem', borderLeft: '2px solid #f1f5f9' }}>
+                                                {items.map((n, idx) => (
+                                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                            <div style={{ 
+                                                                width: '8px', 
+                                                                height: '8px', 
+                                                                borderRadius: '50%', 
+                                                                backgroundColor: n.action ? (n.action === 'sign_in' ? '#22c55e' : '#f59e0b') : (n.message.toLowerCase().includes('signed in') ? '#22c55e' : '#f59e0b') 
+                                                            }}></div>
+                                                            <div style={{ fontSize: '0.9rem', color: '#334155', fontWeight: '600' }}>
+                                                                {n.action ? (n.action === 'sign_in' ? 'Clocked In' : 'Clocked Out') : (n.message.toLowerCase().includes('signed in') ? 'Clocked In' : 'Clocked Out')}
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ fontSize: '0.85rem', color: '#64748b', fontVariantNumeric: 'tabular-nums' }}>
+                                                            {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ));
+                                })()}
+                            </div>
+                        )}
+                    </div>
+
+                    <button 
+                        onClick={onClose} 
+                        style={{ 
+                            width: '100%', 
+                            marginTop: '2rem', 
+                            padding: '1rem', 
+                            borderRadius: '20px', 
+                            background: '#0f172a', 
+                            color: 'white', 
+                            border: 'none', 
+                            fontWeight: '800', 
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Dismiss
+                    </button>
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className="admin-dashboard">
             <DocPreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />
             <LeaveDetailModal leave={inspectingLeave} onClose={() => setInspectingLeave(null)} />
+            <NotificationDetailModal employeeId={inspectingEmpHistory} notifications={notifications} onClose={() => setInspectingEmpHistory(null)} />
             <HolidayFetchModal />
             <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 {isSuperAdmin ? <ShieldCheck size={28} /> : <ShieldCheck size={28} />} {isSuperAdmin ? 'Super Admin' : 'Admin'} - {activeTab === 'overview' && <TrendingUp size={24} style={{ marginLeft: '0.5rem', marginRight: '0.5rem' }} />}
@@ -1091,22 +1269,28 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                                     <div className="doc-preview-thumb">
                                                         <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Bank Record</div>
-                                                        <img
-                                                            src={`${apiUrl}/admin/photos/${viewedEmp.bank_details?.bank_photo_key}`}
-                                                            alt="Bank"
-                                                            style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', borderRadius: '12px', border: '1px solid var(--border-color)', cursor: 'pointer' }}
-                                                            onClick={() => setPreviewDoc({ title: 'Bank Document', url: `${apiUrl}/admin/photos/${viewedEmp.bank_details?.bank_photo_key}` })}
-                                                            onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
+                                                        <DocThumbnail 
+                                                            fileKey={viewedEmp.bank_details?.bank_photo_key}
+                                                            title="Bank Document"
+                                                            apiUrl={apiUrl}
+                                                            setPreviewDoc={setPreviewDoc}
+                                                            icon={<FileText size={24} color="#ea580c" />}
+                                                            bgColor="#fff7ed"
+                                                            borderColor="#fed7aa"
+                                                            textColor="#ea580c"
                                                         />
                                                     </div>
                                                     <div className="doc-preview-thumb">
                                                         <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Education Qual.</div>
-                                                        <img
-                                                            src={`${apiUrl}/admin/photos/${viewedEmp.education?.cert_key}`}
-                                                            alt="Education"
-                                                            style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', borderRadius: '12px', border: '1px solid var(--border-color)', cursor: 'pointer' }}
-                                                            onClick={() => setPreviewDoc({ title: 'Education Certificate', url: `${apiUrl}/admin/photos/${viewedEmp.education?.cert_key}` })}
-                                                            onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
+                                                        <DocThumbnail 
+                                                            fileKey={viewedEmp.education?.cert_key}
+                                                            title="Education Certificate"
+                                                            apiUrl={apiUrl}
+                                                            setPreviewDoc={setPreviewDoc}
+                                                            icon={<GraduationCap size={24} color="#0284c7" />}
+                                                            bgColor="#f0f9ff"
+                                                            borderColor="#e0f2fe"
+                                                            textColor="#0284c7"
                                                         />
                                                     </div>
                                                 </div>
@@ -2015,52 +2199,197 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                     {/* TAB: REPORTS */}
                     {activeTab === 'reports' && reports && (
-                        <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                            <h2 className="card-title">Company Health Data</h2>
+                        <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {/* Compact Stats Strip */}
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
-                                <div style={{ padding: '2rem', background: '#ffffff', borderRadius: '8px', textAlign: 'center' }}>
-                                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary)' }}>{reports.total_employees}</div>
-                                    <div style={{ color: '#000000' }}>Total Employees</div>
+                                {[
+                                    { label: 'Total Employees', value: reports.total_employees, icon: <Users size={20} />, color: '#6366F1' },
+                                    { label: 'Present Today', value: reports.present_today, icon: <CheckCircle2 size={20} />, color: '#10B981' },
+                                    { label: 'On Leave', value: reports.on_leave, icon: <TreePalm size={20} />, color: '#F59E0B' },
+                                    { label: 'Engagement', value: `${reports.average_engagement_score}%`, icon: <Activity size={20} />, color: '#ff4500' }
+                                ].map((stat, idx) => (
+                                    <div key={idx} className="card shadow-sm" style={{ padding: '1rem', background: '#ffffff', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                        <div style={{ padding: '0.75rem', background: `${stat.color}10`, borderRadius: '12px', color: stat.color }}>
+                                            {stat.icon}
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600' }}>{stat.label}</div>
+                                            <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a' }}>{stat.value}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Charts Grid */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1.5rem' }}>
+                                {/* Company Growth Chart */}
+                                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.5rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <TrendingUp size={18} color="#6366F1" /> Company Growth
+                                        </h3>
+                                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Last 6 Months</div>
+                                    </div>
+                                    <div style={{ height: '300px', width: '100%' }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={analyticsTrend}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                                                <Tooltip 
+                                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                                                    cursor={{ fill: '#f8fafc' }}
+                                                />
+                                                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                                                <Bar dataKey="joins" name="New Joins" fill="#6366F1" radius={[4, 4, 0, 0]} barSize={30} />
+                                                <Bar dataKey="exits" name="Exits" fill="#94A3B8" radius={[4, 4, 0, 0]} barSize={30} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
                                 </div>
-                                <div style={{ padding: '2rem', background: '#ffffff', borderRadius: '8px', textAlign: 'center' }}>
-                                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ff4500' }}>{reports.present_today}</div>
-                                    <div style={{ color: '#000000' }}>Present Today</div>
-                                </div>
-                                <div style={{ padding: '2rem', background: '#ffffff', borderRadius: '8px', textAlign: 'center' }}>
-                                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#c84cff' }}>{reports.on_leave}</div>
-                                    <div style={{ color: '#000000' }}>On Leave</div>
-                                </div>
-                                <div style={{ padding: '2rem', background: '#ffffff', borderRadius: '8px', textAlign: 'center' }}>
-                                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary)' }}>{reports.average_engagement_score}%</div>
-                                    <div style={{ color: '#000000' }}>Engagement</div>
+
+                                {/* Attendance Consistency Chart */}
+                                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.5rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <CheckCircle2 size={18} color="#10B981" /> Attendance Trend
+                                        </h3>
+                                    </div>
+                                    <div style={{ height: '300px', width: '100%' }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={analyticsTrend}>
+                                                <defs>
+                                                    <linearGradient id="colorAttend" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.1}/>
+                                                        <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} domain={[0, 100]} />
+                                                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                                                <Area type="monotone" dataKey="attendance" name="Integrity %" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorAttend)" />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
                                 </div>
                             </div>
-                            <div style={{ marginTop: '2rem', padding: '2rem', border: '1px dashed #e2e8f0', borderRadius: '8px', textAlign: 'center', color: '#000000' }}>
-                                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: 'var(--primary)' }}>
-                                    <BarChart3 size={48} />
+
+                            {/* Leaves Pattern Chart */}
+                            <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Calendar size={18} color="#F59E0B" /> Absenteeism & Leaves Pattern
+                                    </h3>
                                 </div>
-                                <p>Deep integrations for Data visualization can be powered by AI Analytics Agent soon.</p>
+                                <div style={{ height: '200px', width: '100%' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={analyticsTrend}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                                            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                                            <Legend iconType="circle" />
+                                            <Line type="monotone" dataKey="leaves" name="Approved Leaves" stroke="#F59E0B" strokeWidth={3} dot={{ r: 4, fill: '#F59E0B' }} activeDot={{ r: 6 }} />
+                                            <Line type="monotone" dataKey="absentees" name="Unaccounted Absences" stroke="#EF4444" strokeWidth={3} dot={{ r: 4, fill: '#EF4444' }} activeDot={{ r: 6 }} />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
                             </div>
                         </div>
                     )}
 
-                    {/* TAB: NOTIFICATIONS */}
+                    {/* TAB: NOTIFICATIONS -> LIVE STATUS DASHBOARD */}
                     {activeTab === 'notifications' && (
-                        <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                            <h2 className="card-title">Latest Updates</h2>
-                            {notifications.length === 0 ? <p>No new notifications.</p> : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    {notifications.map((n, i) => (
-                                        <div key={i} style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div>
-                                                <span style={{ fontWeight: '600', color: '#ff7a00', marginRight: '1rem', textTransform: 'uppercase', fontSize: '0.75rem' }}>{n.type}</span>
-                                                <span>{n.message}</span>
-                                            </div>
-                                            <div style={{ fontSize: '0.75rem', color: '#000000' }}>{new Date(n.created_at).toLocaleString()}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                        <div style={{ gridColumn: 'span 3' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                                <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <Globe size={28} color="var(--primary)" /> Employee Live Status
+                                </h2>
+                                <button className="btn btn-secondary" onClick={fetchData} style={{ fontSize: '0.85rem' }}>
+                                    <RefreshCw size={16} style={{ marginRight: '0.5rem' }} /> Sync Status
+                                </button>
+                            </div>
+
+                            <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', borderRadius: '24px', overflow: 'hidden' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                    <thead>
+                                        <tr style={{ background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+                                            <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Employee Profile</th>
+                                            <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Latest Activity</th>
+                                            <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Status</th>
+                                            <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {approvedEmployees.map((emp, index) => {
+                                            const latestNote = [...notifications]
+                                                .filter(n => n.employee_id === emp.employee_id)
+                                                .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+                                            const isOnline = latestNote?.action ? (latestNote.action === 'sign_in') : latestNote?.message?.toLowerCase().includes('signed in');
+
+                                            return (
+                                                <tr 
+                                                    key={emp.employee_id} 
+                                                    style={{ borderBottom: index === approvedEmployees.length - 1 ? 'none' : '1px solid #f1f5f9', cursor: 'pointer', transition: 'all 0.2s' }}
+                                                    onClick={() => setInspectingEmpHistory(emp.employee_id)}
+                                                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                                                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                                                >
+                                                    <td style={{ padding: '0.6rem 1.5rem' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                            <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f46e5', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                                                                {emp.name.charAt(0)}
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#1e293b' }}>{emp.name}</div>
+                                                                <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: '600' }}>{emp.employee_id}</div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '0.6rem 1.5rem' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>
+                                                                {latestNote ? (isOnline ? 'Clocked In' : 'Clocked Out') : 'No Recent Logs'}
+                                                            </span>
+                                                            {latestNote && (
+                                                                <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                                                                    {new Date(latestNote.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '0.6rem 1.5rem' }}>
+                                                        <div style={{ 
+                                                            display: 'inline-flex', 
+                                                            alignItems: 'center', 
+                                                            gap: '0.3rem',
+                                                            padding: '0.25rem 0.6rem',
+                                                            borderRadius: '100px',
+                                                            fontSize: '0.65rem',
+                                                            fontWeight: '800',
+                                                            background: latestNote ? (isOnline ? '#dcfce7' : '#fef3c7') : '#f1f5f9',
+                                                            color: latestNote ? (isOnline ? '#166534' : '#b45309') : '#64748b',
+                                                            textTransform: 'uppercase'
+                                                        }}>
+                                                            <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'currentColor' }}></div>
+                                                            {latestNote ? (isOnline ? 'Active' : 'Offline') : 'Inactive'}
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '0.6rem 1.5rem', textAlign: 'right' }}>
+                                                        <button 
+                                                            style={{ background: '#f1f5f9', border: 'none', padding: '0.35rem', borderRadius: '6px', color: '#64748b' }}
+                                                        >
+                                                            <MoreVertical size={14} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
 
