@@ -1,4 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { 
+    History, User, FileText, FileSignature, 
+    Eye, Search, CheckCircle2, ChevronLeft, 
+    ChevronRight, Plus, Download, Inbox,
+    Banknote, Mail, GraduationCap, Building2, ScrollText
+} from 'lucide-react';
 import './HistoricalDocGenerator.css';
 
 const HistoricalDocGenerator = ({ apiUrl }) => {
@@ -165,7 +171,7 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                     <React.Fragment key={step.id}>
                         <div className="stepper-item">
                             <div className={`step-number ${currentStep === step.id ? 'active' : currentStep > step.id ? 'completed' : 'pending'}`}>
-                                {currentStep > step.id ? '✓' : step.id}
+                                {currentStep > step.id ? <CheckCircle2 size={16} /> : step.id}
                             </div>
                             <span className={`step-label ${currentStep === step.id ? 'active' : 'pending'}`}>
                                 {step.label}
@@ -184,12 +190,12 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
         <div className="historical-doc-container">
             <div className="historical-header">
                 <div>
-                    <h2>✨ Historical Document Center</h2>
+                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><History size={24} color="var(--primary)" /> Historical Document Center</h2>
                     <p>Easily generate standard documents for employees not registered in HRMS.</p>
                 </div>
                 {currentStep !== 5 && (
                     <button className="btn btn-secondary glass-card" onClick={() => setCurrentStep(5)}>
-                        📁 View Generated History
+                        <History size={18} /> View Generated History
                     </button>
                 )}
             </div>
@@ -200,8 +206,8 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
             {currentStep === 1 && (
                 <div className="card glass-card" style={{ maxWidth: '800px', margin: '0 auto', animation: 'fadeInUp 0.5s ease-out' }}>
                     <div style={{ padding: '0.5rem' }}>
-                        <h3 className="card-title" style={{ fontSize: '1.5rem', marginBottom: '2rem' }}>👤 Let's start with employee basics</h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                        <h3 className="card-title" style={{ fontSize: '1.25rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><User size={22} color="var(--primary)" /> Let's start with employee basics</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                             <div className="premium-input-group">
                                 <label className="premium-label">Full Name <span style={{ color: 'var(--primary)' }}>*</span></label>
                                 <input 
@@ -253,7 +259,7 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                                 />
                             </div>
                         </div>
-                        <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+                        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
                             <button 
                                 className="btn btn-primary"
                                 disabled={!canProceedToDocType}
@@ -270,8 +276,8 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
             {/* Step 2: Document Selection */}
             {currentStep === 2 && (
                 <div style={{ animation: 'fadeInUp 0.5s ease-out' }}>
-                    <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-                        <h3 style={{ fontSize: '1.75rem', fontWeight: 800 }}>📄 What document would you like to create?</h3>
+                    <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                        <h3 style={{ fontSize: '1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}><FileText size={24} color="var(--primary)" /> What document would you like to create?</h3>
                         <p style={{ color: 'var(--text-muted)' }}>Select a template to continue</p>
                     </div>
                     <div className="doc-type-grid">
@@ -282,11 +288,11 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                                 onClick={() => handleDocTypeSelect(docType.type)}
                             >
                                 <span className="doc-card-icon">
-                                    {docType.type === 'payslip' ? '💰' : 
-                                     docType.type === 'relieving' ? '✉️' : 
-                                     docType.type === 'internship_offer' ? '🎓' : 
-                                     docType.type === 'full_time_offer' ? '🏢' : 
-                                     docType.type === 'internship_completion' ? '📜' : '📄'}
+                                    {docType.type === 'payslip' ? <Banknote size={32} /> : 
+                                     docType.type === 'relieving' ? <Mail size={32} /> : 
+                                     docType.type === 'internship_offer' ? <GraduationCap size={32} /> : 
+                                     docType.type === 'full_time_offer' ? <Building2 size={32} /> : 
+                                     docType.type === 'internship_completion' ? <ScrollText size={32} /> : <FileText size={32} />}
                                 </span>
                                 <div className="doc-card-title">{docType.name}</div>
                             </div>
@@ -294,7 +300,7 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                     </div>
                     <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'space-between' }}>
                         <button className="btn btn-secondary" onClick={() => setCurrentStep(1)} style={{ padding: '0.8rem 2rem', borderRadius: '12px' }}>
-                            ← Go Back
+                            <ChevronLeft size={16} /> Go Back
                         </button>
                         <button 
                             className="btn btn-primary"
@@ -302,7 +308,7 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                             onClick={() => setCurrentStep(3)}
                             style={{ padding: '0.8rem 2rem', borderRadius: '12px' }}
                         >
-                            Next: Fill Details →
+                            Next: Fill Details <ChevronRight size={16} />
                         </button>
                     </div>
                 </div>
@@ -311,8 +317,8 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
             {/* Step 3: Detailed Fields */}
             {currentStep === 3 && (
                 <div className="card glass-card" style={{ padding: '2.5rem', animation: 'fadeInUp 0.5s ease-out' }}>
-                    <div style={{ borderBottom: '1px solid #eee', paddingBottom: '1.5rem', marginBottom: '2rem' }}>
-                        <h3 style={{ margin: 0 }}>📝 Complete Document Data</h3>
+                    <div style={{ borderBottom: '1px solid #eee', paddingBottom: '1rem', marginBottom: '1rem' }}>
+                        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileSignature size={24} color="var(--primary)" /> Complete Document Data</h3>
                         <p style={{ color: '#000000', marginTop: '0.5rem' }}>Please provide the necessary values for the **{documentTypes.find(dt => dt.type === selectedDocType)?.name}**.</p>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
@@ -343,7 +349,7 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                     </div>
                     <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'space-between' }}>
                         <button className="btn btn-secondary" onClick={() => setCurrentStep(2)} style={{ padding: '0.8rem 2rem', borderRadius: '12px' }}>
-                            ← Back
+                            <ChevronLeft size={16} /> Back
                         </button>
                         <button 
                             className="btn btn-primary"
@@ -351,7 +357,7 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                             disabled={isPreviewing}
                             style={{ background: '#10b981', padding: '0.8rem 2rem', borderRadius: '12px' }}
                         >
-                            {isPreviewing ? 'Preparing...' : '👁️ Preview Document'}
+                            {isPreviewing ? 'Preparing...' : <><Eye size={18} /> Preview Document</>}
                         </button>
                     </div>
                 </div>
@@ -361,7 +367,7 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
             {currentStep === 4 && (
                 <div style={{ display: 'flex', gap: '2.5rem', height: '72vh', animation: 'fadeInUp 0.5s ease-out' }}>
                     <div className="card glass-card" style={{ flex: '0 0 380px', padding: '2rem', display: 'flex', flexDirection: 'column', height: '100%' }}>
-                        <h3 style={{ marginBottom: '1rem' }}>Final Review 🔍</h3>
+                        <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>Final Review <Search size={20} /></h3>
                         <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '2rem' }}>Confirm the details accurately reflect the employee's history.</p>
                         
                         <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', background: 'rgba(0,0,0,0.02)', borderRadius: '15px', marginBottom: '2rem', fontSize: '0.9rem' }}>
@@ -391,10 +397,10 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                                 onClick={handleGenerate}
                                 disabled={isGenerating}
                             >
-                                {isGenerating ? 'Generating...' : 'Confirm & Save Document ✅'}
+                                {isGenerating ? 'Generating...' : <>Confirm & Save Document <CheckCircle2 size={18} /></>}
                             </button>
                             <button className="btn btn-secondary" style={{ padding: '0.8rem', borderRadius: '12px' }} onClick={() => setCurrentStep(3)}>
-                                Still need to edit
+                                <ChevronLeft size={16} /> Still need to edit
                             </button>
                         </div>
                     </div>
@@ -409,11 +415,11 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                 <div style={{ animation: 'fadeInUp 0.5s ease-out' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem' }}>
                         <div>
-                            <h3 style={{ fontSize: '1.75rem', fontWeight: 800 }}>🕒 Generated Documents History</h3>
+                            <h3 style={{ fontSize: '1.75rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><History size={24} color="var(--primary)" /> Generated Documents History</h3>
                             <p style={{ color: '#000000' }}>A complete list of manually generated records</p>
                         </div>
                         <button className="btn btn-primary" onClick={resetGenerator} style={{ padding: '0.8rem 1.5rem', borderRadius: '12px' }}>
-                            ➕ Create New Document
+                            <Plus size={18} /> Create New Document
                         </button>
                     </div>
                     
@@ -441,7 +447,7 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                                             style={{ flex: 1, fontSize: '0.8rem', borderRadius: '8px' }}
                                             onClick={() => downloadDoc(doc.s3_key.split('/').pop())}
                                         >
-                                            Download ⬇️
+                                            Download <Download size={14} />
                                         </button>
                                         {/* Future: View/Resend option */}
                                     </div>
@@ -450,7 +456,7 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                         </div>
                     ) : (
                         <div className="card glass-card" style={{ textAlign: 'center', padding: '5rem', color: '#000000' }}>
-                            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>📭</div>
+                            <div style={{ marginBottom: '1rem' }}><Inbox size={64} color="#D1D5DB" /></div>
                             No historical documents generated yet.
                         </div>
                     )}
@@ -473,7 +479,7 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                         margin: '0 auto 2rem',
                         boxShadow: '0 20px 40px rgba(16, 185, 129, 0.3)'
                     }}>
-                        ✓
+                        <CheckCircle2 size={64} />
                     </div>
                     <h3 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>Mission Accomplished!</h3>
                     <p style={{ color: '#000000', marginBottom: '3rem' }}>The document for <strong>{employeeData.name}</strong> has been generated and securely archived.</p>
@@ -484,7 +490,7 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                             onClick={() => downloadDoc(lastGeneratedFile)}
                             style={{ padding: '1.2rem', borderRadius: '15px', fontSize: '1.1rem' }}
                         >
-                            Download Generated File ⬇️
+                            Download Generated File <Download size={18} />
                         </button>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <button className="btn btn-secondary" style={{ flex: 1, padding: '1rem', borderRadius: '12px' }} onClick={resetGenerator}>

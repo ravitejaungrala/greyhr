@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { 
+    Banknote, IndianRupee, BarChart3, FileText, 
+    Info, History, Lock, Download, CheckCircle2 
+} from 'lucide-react';
 import { API_URL } from '../config';
 
 const SalaryModule = ({ userId }) => {
@@ -63,9 +67,9 @@ const SalaryModule = ({ userId }) => {
 
     return (
         <div className="salary-page">
-            <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '1.5rem' }}>💰 Salary Module</h1>
+            <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Banknote size={32} color="var(--primary)" /> Salary Module</h1>
             <div className="card shadow-sm" style={{ marginBottom: '2rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                <h2 className="card-title">💵 Current Month Summary</h2>
+                <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><IndianRupee size={20} color="var(--secondary)" /> Current Month Summary</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1.5rem' }}>
                     <div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Net Salary</div>
@@ -131,10 +135,10 @@ const SalaryModule = ({ userId }) => {
                         </div>
                     )}
                     <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => handleExport('excel')}>
-                        📊 Excel Statement
+                        <BarChart3 size={16} /> Excel Statement
                     </button>
                     <button className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => handleExport('pdf')}>
-                        📜 PDF Portfolio
+                        <FileText size={16} /> PDF Portfolio
                     </button>
                 </div>
             </div>
@@ -152,13 +156,13 @@ const SalaryModule = ({ userId }) => {
                     alignItems: 'center',
                     gap: '0.75rem'
                 }}>
-                    <span>ℹ️</span> 
+                    <Info size={18} color="var(--violet)" /> 
                     <span>You joined NeuZen AI on <strong>{new Date(joiningDate).toLocaleDateString()}</strong>. Salary history is shown based on your tenure.</span>
                 </div>
             )}
 
             <div className="card shadow-sm" style={{ overflowX: 'auto', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                <h2 className="card-title">📄 Salary Disbursement History</h2>
+                <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><History size={20} color="var(--primary)" /> Salary Disbursement History</h2>
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
                     <thead>
                         <tr style={{ background: '#f8fafc', textAlign: 'left' }}>
@@ -217,7 +221,7 @@ const SalaryModule = ({ userId }) => {
                                             </button>
                                         ) : (
                                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                🔒 Pending
+                                                 <Lock size={14} /> Pending
                                             </span>
                                         )}
                                     </td>

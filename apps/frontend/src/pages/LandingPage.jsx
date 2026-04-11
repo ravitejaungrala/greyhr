@@ -12,7 +12,8 @@ import {
   ChevronRight,
   Layers,
   Zap,
-  Lock
+  Lock,
+  Sparkles
 } from 'lucide-react';
 
 const LandingPage = ({ onLoginClick }) => {
@@ -77,7 +78,7 @@ const LandingPage = ({ onLoginClick }) => {
       <AnimatedShaderHero
         trustBadge={{
           text: "Trusted by forward-thinking HR teams.",
-          icons: ["✨"]
+          icons: [<Sparkles key="sparkle" size={14} />]
         }}
         headline={{
           line1: "Modernize Your",

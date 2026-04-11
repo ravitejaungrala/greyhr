@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { MessageCircle, Bot, BrainCircuit, X, Send } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -100,11 +101,11 @@ const ChatbotBubble = () => {
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}>
-                                {isAdmin ? <img src="/admin_agent_icon.png" style={{ width: '24px', height: '24px', objectFit: 'contain' }} alt="AI" /> : '🤖'}
+                                {isAdmin ? <img src="/admin_agent_icon.png" style={{ width: '24px', height: '24px', objectFit: 'contain' }} alt="AI" /> : <Bot size={20} />}
                             </div>
                             <span style={{ fontWeight: '600', letterSpacing: '0.5px' }}>{isAdmin ? 'HR Intelligence Agent' : 'HR AI Assistant'}</span>
                         </div>
-                        <button onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.5rem', opacity: 0.8 }}>×</button>
+                        <button onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', opacity: 0.8 }}><X size={20} /></button>
                     </div>
 
                     <div style={{ flex: 1, padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem', backgroundColor: 'transparent' }}>
@@ -196,12 +197,12 @@ const ChatbotBubble = () => {
                 }}
             >
                 {isOpen ? (
-                    <span style={{ fontSize: '1.8rem', fontWeight: 'bold' }}>×</span>
+                    <X size={32} />
                 ) : (
                     isAdmin ? (
                         <img src="/admin_agent_icon.png" style={{ width: '38px', height: '38px', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }} alt="Admin AI" />
                     ) : (
-                        <span style={{ fontSize: '1.8rem' }}>💬</span>
+                        <MessageCircle size={32} />
                     )
                 )}
             </button>

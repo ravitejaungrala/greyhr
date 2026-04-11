@@ -1,4 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { 
+    Clock, MapPin, Calendar, Globe, Megaphone, Building2, Home, 
+    TreePalm, Plane, History, X, HelpCircle, Lightbulb, Sun, 
+    User, CheckCircle2, ChevronRight, AlertTriangle, Play, Pause, Power,
+    Bot, MoreVertical, BarChart3, ScrollText, ArrowLeft, Camera, Eye, 
+    ChevronLeft, Sparkles, ToggleRight, FileText
+} from 'lucide-react';
 import { API_URL } from '../config';
 
 const HomeDashboard = ({ user, setUser }) => {
@@ -405,7 +412,7 @@ const HomeDashboard = ({ user, setUser }) => {
                             alignItems: 'center',
                             gap: '0.75rem'
                         }}>
-                             <span>{message.type === 'error' ? '⚠️' : '✅'}</span>
+                             <span>{message.type === 'error' ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}</span>
                              {message.text}
                         </div>
                     )}
@@ -442,10 +449,10 @@ const HomeDashboard = ({ user, setUser }) => {
                                                 <div style={{ position: 'absolute', inset: '0', border: '2px solid rgba(255,255,255,0.1)', margin: '15%', borderRadius: '50%', pointerEvents: 'none', borderStyle: 'dashed' }} />
 
                                                 <div style={{ position: 'absolute', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', padding: '0.6rem 1.2rem', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', borderRadius: '30px', color: '#fff', fontSize: '0.8rem', fontWeight: 600, border: '1px solid rgba(255,255,255,0.1)', zIndex: 10, whiteSpace: 'nowrap' }}>
-                                                    {livenessStatus === 'prompt' && '👁️ Blink once to verify liveness'}
-                                                    {livenessStatus === 'left' && '⬅️ Slowly Turn Head Left'}
-                                                    {livenessStatus === 'right' && '➡️ Slowly Turn Head Right'}
-                                                    {livenessStatus === 'verified' && <span style={{ color: '#4ade80' }}>✅ Liveness Verified</span>}
+                                                     {livenessStatus === 'prompt' && <><Eye size={14} /> Blink once to verify liveness</>}
+                                                     {livenessStatus === 'left' && <><ChevronLeft size={14} /> Slowly Turn Head Left</>}
+                                                     {livenessStatus === 'right' && <><ChevronRight size={14} /> Slowly Turn Head Right</>}
+                                                     {livenessStatus === 'verified' && <span style={{ color: '#4ade80', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><CheckCircle2 size={14} /> Liveness Verified</span>}
                                                 </div>
 
                                                 <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: 'rgba(239, 68, 68, 0.85)', color: 'white', padding: '0.3rem 0.75rem', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid rgba(255,255,255,0.2)', zIndex: 10 }}>
@@ -459,7 +466,9 @@ const HomeDashboard = ({ user, setUser }) => {
                                             </div>
                                         ) : (
                                             <div style={{ padding: '4rem 1rem', background: 'rgba(255,255,255,0.01)', borderRadius: '20px', border: '1px dashed var(--border-color)', transition: 'all 0.3s ease' }}>
-                                                <div style={{ width: '64px', height: '64px', background: 'rgba(255, 69, 0, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', fontSize: '1.5rem' }}>📷</div>
+                                                 <div style={{ width: '64px', height: '64px', background: 'rgba(255, 69, 0, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', color: 'var(--primary)' }}>
+                                                     <Camera size={32} />
+                                                 </div>
                                                 <button type="button" onClick={startCamera} className="btn-submit-premium" style={{ width: 'auto', padding: '0.75rem 2rem' }}>Launch Identity Camera</button>
                                             </div>
                                         )
@@ -467,7 +476,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                         <div style={{ position: 'relative', width: '220px', margin: '0 auto' }}>
                                             <div style={{ position: 'absolute', inset: '-4px', borderRadius: '24px', padding: '2px', background: 'linear-gradient(45deg, var(--primary), var(--secondary))', opacity: 0.5 }} />
                                             <img src={referenceFace} style={{ position: 'relative', width: '220px', borderRadius: '22px', border: '2px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }} />
-                                            <div style={{ position: 'absolute', bottom: '-10px', right: '-10px', background: '#22c55e', color: 'white', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', border: '4px solid #1a1a1a', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}>✓</div>
+                                            <div style={{ position: 'absolute', bottom: '-10px', right: '-10px', background: '#22c55e', color: 'white', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', border: '4px solid #1a1a1a', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}><CheckCircle2 size={16} /></div>
                                             <button type="button" onClick={() => setReferenceFace(null)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, marginTop: '1.5rem', cursor: 'pointer', textDecoration: 'underline' }}>Retake Biometric Scan</button>
                                         </div>
                                     )}
@@ -497,7 +506,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                     <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
                                         <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-light)', marginBottom: '1rem', fontWeight: 500 }}>Upload Bank Passbook / Mock Transaction Screenshot</label>
                                         <input type="file" required onChange={e => handleFileUpload(e, setBankPhoto)} style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }} />
-                                        {bankPhoto && <span style={{ marginLeft: '1rem', color: '#4ade80', fontSize: '0.75rem' }}>✓ Attached</span>}
+                                        {bankPhoto && <span style={{ marginLeft: '1rem', color: '#4ade80', fontSize: '0.75rem' }}><CheckCircle2 size={16} /> Attached</span>}
                                     </div>
                                 </div>
                             </div>
@@ -521,7 +530,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                     <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
                                         <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-light)', marginBottom: '1rem', fontWeight: 500 }}>Upload Highest Degree Certificate</label>
                                         <input type="file" required onChange={e => handleFileUpload(e, setEduCert)} style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }} />
-                                        {eduCert && <span style={{ marginLeft: '1rem', color: '#4ade80', fontSize: '0.75rem' }}>✓ Attached</span>}
+                                        {eduCert && <span style={{ marginLeft: '1rem', color: '#4ade80', fontSize: '0.75rem' }}><CheckCircle2 size={16} /> Attached</span>}
                                     </div>
                                 </div>
 
@@ -562,7 +571,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                             <div style={{ gridColumn: 'span 2', background: '#ffffff', padding: '1rem', borderRadius: '10px', border: '1px dashed var(--border-color)' }}>
                                                 <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-light)', marginBottom: '0.75rem' }}>Previous Company Payslip (Last 3 Months)</label>
                                                 <input type="file" required onChange={e => handleFileUpload(e, setPayslipPhoto)} style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }} />
-                                                {payslipPhoto && <span style={{ marginLeft: '1rem', color: '#4ade80', fontSize: '0.75rem' }}>✓ Attached</span>}
+                                                {payslipPhoto && <span style={{ marginLeft: '1rem', color: '#4ade80', fontSize: '0.75rem' }}><CheckCircle2 size={16} /> Attached</span>}
                                             </div>
                                         </div>
                                     )}
@@ -594,7 +603,9 @@ const HomeDashboard = ({ user, setUser }) => {
     if (user.status === 'pending_approval') {
         return (
             <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-                <span style={{ fontSize: '4rem' }}>⏳</span>
+                <div style={{ color: 'var(--primary)', marginBottom: '1.5rem' }}>
+                    <Clock size={64} className="animate-pulse" />
+                </div>
                 <h1 style={{ marginTop: '1.5rem' }}>Awaiting Admin Approval</h1>
                 <p style={{ color: '#000000', marginTop: '0.5rem' }}>Your profile has been submitted. Please check back later once an administrator reviews your details.</p>
             </div>
@@ -672,7 +683,7 @@ const HomeDashboard = ({ user, setUser }) => {
             <div className="grid-2" style={{ gap: '2rem' }}>
                 <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                        <span style={{ fontSize: '1.5rem' }}>✈️</span>
+                        <Plane size={24} color="var(--primary)" />
                         <h2 className="card-title" style={{ marginBottom: 0 }}>Apply for Leave</h2>
                     </div>
                     <form onSubmit={handleApply} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -717,7 +728,7 @@ const HomeDashboard = ({ user, setUser }) => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     <div className="card glass-panel" style={{ position: 'relative' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                            <h2 className="card-title" style={{ marginBottom: 0 }}>📊 Leave Balance</h2>
+                            <h2 className="card-title" style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><BarChart3 size={20} /> Leave Balance</h2>
                             <button 
                                 onClick={fetchLeaveData}
                                 className="btn-icon" 
@@ -733,7 +744,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                 }}
                                 title="Sync Balance"
                             >
-                                🔄
+                                <RefreshCw size={18} />
                             </button>
                         </div>
                         
@@ -755,7 +766,7 @@ const HomeDashboard = ({ user, setUser }) => {
                     
                     <div className="card glass-card" style={{ flex: 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                            <h2 className="card-title" style={{ marginBottom: 0 }}>📜 History</h2>
+                            <h2 className="card-title" style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><History size={20} /> History</h2>
                             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Status Tracking</div>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
@@ -821,7 +832,7 @@ const HomeDashboard = ({ user, setUser }) => {
 
         return (
             <div className="card shadow-sm" style={{ maxWidth: '800px', margin: '0 auto', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                <h2 className="card-title">📄 Your Payslips</h2>
+                <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={24} /> Your Payslips</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {payslips.map((p, i) => (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
@@ -882,7 +893,7 @@ const HomeDashboard = ({ user, setUser }) => {
         return (
             <div className="grid-2" style={{ gap: '2rem' }}>
                 <div className="card glass-panel">
-                    <h2 className="card-title">🎉 Spread Appreciation</h2>
+                    <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Sun size={24} color="var(--primary)" /> Spread Appreciation</h2>
                     <form onSubmit={handleGive} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <div><label>To (Colleague Name)</label><input type="text" className="btn btn-secondary" style={{ width: '100%', textAlign: 'left' }} value={to} onChange={e => setTo(e.target.value)} required /></div>
                         <div><label>What do you appreciate?</label><textarea className="btn btn-secondary" style={{ width: '100%', minHeight: '100px', textAlign: 'left' }} value={msg} onChange={e => setMsg(e.target.value)} required /></div>
@@ -890,7 +901,7 @@ const HomeDashboard = ({ user, setUser }) => {
                     </form>
                 </div>
                 <div className="card glass-card">
-                    <h2 className="card-title">🌈 Recent Appreciation</h2>
+                    <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Sparkles size={24} color="var(--primary)" /> Recent Appreciation</h2>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {kudos.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Be the first to share appreciation!</p> :
                             kudos.map((k, i) => (
@@ -929,7 +940,7 @@ const HomeDashboard = ({ user, setUser }) => {
 
         return (
             <div className="card shadow-sm" style={{ maxWidth: '800px', margin: '0 auto', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                <h2 className="card-title">📅 Company Holiday Calendar</h2>
+                <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Calendar size={24} /> Company Holiday Calendar</h2>
                 {hLoading ? <p style={{ color: '#000000' }}>Loading holidays...</p> : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {holidays.length === 0 ? <p style={{ color: '#000000' }}>No holidays scheduled.</p> :
@@ -954,12 +965,12 @@ const HomeDashboard = ({ user, setUser }) => {
         <div className="home-dashboard">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h1 className="card-title" style={{ fontSize: '1.75rem', margin: 0 }}>
-                    {activeTab === 'dashboard' ? `Good Evening, ${user.name}! 👋` :
+                    {activeTab === 'dashboard' ? <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>Good Evening, {user.name}! <Sun size={24} color="#f59e0b" /></span> :
                         activeTab === 'leave' ? 'Leave Management' :
                             activeTab === 'payslips' ? 'Payroll & Payslips' :
                                 activeTab === 'holidays' ? 'Holiday Calendar' : 'Appreciation Wall'}
                 </h1>
-                {activeTab !== 'dashboard' && <button className="btn btn-secondary" onClick={() => setActiveTab('dashboard')}>← Back to Home</button>}
+                {activeTab !== 'dashboard' && <button className="btn btn-secondary" onClick={() => setActiveTab('dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ArrowLeft size={16} /> Back to Home</button>}
             </div>
 
             {activeTab === 'dashboard' ? (
@@ -969,9 +980,9 @@ const HomeDashboard = ({ user, setUser }) => {
                         <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: 'var(--primary)', opacity: 0.05, borderRadius: '50%' }}></div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ width: '32px', height: '32px', background: 'var(--accent-blue)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <span style={{ fontSize: '1rem' }}>🤖</span>
-                                </div>
+                                 <div style={{ width: '32px', height: '32px', background: 'var(--accent-blue)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                                     <Bot size={18} />
+                                 </div>
                                 <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1rem' }}>Smart Daily Assistant</h2>
                             </div>
                             
@@ -980,7 +991,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                     onClick={(e) => { e.stopPropagation(); setShowDotsMenu(!showDotsMenu); }}
                                     style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', padding: '0.25rem', color: 'var(--text-muted)' }}
                                 >
-                                    ⋮
+                                     <MoreVertical size={20} />
                                 </button>
                                 {showDotsMenu && (
                                     <div style={{ position: 'absolute', top: '100%', right: 0, background: '#fff', border: '1px solid var(--border-color)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100, minWidth: '120px', padding: '0.5rem 0' }}>
@@ -990,7 +1001,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                             onMouseEnter={(e) => e.target.style.background = 'var(--bg-color)'}
                                             onMouseLeave={(e) => e.target.style.background = 'none'}
                                         >
-                                            🔄 Swipes
+                                             <History size={14} /> Swipes
                                         </div>
                                     </div>
                                 )}
@@ -1019,7 +1030,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                     onClick={() => handleDashboardPunch('sign_out')}
                                     disabled={punchLoading}
                                 >
-                                    {punchAction === 'sign_out' ? 'Processing...' : '🔘 Sign Out'}
+                                     {punchAction === 'sign_out' ? 'Processing...' : <><ToggleRight size={18} /> Sign Out</>}
                                 </button>
                             ) : (
                                 <button 
@@ -1028,7 +1039,7 @@ const HomeDashboard = ({ user, setUser }) => {
                                     onClick={() => handleDashboardPunch('sign_in')}
                                     disabled={punchLoading}
                                 >
-                                    {punchAction === 'sign_in' ? 'Processing...' : todayStatus.status === 'Signed Out' ? '🔘 Sign In Again' : '🔘 Sign In for Today'}
+                                     {punchAction === 'sign_in' ? 'Processing...' : todayStatus.status === 'Signed Out' ? <><ToggleRight size={18} /> Sign In Again</> : <><ToggleRight size={18} /> Sign In for Today</>}
                                 </button>
                             )}
                         </div>
@@ -1082,7 +1093,7 @@ const HomeDashboard = ({ user, setUser }) => {
                     <div className="card glass-card" style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
                             <div style={{ width: '32px', height: '32px', background: 'rgba(124, 58, 237, 0.1)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <span style={{ fontSize: '1rem' }}>📊</span>
+                                 <BarChart3 size={18} color="#7c3aed" />
                             </div>
                             <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1rem' }}>Workforce Insights</h2>
                         </div>
@@ -1117,7 +1128,7 @@ const HomeDashboard = ({ user, setUser }) => {
                     <div className="card shadow-sm" style={{ borderLeft: '4px solid var(--primary)', background: '#ffffff', borderRight: '1px solid var(--border-color)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', padding: '1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
                             <div style={{ width: '32px', height: '32px', background: 'rgba(255, 69, 0, 0.1)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <span style={{ fontSize: '1.1rem' }}>📜</span>
+                                 <ScrollText size={20} color="var(--primary)" />
                             </div>
                             <h2 className="card-title" style={{ marginBottom: 0, fontSize: '1rem' }}>Company Policy</h2>
                         </div>
@@ -1141,19 +1152,19 @@ const HomeDashboard = ({ user, setUser }) => {
                         <h2 className="card-title" style={{ fontSize: '1rem', marginBottom: '1rem' }}>Quick Access</h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.85rem' }} onClick={() => setActiveTab('payslips')}>
-                                📄 View Latest Payslip
+                                 <FileText size={16} /> View Latest Payslip
                             </button>
                             <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.85rem', position: 'relative' }} onClick={() => setActiveTab('leave')}>
-                                🌴 Apply for Leave
+                                 <TreePalm size={16} /> Apply for Leave
                                 {dashboardData?.highlights?.some(h => h.type === 'leave' && h.status === 'warning') && (
                                     <span style={{ position: 'absolute', top: '-5px', right: '-5px', width: '10px', height: '10px', background: '#F59E0B', borderRadius: '50%', border: '2px solid white', animation: 'pulse 1.5s infinite' }}></span>
                                 )}
                             </button>
                             <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.85rem' }} onClick={() => setActiveTab('kudos')}>
-                                🎉 Give Kudos
+                                 <Sun size={16} /> Give Kudos
                             </button>
                             <button className="btn btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.85rem' }} onClick={() => setActiveTab('holidays')}>
-                                📅 View Holiday Calendar
+                                 <Calendar size={16} /> View Holiday Calendar
                             </button>
                         </div>
                     </div>
@@ -1172,7 +1183,7 @@ const HomeDashboard = ({ user, setUser }) => {
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={() => setShowSwipeModal(false)}>
                     <div className="card shadow-lg animate-fade-in" style={{ maxWidth: '600px', width: '100%', background: '#fff', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>🕒 Attendance Swipes (Last 30 Days)</h2>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Clock size={20} /> Attendance Swipes (Last 30 Days)</h2>
                             <button onClick={() => setShowSwipeModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>

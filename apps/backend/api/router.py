@@ -1131,7 +1131,11 @@ def get_ai_holidays(year: int = 2026):
         model = genai.GenerativeModel(model_name)
         prompt = (
             f"List a comprehensive set of at least 25 official public, national, regional, and restricted holidays in India for the year {year}. "
-            "Make sure to include Sankranti, Pongal, Republic Day, Holi, Ugadi, Good Friday, Eid al-Fitr, Independence Day, Raksha Bandhan, Gandhi Jayanti, Diwali, Christmas, and other major festivals. "
+            "CRITICAL: Accuracy is paramount. Use the following reference dates for 2026 major festivals if the year is 2026: "
+            "Republic Day: Jan 26, Makar Sankranti: Jan 14, Maha Shivaratri: Feb 15, Holi: Mar 04, Ugadi/Gudi Padwa: Mar 19, Eid al-Fitr: Mar 20, "
+            "Good Friday: Apr 03, Ambedkar Jayanti: Apr 14, Independence Day: Aug 15, Raksha Bandhan: Aug 28, Krishna Janmashtami: Sep 04, "
+            "Ganesh Chaturthi (Vinayaka Chaturthi): Sep 14, Gandhi Jayanti: Oct 02, Dussehra (Vijaya Dashami): Oct 20, Diwali (Deepavali): Nov 08, Christmas: Dec 25. "
+            "Include these and other significant regional festivals (like Bonalu, Bathukamma, Onam, etc.). "
             "Return ONLY a raw JSON array of objects. "
             "Each object must have exactly two fields: 'name' and 'date' (format: YYYY-MM-DD). "
             "Do not include any extra text, markdown blocks, or formatting."
@@ -1159,8 +1163,8 @@ def get_ai_holidays(year: int = 2026):
             {"name": "Bhogi", "date": f"{year}-01-13"},
             {"name": "Makar Sankranti / Pongal", "date": f"{year}-01-14"},
             {"name": "Republic Day", "date": f"{year}-01-26"},
-            {"name": "Maha Shivaratri", "date": f"{year}-02-14"},
-            {"name": "Holi", "date": f"{year}-03-03"},
+            {"name": "Maha Shivaratri", "date": f"{year}-02-15"},
+            {"name": "Holi", "date": f"{year}-03-04"},
             {"name": "Ugadi / Gudi Padwa", "date": f"{year}-03-19"},
             {"name": "Good Friday", "date": f"{year}-04-03"},
             {"name": "Eid al-Fitr", "date": f"{year}-03-20"},
@@ -1170,10 +1174,10 @@ def get_ai_holidays(year: int = 2026):
             {"name": "Independence Day", "date": f"{year}-08-15"},
             {"name": "Raksha Bandhan", "date": f"{year}-08-28"},
             {"name": "Krishna Janmashtami", "date": f"{year}-09-04"},
-            {"name": "Vinayaka Chaturthi", "date": f"{year}-09-14"},
+            {"name": "Vinayaka Chaturthi (Ganesh Chaturthi)", "date": f"{year}-09-14"},
             {"name": "Gandhi Jayanti", "date": f"{year}-10-02"},
-            {"name": "Maha Navami", "date": f"{year}-10-18"},
-            {"name": "Vijaya Dashami (Dussehra)", "date": f"{year}-10-19"},
+            {"name": "Maha Navami", "date": f"{year}-10-19"},
+            {"name": "Vijaya Dashami (Dussehra)", "date": f"{year}-10-20"},
             {"name": "Diwali (Deepavali)", "date": f"{year}-11-08"},
             {"name": "Christmas Day", "date": f"{year}-12-25"}
         ]

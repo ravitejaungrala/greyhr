@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { 
+    FolderOpen, Building2, FileText, CheckCircle2, 
+    Banknote, History, PenLine, Info, Download, Eye 
+} from 'lucide-react';
 import { API_URL } from '../config';
 
 const DocumentCenter = ({ user }) => {
@@ -113,21 +117,21 @@ const DocumentCenter = ({ user }) => {
 
     return (
         <div className="docs-page">
-            <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '1.5rem' }}>📂 Document Center</h1>
+            <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}><FolderOpen size={32} color="var(--primary)" /> Document Center</h1>
 
             <div className="grid-2">
                 {/* Official Documents */}
                 <div className="card glass-panel" style={{ gridColumn: 'span 2', marginBottom: '2rem' }}>
-                    <h2 className="card-title">🏢 Official Employment Documents</h2>
+                    <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Building2 size={24} color="var(--primary)" /> Official Employment Documents</h2>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
 
                         {/* Offer Letter */}
                         <div className="card" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
-                                    <div style={{ fontWeight: 'bold' }}>📄 Offer Letter</div>
+                                     <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><FileText size={16} /> Offer Letter</div>
                                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                        {user.offer_letter_status === 'signed' ? '✅ Signed' : 'Official appointment document'}
+                                         {user.offer_letter_status === 'signed' ? <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><CheckCircle2 size={12} /> Signed</span> : 'Official appointment document'}
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -148,7 +152,7 @@ const DocumentCenter = ({ user }) => {
                         <div className="card shadow-sm-premium" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.25rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
-                                    <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>📄 {user.employment_type === 'Intern' ? 'Intern' : 'Relieving'} Letter</div>
+                                     <div style={{ fontWeight: 'bold', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><FileText size={16} /> {user.employment_type === 'Intern' ? 'Intern' : 'Relieving'} Letter</div>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Official service certificate</div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -161,7 +165,7 @@ const DocumentCenter = ({ user }) => {
                                             onClick={() => handleRequestDocument(user.employment_type === 'Intern' ? 'internship_completion' : 'relieving')}
                                             disabled={requestLoading[user.employment_type === 'Intern' ? 'internship_completion' : 'relieving'] === 'sent'}
                                         >
-                                            {requestLoading[user.employment_type === 'Intern' ? 'internship_completion' : 'relieving'] === 'sent' ? '✅ Requested' : 'Request'}
+                                             {requestLoading[user.employment_type === 'Intern' ? 'internship_completion' : 'relieving'] === 'sent' ? <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><CheckCircle2 size={14} /> Requested</span> : 'Request'}
                                         </button>
                                     )}
                                 </div>
@@ -172,7 +176,7 @@ const DocumentCenter = ({ user }) => {
                         <div className="card shadow-sm-premium" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.25rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
-                                    <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>📄 Experience Certificate</div>
+                                     <div style={{ fontWeight: 'bold', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><FileText size={16} /> Experience Certificate</div>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Proof of service & performance</div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -185,7 +189,7 @@ const DocumentCenter = ({ user }) => {
                                             onClick={() => handleRequestDocument('experience')}
                                             disabled={requestLoading['experience'] === 'sent'}
                                         >
-                                            {requestLoading['experience'] === 'sent' ? '✅ Requested' : 'Request'}
+                                             {requestLoading['experience'] === 'sent' ? <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><CheckCircle2 size={14} /> Requested</span> : 'Request'}
                                         </button>
                                     )}
                                 </div>
@@ -197,7 +201,7 @@ const DocumentCenter = ({ user }) => {
                             <div className="card" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div>
-                                        <div style={{ fontWeight: 'bold' }}>💰 Latest Payslip</div>
+                                         <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Banknote size={16} /> Latest Payslip</div>
                                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{payslips[0].month}</div>
                                     </div>
                                     <button className="btn btn-secondary" onClick={() => handleDownloadPayslip(payslips[0].month)}>Download</button>
@@ -209,7 +213,7 @@ const DocumentCenter = ({ user }) => {
 
                 {/* Payslip History */}
                 <div className="card glass-panel">
-                    <h2 className="card-title">📅 Payslip History</h2>
+                    <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><History size={24} color="var(--secondary)" /> Payslip History</h2>
                     {loading ? (
                         <p>Loading payslips...</p>
                     ) : payslips.length === 0 ? (
@@ -233,7 +237,7 @@ const DocumentCenter = ({ user }) => {
 
                 {/* Company Policies */}
                 <div className="card">
-                    <h2 className="card-title">🏢 Company Policies</h2>
+                    <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Building2 size={24} color="var(--primary)" /> Company Policies</h2>
                     <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(79, 70, 229, 0.05)', borderRadius: '6px', border: '1px solid rgba(79, 70, 229, 0.2)' }}>
                             <span>Employee Handbook 2026.pdf</span>
@@ -251,7 +255,7 @@ const DocumentCenter = ({ user }) => {
             {showSignModal && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
                     <div className="card shadow-lg" style={{ width: '90%', maxWidth: '500px', padding: '2rem', background: '#ffffff' }}>
-                        <h2 className="card-title">✍️ Sign Offer Letter</h2>
+                        <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><PenLine size={24} color="var(--primary)" /> Sign Offer Letter</h2>
                         <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
                             Please provide your full name as a digital signature and the date to accept the offer.
                         </p>

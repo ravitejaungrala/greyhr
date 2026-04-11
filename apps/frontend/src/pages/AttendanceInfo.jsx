@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { 
+    Monitor, Coffee, TreePalm, Factory, 
+    AlertTriangle, ChevronLeft, ChevronRight,
+    Calendar, Clock, BarChart3, Sun, History
+} from 'lucide-react';
 import { API_URL } from '../config';
 
 const AttendanceInfo = ({ userId }) => {
@@ -72,13 +77,13 @@ const AttendanceInfo = ({ userId }) => {
             if (dayOfWeek === 0) {
                 statusChar = 'O';
                 statusText = 'Off Day';
-                dayTypeIcon = '📺';
+                dayTypeIcon = <Monitor size={12} />;
                 bgColor = '#EBF5FF';
                 statusColor = '#ff4500';
             } else if (dayOfWeek === 6) {
                 statusChar = 'R';
                 statusText = 'Rest Day';
-                dayTypeIcon = '☕';
+                dayTypeIcon = <Coffee size={12} />;
                 bgColor = '#F5EBFF';
                 statusColor = 'var(--violet)';
             } else if (record) {
@@ -150,7 +155,7 @@ const AttendanceInfo = ({ userId }) => {
             {/* Exception Alert */}
             <div style={{ padding: '0.5rem 1rem', background: '#FEF2F2', border: '1px solid #FEE2E2', borderRadius: '8px', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ color: '#EF4444', fontSize: '0.85rem' }}>⚠️</span>
+                    <AlertTriangle size={14} color="#EF4444" />
                     <span style={{ fontSize: '0.85rem' }}>{getDaysInMonth().filter(d => d && d.day < new Date().getDate() && d.statusChar === 'A').length} exception day(s)</span>
                 </div>
                 <button className="btn" style={{ fontSize: '0.75rem', color: 'var(--primary)', padding: '0.2rem 0.5rem' }}>Regularize</button>
@@ -160,9 +165,9 @@ const AttendanceInfo = ({ userId }) => {
                 {/* CALENDAR SECTION */}
                 <div className="card shadow-sm" style={{ flex: 2, padding: '1rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <button className="btn" style={{ minWidth: 'auto', padding: '0.2rem' }}>&lt; Prev</button>
+                        <button className="btn" style={{ minWidth: 'auto', padding: '0.2rem', display: 'flex', alignItems: 'center' }}><ChevronLeft size={16} /> Prev</button>
                         <h2 style={{ fontSize: '1.1rem', margin: 0 }}>{new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</h2>
-                        <button className="btn" style={{ minWidth: 'auto', padding: '0.2rem' }}>Next &gt;</button>
+                        <button className="btn" style={{ minWidth: 'auto', padding: '0.2rem', display: 'flex', alignItems: 'center' }}>Next <ChevronRight size={16} /></button>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
@@ -221,11 +226,11 @@ const AttendanceInfo = ({ userId }) => {
 
                         <h3 style={{ fontSize: '0.9rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem', margin: '1rem 0 0.75rem' }}>Day Type</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem' }}>
-                            <LegendItem icon="☕" label="Rest Day" />
-                            <LegendItem icon="📺" label="Off Day" />
-                            <LegendItem icon="⛱️" label="Holiday" />
-                            <LegendItem icon="🌓" label="Half Day" />
-                            <LegendItem icon="🏭" label="Shutdown" />
+                            <LegendItem icon={<Coffee size={12} />} label="Rest Day" />
+                            <LegendItem icon={<Monitor size={12} />} label="Off Day" />
+                            <LegendItem icon={<TreePalm size={12} />} label="Holiday" />
+                            <LegendItem icon={<Sun size={12} />} label="Half Day" />
+                            <LegendItem icon={<Factory size={12} />} label="Shutdown" />
                         </div>
                     </div>
                 </div>

@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { 
+    FileText, X, User, FileSignature, 
+    Eye, CheckCircle2, ChevronLeft, 
+    ChevronRight, Search, Info 
+} from 'lucide-react';
 
 const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
     const [employees, setEmployees] = useState([]);
@@ -183,7 +188,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                     color: 'white'
                 }}>
                     <div>
-                        <h2 style={{ margin: 0, fontSize: '1.5rem' }}>📄 Enhanced Document Generator</h2>
+                        <h2 style={{ margin: 0, fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}><FileText size={28} /> Enhanced Document Generator</h2>
                         <p style={{ margin: '0.5rem 0 0 0', opacity: 0.9, fontSize: '0.9rem' }}>
                             Select employee → Choose document type → Fill ROI fields → Preview → Generate & Send
                         </p>
@@ -193,7 +198,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                         onClick={onClose}
                         style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white' }}
                     >
-                        ✕
+                        <X size={20} />
                     </button>
                 </div>
 
@@ -207,10 +212,10 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                     gap: '2rem'
                 }}>
                     {[
-                        { step: 1, label: 'Select Employee & Document', icon: '👤' },
-                        { step: 2, label: 'Fill ROI Fields', icon: '📝' },
-                        { step: 3, label: 'Preview Document', icon: '👁️' },
-                        { step: 4, label: 'Generate & Send', icon: '✅' }
+                        { step: 1, label: 'Select Employee & Document', icon: <User size={20} /> },
+                        { step: 2, label: 'Fill ROI Fields', icon: <FileSignature size={20} /> },
+                        { step: 3, label: 'Preview Document', icon: <Eye size={20} /> },
+                        { step: 4, label: 'Generate & Send', icon: <CheckCircle2 size={20} /> }
                     ].map(({ step, label, icon }) => (
                         <div key={step} style={{ 
                             display: 'flex', 
@@ -220,7 +225,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                             fontWeight: currentStep === step ? 'bold' : 'normal',
                             color: currentStep >= step ? '#ff4500' : '#000000'
                         }}>
-                            <span style={{ fontSize: '1.2rem' }}>{icon}</span>
+                            <span style={{ display: 'flex' }}>{icon}</span>
                             <span style={{ fontSize: '0.9rem' }}>{label}</span>
                             {step < 4 && <span style={{ margin: '0 0.5rem', color: '#D1D5DB' }}>→</span>}
                         </div>
@@ -247,7 +252,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                     {/* Employee Selection */}
                                     <div>
                                         <h3 style={{ marginBottom: '1rem', color: '#000000' }}>
-                                            👤 Select Employee
+                                            <User size={18} /> Select Employee
                                         </h3>
                                         <div style={{ 
                                             maxHeight: '400px', 
@@ -281,7 +286,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                     {/* Document Type Selection */}
                                     <div>
                                         <h3 style={{ marginBottom: '1rem', color: '#000000' }}>
-                                            📄 Select Document Type
+                                            <FileText size={18} /> Select Document Type
                                         </h3>
                                         <div style={{ 
                                             display: 'grid', 
@@ -325,7 +330,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                             background: canProceedToFill ? '#ff4500' : '#000000'
                                         }}
                                     >
-                                        Next: Fill ROI Fields →
+                                        Next: Fill ROI Fields <ChevronRight size={16} />
                                     </button>
                                 </div>
                             </div>
@@ -336,7 +341,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                             <div style={{ padding: '1.5rem', overflowY: 'auto' }}>
                                 <div style={{ marginBottom: '1.5rem' }}>
                                     <h3 style={{ color: '#000000', marginBottom: '0.5rem' }}>
-                                        📝 Fill ROI Fields for {selectedDocConfig.name}
+                                        <FileSignature size={20} /> Fill ROI Fields for {selectedDocConfig.name}
                                     </h3>
                                     <p style={{ color: '#000000', fontSize: '0.9rem' }}>
                                         Employee: <strong>{selectedEmployee.name}</strong> ({selectedEmployee.employee_id})
@@ -398,7 +403,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                         onClick={() => setCurrentStep(1)}
                                         className="btn btn-secondary"
                                     >
-                                        ← Back
+                                        <ChevronLeft size={16} /> Back
                                     </button>
                                     <button
                                         onClick={handlePreview}
@@ -408,7 +413,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                             background: canPreview ? '#ff4500' : '#000000'
                                         }}
                                     >
-                                        {isPreviewing ? 'Generating Preview...' : 'Preview Document →'}
+                                        {isPreviewing ? 'Generating Preview...' : <>Preview Document <ChevronRight size={16} /></>}
                                     </button>
                                 </div>
                             </div>
@@ -417,7 +422,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                         {/* Step 4: Success */}
                         {currentStep === 4 && (
                             <div style={{ padding: '2rem', textAlign: 'center' }}>
-                                <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>✅</div>
+                                <div style={{ marginBottom: '1rem' }}><CheckCircle2 size={64} color="#22c55e" /></div>
                                 <h3 style={{ color: '#ff4500', marginBottom: '1rem' }}>Document Generated Successfully!</h3>
                                 <p style={{ color: '#000000', marginBottom: '2rem' }}>
                                     The document has been generated and saved. The employee can now download it from their dashboard.
@@ -446,13 +451,13 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                 justifyContent: 'space-between',
                                 alignItems: 'center'
                             }}>
-                                <h4 style={{ margin: 0, color: '#000000' }}>📄 Document Preview</h4>
+                                <h4 style={{ margin: 0, color: '#000000', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={18} /> Document Preview</h4>
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                                     <button
                                         onClick={() => setCurrentStep(2)}
                                         className="btn btn-secondary"
                                     >
-                                        ← Edit Fields
+                                        <ChevronLeft size={16} /> Edit Fields
                                     </button>
                                     <button
                                         onClick={handleGenerate}
@@ -460,7 +465,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                         className="btn btn-primary"
                                         style={{ background: '#ff4500' }}
                                     >
-                                        {isGenerating ? 'Generating...' : '✅ Generate & Send'}
+                                        {isGenerating ? 'Generating...' : <><CheckCircle2 size={18} /> Generate & Send</>}
                                     </button>
                                 </div>
                             </div>
@@ -486,7 +491,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                         color: '#000000'
                                     }}>
                                         <div style={{ textAlign: 'center' }}>
-                                            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📄</div>
+                                            <div style={{ marginBottom: '1rem' }}><FileText size={48} color="#D1D5DB" /></div>
                                             <div>Preview will appear here</div>
                                         </div>
                                     </div>

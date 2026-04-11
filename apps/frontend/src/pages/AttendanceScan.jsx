@@ -1,4 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { 
+    ScanFace, Camera, User, 
+    Calendar, CheckCircle2, History,
+    AlertTriangle, ShieldCheck, ToggleRight
+} from 'lucide-react';
 import { API_URL } from '../config';
 
 const AttendanceScan = ({ userId }) => {
@@ -141,8 +146,8 @@ const AttendanceScan = ({ userId }) => {
 
     return (
         <div className="attendance-scan">
-            <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '2rem' }}>
-                Attendance Punch In/Out
+            <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <ShieldCheck size={32} color="var(--primary)" /> Attendance Punch In/Out
             </h1>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
@@ -215,12 +220,12 @@ const AttendanceScan = ({ userId }) => {
                         <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
                             {!streamActive ? (
                                 <div style={{ display: 'flex', gap: '0.8rem' }}>
-                                    <button className="btn btn-primary" onClick={() => startCamera('sign_in')} disabled={todayStatus.status === 'Signed In'}>
-                                        🔘 Sign In
-                                    </button>
-                                    <button className="btn btn-secondary" onClick={() => startCamera('sign_out')} disabled={todayStatus.status === 'Signed Out' || todayStatus.status === 'Not Signed In'}>
-                                        🔘 Sign Out
-                                    </button>
+                                     <button className="btn btn-primary" onClick={() => startCamera('sign_in')} disabled={todayStatus.status === 'Signed In'} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                         <ScanFace size={18} /> Sign In
+                                     </button>
+                                     <button className="btn btn-secondary" onClick={() => startCamera('sign_out')} disabled={todayStatus.status === 'Signed Out' || todayStatus.status === 'Not Signed In'} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                         <ScanFace size={18} /> Sign Out
+                                     </button>
                                 </div>
                             ) : (
                                 <>
@@ -260,7 +265,7 @@ const AttendanceScan = ({ userId }) => {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                     <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                        <h2 className="card-title">📅 Attendance Calendar</h2>
+                        <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Calendar size={20} /> Attendance Calendar</h2>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.5rem' }}>
                             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
                                 <div key={i} style={{ textAlign: 'center', fontSize: '0.7rem', fontWeight: 'bold', opacity: 0.5 }}>{d}</div>

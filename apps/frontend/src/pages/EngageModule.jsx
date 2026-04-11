@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { MessageSquare, Megaphone, Lightbulb, Send } from 'lucide-react';
 import { API_URL } from '../config';
 
 const EngageModule = () => {
@@ -14,10 +15,10 @@ const EngageModule = () => {
 
     return (
         <div className="engage-page">
-            <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '1.5rem' }}>💬 Engage Module</h1>
+            <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}><MessageSquare size={32} color="var(--primary)" /> Engage Module</h1>
             <div className="grid-2">
                 <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                    <h2 className="card-title">📣 Announcements</h2>
+                    <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Megaphone size={24} color="var(--primary)" /> Announcements</h2>
                     <div style={{ padding: '1rem', background: '#fff9f5', borderRadius: '8px', borderLeft: '4px solid var(--primary)', borderRight: '1px solid var(--border-color)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
                         <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--primary)' }}>{announcement.title}</div>
                         <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', margin: '0.5rem 0', lineHeight: '1.5', whiteSpace: 'pre-line' }}>
@@ -27,7 +28,7 @@ const EngageModule = () => {
                     </div>
                 </div>
                 <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                    <h2 className="card-title">💡 Employee Suggestions</h2>
+                    <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Lightbulb size={24} color="var(--secondary)" /> Employee Suggestions</h2>
                     <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Have an idea to improve our workplace? Share it with us anonymously.</p>
                     <textarea
                         className="btn btn-secondary"

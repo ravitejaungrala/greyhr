@@ -1,4 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { 
+    Search, RefreshCw, Calendar, CheckCircle2, X, Plus, Trash2, Edit3, 
+    Globe, Clock, BarChart3, FileText, Megaphone, AlertTriangle, UserPlus,
+    ChevronLeft, ChevronRight, ShieldCheck, TrendingUp, ClipboardList, Users,
+    TreePalm, Bell, Camera, Brain, Gift, CalendarDays, Settings, Rocket,
+    Banknote, LogOut, FolderOpen, Sparkles, Building2, Package, BrainCircuit, Tag,
+    GraduationCap, ClipboardCheck
+} from 'lucide-react';
 import { API_URL } from '../config';
 import DocumentGeneratorModal from '../components/DocumentGeneratorModal';
 import EnhancedDocumentGenerator from '../components/EnhancedDocumentGenerator';
@@ -605,6 +613,8 @@ const AdminDashboard = ({ activeTab, user }) => {
             });
             if (response.ok) {
                 setHolidays(prev => prev.filter(h => h.date !== date));
+                setEditingHoliday(null);
+                setNewHoliday({ name: '', date: '', type: 'Public Holiday' });
                 fetchData();
             } else {
                 alert("Failed to delete holiday.");
@@ -742,11 +752,15 @@ const AdminDashboard = ({ activeTab, user }) => {
         return (
             <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
                 <div className="card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', position: 'relative', maxWidth: '700px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
-                    <button onClick={() => setIsHolidayModalOpen(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', color: '#6b7280', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
+                    <button onClick={() => setIsHolidayModalOpen(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem', borderRadius: '50%', transition: 'background 0.2s' }} onMouseEnter={e => e.target.style.background = '#f3f4f6'} onMouseLeave={e => e.target.style.background = 'none'}>
+                        <X size={20} />
+                    </button>
                     
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                        <div style={{ fontSize: '1.75rem' }}>🇮🇳</div>
-                        <h3 style={{ margin: 0, color: 'var(--primary)', fontSize: '1.5rem' }}>Official Holidays {calYear}</h3>
+                        <div style={{ color: 'var(--secondary)', display: 'flex' }}>
+                            <Calendar size={28} />
+                        </div>
+                        <h3 style={{ margin: 0, color: 'var(--text-light)', fontSize: '1.5rem', fontWeight: '800' }}>Official Holidays {calYear}</h3>
                     </div>
 
                     <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem' }}>We found {fetchedHolidays.length} official Indian holidays. Select the ones you want to add to your company calendar.</p>
@@ -786,7 +800,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{h.date}</div>
                                         </div>
                                     </div>
-                                    {isAlreadyAdded && <span style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: '700' }}>ALREADY ADDED</span>}
+                                    {isAlreadyAdded && <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', color: '#22c55e', fontWeight: '800', background: '#f0fdf4', padding: '0.25rem 0.5rem', borderRadius: '20px' }}><CheckCircle2 size={12} /> ADDED</div>}
                                 </div>
                             );
                         })}
@@ -835,7 +849,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                     <button onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', color: '#6b7280', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
                     
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
-                        <div style={{ fontSize: '2rem' }}>🌴</div>
+                        <div style={{ color: 'var(--primary)' }}><TreePalm size={32} /></div>
                         <div>
                             <h3 style={{ margin: 0, color: 'var(--primary)', fontSize: '1.25rem' }}>{leave.leave_type}</h3>
                             <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Requested by <b>{leave.employee_name} ({leave.employee_id})</b></p>
@@ -899,15 +913,24 @@ const AdminDashboard = ({ activeTab, user }) => {
             <LeaveDetailModal leave={inspectingLeave} onClose={() => setInspectingLeave(null)} />
             <HolidayFetchModal />
             <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                {isSuperAdmin ? '🛡️ Super Admin' : '🛡️ Admin'} - {activeTab === 'overview' && '📈 Insight Dashboard'}
-                {activeTab === 'onboarding' && '📋 Pending Approvals'}
-                {activeTab === 'employees' && '👥 Employee Directory'}
-                {activeTab === 'leaves' && '🌴 Leave Management'}
-                {activeTab === 'holidays' && '📅 Holiday Calendar'}
-                {activeTab === 'reports' && '📊 Company Reports'}
-                {activeTab === 'notifications' && '🔔 Admin Notifications'}
-                {activeTab === 'attendance' && '📸 Attendance Logs'}
-                {activeTab === 'intelligence' && '🧠 HR Intelligence Specialist'}
+                {isSuperAdmin ? <ShieldCheck size={28} /> : <ShieldCheck size={28} />} {isSuperAdmin ? 'Super Admin' : 'Admin'} - {activeTab === 'overview' && <TrendingUp size={24} style={{ marginLeft: '0.5rem', marginRight: '0.5rem' }} />}
+                {activeTab === 'overview' && 'Insight Dashboard'}
+                {activeTab === 'onboarding' && <ClipboardList size={24} style={{ marginLeft: '0.5rem', marginRight: '0.5rem' }} />}
+                {activeTab === 'onboarding' && 'Pending Approvals'}
+                {activeTab === 'employees' && <Users size={24} style={{ marginLeft: '0.5rem', marginRight: '0.5rem' }} />}
+                {activeTab === 'employees' && 'Employee Directory'}
+                {activeTab === 'leaves' && <TreePalm size={24} style={{ marginLeft: '0.5rem', marginRight: '0.5rem' }} />}
+                {activeTab === 'leaves' && 'Leave Management'}
+                {activeTab === 'holidays' && <Calendar size={24} style={{ marginLeft: '0.5rem', marginRight: '0.5rem' }} />}
+                {activeTab === 'holidays' && 'Holiday Calendar'}
+                {activeTab === 'reports' && <BarChart3 size={24} style={{ marginLeft: '0.5rem', marginRight: '0.5rem' }} />}
+                {activeTab === 'reports' && 'Company Reports'}
+                {activeTab === 'notifications' && <Bell size={24} style={{ marginLeft: '0.5rem', marginRight: '0.5rem' }} />}
+                {activeTab === 'notifications' && 'Admin Notifications'}
+                {activeTab === 'attendance' && <Camera size={24} style={{ marginLeft: '0.5rem', marginRight: '0.5rem' }} />}
+                {activeTab === 'attendance' && 'Attendance Logs'}
+                {activeTab === 'intelligence' && <Brain size={24} style={{ marginLeft: '0.5rem', marginRight: '0.5rem' }} />}
+                {activeTab === 'intelligence' && 'HR Intelligence Specialist'}
             </h1>
 
             {loading && <p style={{ color: '#000000', textAlign: 'center' }}>Loading data...</p>}
@@ -918,44 +941,48 @@ const AdminDashboard = ({ activeTab, user }) => {
                     {/* TAB: OVERVIEW */}
                     {activeTab === 'overview' && overviewData && (
                         <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                            <div className="grid-3" style={{ gap: '1.5rem' }}>
+                            <div className="grid-3" style={{ gap: '1rem' }}>
                                 {/* Stat Cards */}
-                                <div className="card shadow-sm" style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: 'white', cursor: 'pointer' }}>
-                                    <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>Total Employees</div>
-                                    <div style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0.5rem 0' }}>{overviewData.metrics.total_employees}</div>
-                                    <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>Active workforce</div>
+                                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', borderLeft: '4px solid #6366f1', padding: '1rem', cursor: 'pointer' }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Employees</div>
+                                    <div style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0.25rem 0', color: '#1f2937' }}>{overviewData.metrics.total_employees}</div>
+                                    <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Active workforce</div>
                                 </div>
                                 
-                                <div className="card shadow-sm" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: 'white', cursor: 'pointer' }}>
-                                    <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>Pending Approvals</div>
-                                    <div style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0.5rem 0' }}>{overviewData.metrics.pending_approvals}</div>
-                                    <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>Onboarding candidates</div>
+                                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', borderLeft: '4px solid #f59e0b', padding: '1rem', cursor: 'pointer' }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Pending Approvals</div>
+                                    <div style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0.25rem 0', color: '#1f2937' }}>{overviewData.metrics.pending_approvals}</div>
+                                    <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Onboarding candidates</div>
                                 </div>
 
-                                <div className="card shadow-sm" style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: 'white', cursor: 'pointer' }}>
-                                    <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>Leaves (Today)</div>
-                                    <div style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0.5rem 0' }}>{overviewData.metrics.active_leaves_today}</div>
-                                    <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>Out of office</div>
+                                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', borderLeft: '4px solid #ef4444', padding: '1rem', cursor: 'pointer' }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Leaves (Today)</div>
+                                    <div style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0.25rem 0', color: '#1f2937' }}>{overviewData.metrics.active_leaves_today}</div>
+                                    <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Out of office</div>
                                 </div>
                             </div>
 
                             <div className="grid-2" style={{ gap: '1.5rem' }}>
                                 {/* Recent Activity */}
-                                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                                    <h2 className="card-title" style={{ fontSize: '1.1rem' }}>🔔 Recent Activity</h2>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
+                                    <h2 className="card-title" style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Bell size={20} /> Recent Activity
+                                    </h2>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
                                         {overviewData.recent_activity.map((act, i) => (
-                                            <div key={i} style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border-color)' }}>
+                                            <div key={i} style={{ padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border-color)' }}>
                                                 <div>
-                                                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{act.name}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: '#000000' }}>ID: {act.employee_id}</div>
+                                                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{act.name}</div>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>ID: {act.employee_id}</div>
                                                 </div>
                                                 <span style={{ 
-                                                    fontSize: '0.7rem', 
-                                                    padding: '0.2rem 0.5rem', 
+                                                    fontSize: '0.65rem', 
+                                                    padding: '0.15rem 0.4rem', 
                                                     borderRadius: '4px',
                                                     background: act.status === 'approved' ? '#dcfce7' : '#fef3c7',
-                                                    color: act.status === 'approved' ? '#166534' : '#92400e'
+                                                    color: act.status === 'approved' ? '#166534' : '#92400e',
+                                                    fontWeight: 600,
+                                                    textTransform: 'uppercase'
                                                 }}>
                                                     {act.status}
                                                 </span>
@@ -966,7 +993,9 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                                 {/* Active Announcement */}
                                 <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                                    <h2 className="card-title" style={{ fontSize: '1.1rem' }}>📢 Current Announcement</h2>
+                                    <h2 className="card-title" style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Megaphone size={20} /> Current Announcement
+                                    </h2>
                                     {overviewData.announcement ? (
                                         <div style={{ padding: '1rem', background: '#eff6ff', borderRadius: '12px', border: '1px solid #bfdbfe', borderLeft: '4px solid var(--primary)' }}>
                                             <div style={{ fontWeight: 700, marginBottom: '0.5rem' }}>{overviewData.announcement.title}</div>
@@ -994,7 +1023,9 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 <h2 className="card-title" style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Pending ({pendingEmployees.length})</h2>
                                 {pendingEmployees.length === 0 ? (
                                     <div style={{ padding: '3rem 1.5rem', textAlign: 'center', backgroundColor: '#f0f9ff', borderRadius: '20px', border: '1px dashed var(--primary)' }}>
-                                        <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>✨</div>
+                                         <div style={{ color: 'var(--primary)', marginBottom: '1rem' }}>
+                                             <CheckCircle2 size={40} />
+                                         </div>
                                         <p style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.9rem' }}>Workflow Complete</p>
                                         <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.25rem' }}>All profiles have been reviewed.</p>
                                     </div>
@@ -1083,9 +1114,9 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         </div>
 
                                         <div style={{ backgroundColor: '#f0f9ff', padding: '2rem', borderRadius: '24px', border: '1px solid #bfdbfe', marginBottom: '2rem' }}>
-                                            <h3 style={{ fontSize: '1rem', color: 'var(--primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
-                                                <span style={{ fontSize: '1.25rem' }}>⚙️</span> Administrative Setup
-                                            </h3>
+                                             <h3 style={{ fontSize: '1rem', color: 'var(--primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 800 }}>
+                                                 <Settings size={20} /> Administrative Setup
+                                             </h3>
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                                                 <div>
                                                     <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Employment Type</label>
@@ -1145,7 +1176,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 )}
 
                                                 <div style={{ gridColumn: 'span 2', marginTop: '1rem' }}>
-                                                    <label style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 800, display: 'block', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>🎁 Leave Accrual Engine (days/mo)</label>
+                                                     <label style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 800, display: 'block', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Gift size={16} /> Leave Accrual Engine (days/mo)</label>
                                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.25rem' }}>
                                                         <div>
                                                             <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontWeight: 700 }}>Privilege</label>
@@ -1267,12 +1298,12 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                     setIsDocGenModalOpen(true);
                                                 }}
                                                 className="btn btn-secondary"
-                                                style={{ color: '#ff7a00', borderColor: '#ff7a00' }}
+                                                style={{ color: '#ff7a00', borderColor: '#ff7a00', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                                             >
-                                                ✨ AI Generate Offer Letter
+                                                <Sparkles size={16} /> AI Generate Offer Letter
                                             </button>
 
-                                            <button onClick={() => handleApproval(viewedEmp.employee_id, 'approve')} className="btn btn-primary" style={{ backgroundColor: '#ff4500', fontWeight: 'bold' }}>✅ Approve Onboarding (No Offer Letter Needed)</button>
+                                             <button onClick={() => handleApproval(viewedEmp.employee_id, 'approve')} className="btn btn-primary" style={{ backgroundColor: '#ff4500', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckCircle2 size={18} /> Approve Onboarding (No Offer Letter Needed)</button>
                                         </div>
                                         <div style={{ fontSize: '0.75rem', color: '#000000', marginTop: '0.5rem' }}>* You can approve an application immediately without generating an offer letter.</div>
                                     </div>
@@ -1301,7 +1332,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             gap: '0.5rem'
                                         }}
                                     >
-                                        ➕ Add New Employee
+                                         <Plus size={18} /> Add New Employee
                                     </button>
                                     <button
                                         onClick={() => setIsEnhancedDocGenOpen(true)}
@@ -1314,7 +1345,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             fontWeight: '600'
                                         }}
                                     >
-                                        📄 Enhanced Document Generator
+                                         <FileText size={18} /> Enhanced Document Generator
                                     </button>
                                 </div>
                             </div>
@@ -1371,11 +1402,11 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                     <button 
                                                         onClick={(e) => { e.stopPropagation(); setPreviewDoc({ title: 'Bank Details', url: `${apiUrl}/admin/photos/${emp.bank_details?.bank_photo_key}` }); }} 
                                                         className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }}
-                                                    >🏦 Bank</button>
+                                                     > <Building2 size={12} /> Bank</button>
                                                     <button 
                                                         onClick={(e) => { e.stopPropagation(); setPreviewDoc({ title: 'Education Cert', url: `${apiUrl}/admin/photos/${emp.education?.cert_key}` }); }} 
                                                         className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }}
-                                                    >🎓 Edu</button>
+                                                     > <GraduationCap size={12} /> Edu</button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -1386,8 +1417,10 @@ const AdminDashboard = ({ activeTab, user }) => {
                             {selectedApprovedEmp && (
                                 <div className="card shadow-sm" style={{ marginTop: '2rem', borderTop: '4px solid #ff7a00', background: '#ffffff', borderRight: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', borderLeft: '1px solid var(--border-color)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                        <h3 style={{ fontSize: '1.25rem', color: '#1f2937' }}>✏️ Edit Profile: {selectedApprovedEmp.name}</h3>
-                                        <button onClick={() => setSelectedApprovedEmp(null)} style={{ background: 'none', border: 'none', color: '#000000', cursor: 'pointer' }}>✕ Close</button>
+                                        <h3 style={{ fontSize: '1.25rem', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Edit3 size={20} /> Edit Profile: {selectedApprovedEmp.name}
+                                        </h3>
+                                         <button onClick={() => setSelectedApprovedEmp(null)} style={{ background: 'none', border: 'none', color: '#000000', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><X size={16} /> Close</button>
                                     </div>
 
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
@@ -1548,7 +1581,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             className="btn btn-secondary"
                                             style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}
                                         >
-                                            ✨ AI Relieving Letter
+                                            <Sparkles size={16} /> AI Relieving Letter
                                         </button>
                                         <button
                                             onClick={() => {
@@ -1567,7 +1600,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             className="btn btn-secondary"
                                             style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}
                                         >
-                                            ✨ AI Experience Cert
+                                            <Sparkles size={16} /> AI Experience Cert
                                         </button>
                                         {selectedApprovedEmp.employment_type === 'Intern' && (
                                             <button
@@ -1587,7 +1620,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 className="btn btn-secondary"
                                                 style={{ color: '#c84cff', borderColor: '#c84cff' }}
                                             >
-                                                🎓 AI Intern Cert
+                                                <GraduationCap size={16} /> AI Intern Cert
                                             </button>
                                         )}
                                         <button
@@ -1618,7 +1651,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             className="btn btn-secondary"
                                             style={{ color: '#ff4500', borderColor: '#ff4500' }}
                                         >
-                                            💰 AI Payslip
+                                            <Banknote size={16} /> AI Payslip
                                         </button>
                                         <button onClick={() => handleUpdateEmployee(selectedApprovedEmp.employee_id)} className="btn btn-primary" style={{ backgroundColor: '#ff4500' }}>Save Profile Changes</button>
                                     </div>
@@ -1773,10 +1806,20 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             <option>Optional Holiday</option>
                                         </select>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-                                        <button type="submit" className="btn btn-primary" style={{ flex: 1, padding: '0.75rem' }}>{editingHoliday ? "Save Changes" : "Add Holiday"}</button>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+                                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                            <button type="submit" className="btn btn-primary" style={{ flex: 2, padding: '0.75rem', background: 'var(--primary)' }}>{editingHoliday ? "Save Changes" : "Add Holiday"}</button>
+                                            <button type="button" className="btn btn-secondary" onClick={() => { setEditingHoliday(null); setNewHoliday({ name: '', date: '', type: 'Public Holiday' }); }} style={{ flex: 1, padding: '0.75rem' }}>{editingHoliday ? "Cancel" : "Clear"}</button>
+                                        </div>
                                         {editingHoliday && (
-                                            <button type="button" className="btn btn-secondary" onClick={() => { setEditingHoliday(null); setNewHoliday({ name: '', date: '', type: 'Public Holiday' }); }} style={{ flex: 1, padding: '0.75rem' }}>Cancel</button>
+                                            <button 
+                                                type="button" 
+                                                className="btn" 
+                                                onClick={() => handleDeleteHoliday(editingHoliday.originalDate)}
+                                                style={{ padding: '0.75rem', background: '#FEF2F2', color: '#EF4444', border: '1px solid #FEE2E2', fontWeight: 'bold' }}
+                                            >
+                                                🗑️ Delete Holiday
+                                            </button>
                                         )}
                                     </div>
                                 </form>
@@ -1785,34 +1828,63 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                     <h2 className="card-title" style={{ margin: 0 }}>Holiday Calendar</h2>
                                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                        <button 
-                                            className="btn btn-secondary" 
-                                            onClick={fetchExternalHolidays}
-                                            disabled={isFetchingHolidays}
-                                            style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid #e2e8f0' }}
-                                        >
-                                            {isFetchingHolidays ? "🔄 Fetching..." : "🔍 Fetch "+calYear+" Holidays"}
-                                        </button>
+                                         <button 
+                                             className="btn btn-secondary" 
+                                             onClick={fetchExternalHolidays}
+                                             disabled={isFetchingHolidays}
+                                             style={{ 
+                                                 fontSize: '0.85rem', 
+                                                 display: 'flex', 
+                                                 alignItems: 'center', 
+                                                 gap: '0.5rem', 
+                                                 border: '1px solid #e2e8f0',
+                                                 padding: '0.5rem 1rem',
+                                                 borderRadius: '10px',
+                                                 background: '#ffffff',
+                                                 transition: 'all 0.2s ease',
+                                                 boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                             }}
+                                         >
+                                             {isFetchingHolidays ? (
+                                                 <><RefreshCw size={14} className="animate-spin" /> Fetching...</>
+                                             ) : (
+                                                 <><Search size={14} /> Fetch {calYear} Holidays</>
+                                             )}
+                                         </button>
                                         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginLeft: '1rem' }}>
-                                        <button className="btn btn-secondary" onClick={() => {
-                                            if (calMonth === 0) { setCalMonth(11); setCalYear(calYear - 1); }
-                                            else setCalMonth(calMonth - 1);
-                                        }}>◀</button>
+                                         <button className="btn btn-secondary" onClick={() => {
+                                             if (calMonth === 0) { setCalMonth(11); setCalYear(calYear - 1); }
+                                             else setCalMonth(calMonth - 1);
+                                         }} style={{ padding: '0.25rem' }}><ChevronLeft size={16} /></button>
                                         <div style={{ fontWeight: 'bold', minWidth: '120px', textAlign: 'center' }}>
                                             {new Date(calYear, calMonth).toLocaleString('default', { month: 'long' })} {calYear}
                                         </div>
-                                        <button className="btn btn-secondary" onClick={() => {
-                                            if (calMonth === 11) { setCalMonth(0); setCalYear(calYear + 1); }
-                                            else setCalMonth(calMonth + 1);
-                                        }}>▶</button>
+                                         <button className="btn btn-secondary" onClick={() => {
+                                             if (calMonth === 11) { setCalMonth(0); setCalYear(calYear + 1); }
+                                             else setCalMonth(calMonth + 1);
+                                         }} style={{ padding: '0.25rem' }}><ChevronRight size={16} /></button>
                                         </div>
                                     </div>
                                 </div>
                                 
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.5rem', marginBottom: '0.5rem', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>
-                                    <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
-                                </div>
                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: 'var(--border-color)', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                                     {/* DAY HEADERS */}
+                                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                                         <div key={day} style={{ 
+                                             padding: '0.75rem 0', 
+                                             background: '#f8fafc', 
+                                             textAlign: 'center', 
+                                             fontWeight: '700', 
+                                             color: '#64748b', 
+                                             fontSize: '0.75rem', 
+                                             textTransform: 'uppercase', 
+                                             letterSpacing: '0.05em',
+                                             borderBottom: '1px solid var(--border-color)'
+                                         }}>
+                                             {day}
+                                         </div>
+                                     ))}
+
                                     {Array.from({ length: new Date(calYear, calMonth, 1).getDay() }).map((_, i) => (
                                         <div key={`empty-${i}`} style={{ padding: '1rem', background: '#F9FAFB' }}></div>
                                     ))}
@@ -1837,28 +1909,56 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             onMouseLeave={e => e.currentTarget.style.background = '#ffffff'}
                                             >
                                                 <div style={{ 
-                                                    fontWeight: '800', 
-                                                    marginBottom: '0.75rem', 
-                                                    color: isToday ? '#ff4500' : '#000000',
-                                                    fontSize: '0.875rem'
+                                                    fontWeight: '700', 
+                                                    marginBottom: '0.4rem', 
+                                                    color: isToday ? '#ff4500' : '#475569',
+                                                    fontSize: '0.8rem',
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'baseline'
                                                 }}>
-                                                    {isToday && <span style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', width: '8px', height: '8px', background: '#ff4500', borderRadius: '50%' }}></span>}
                                                     {day}
+                                                    {isToday && <span style={{ width: '6px', height: '6px', background: '#ff4500', borderRadius: '50%' }}></span>}
                                                 </div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
                                                     {dayHolidays.map((h, hi) => (
                                                         <div key={hi} style={{ 
-                                                            fontSize: '0.7rem', 
-                                                            background: h.type === 'Public Holiday' ? '#FEF2F2' : '#FFFBEB', 
-                                                            color: h.type === 'Public Holiday' ? '#EF4444' : '#F59E0B', 
-                                                            padding: '0.4rem 0.6rem', 
-                                                            borderRadius: '6px',
+                                                            fontSize: '0.65rem', 
+                                                            background: h.type === 'Public Holiday' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(245, 158, 11, 0.08)', 
+                                                            color: h.type === 'Public Holiday' ? '#DC2626' : '#D97706', 
+                                                            padding: '0.2rem 0.4rem', 
+                                                            borderRadius: '4px',
                                                             textAlign: 'left',
                                                             cursor: 'pointer',
-                                                            border: `1px solid ${h.type === 'Public Holiday' ? '#FEE2E2' : '#FEF3C7'}`,
-                                                            fontWeight: '600'
+                                                            border: `1px solid ${h.type === 'Public Holiday' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)'}`,
+                                                            fontWeight: '600',
+                                                            display: 'flex',
+                                                            justifyContent: 'space-between',
+                                                            alignItems: 'center',
+                                                            gap: '0.25rem'
                                                         }} onClick={() => handleEditClick(h)} title="Click to Edit">
-                                                            {h.name}
+                                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                {h.name}
+                                                            </span>
+                                                            <button 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDeleteHoliday(h.date);
+                                                                }}
+                                                                style={{
+                                                                    background: 'none',
+                                                                    border: 'none',
+                                                                    color: '#EF4444',
+                                                                    cursor: 'pointer',
+                                                                    padding: '0.1rem',
+                                                                    fontSize: '0.7rem',
+                                                                    opacity: 0.6
+                                                                }}
+                                                                onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                                                                onMouseLeave={e => e.currentTarget.style.opacity = 0.6}
+                                                            >
+                                                                ✕
+                                                            </button>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -1936,8 +2036,10 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 </div>
                             </div>
                             <div style={{ marginTop: '2rem', padding: '2rem', border: '1px dashed #e2e8f0', borderRadius: '8px', textAlign: 'center', color: '#000000' }}>
-                                <span style={{ fontSize: '2rem' }}>📊</span>
-                                <p style={{ marginTop: '1rem' }}>Deep integrations for Data visualization can be powered by AI Analytics Agent soon.</p>
+                                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: 'var(--primary)' }}>
+                                    <BarChart3 size={48} />
+                                </div>
+                                <p>Deep integrations for Data visualization can be powered by AI Analytics Agent soon.</p>
                             </div>
                         </div>
                     )}
@@ -2007,7 +2109,9 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                             {/* NEW: Comp-Off Requests Section */}
                             <div style={{ marginTop: '2.5rem', borderTop: '2px solid var(--primary)', paddingTop: '2rem' }}>
-                                <h2 className="card-title">🎁 Pending Comp-Off Requests</h2>
+                                <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Gift size={24} /> Pending Comp-Off Requests
+                                </h2>
                                 <p style={{ color: '#000000', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
                                     Employees who worked on weekends or holidays for more than 9 hours. Approve to credit 1 day to their balance.
                                 </p>
@@ -2049,7 +2153,9 @@ const AdminDashboard = ({ activeTab, user }) => {
                             </div>
                             {/* Weekend/Holiday Work Requests Section (Moved here) */}
                             <div style={{ marginTop: '2.5rem', borderTop: '2px solid #ff4500', paddingTop: '2rem' }}>
-                                <h2 className="card-title">🗓️ Weekend/Holiday Work Requests</h2>
+                                <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <CalendarDays size={24} /> Weekend/Holiday Work Requests
+                                </h2>
                                 <p style={{ color: '#000000', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
                                     Pre-emptive requests from employees to work on non-working days.
                                 </p>
@@ -2094,18 +2200,20 @@ const AdminDashboard = ({ activeTab, user }) => {
                     {activeTab === 'payroll' && (
                         <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
-                            <div className="card shadow-sm" style={{ borderLeft: '4px solid #10b981', background: '#ffffff', borderRight: '1px solid var(--border-color)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
-                                <h2 className="card-title">⚙️ Global Salary Configuration</h2>
-                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                                    Control which deductions are applied company-wide. These settings affect all salary calculations.
+                            <div className="card shadow-sm" style={{ borderLeft: '4px solid #10b981', background: '#ffffff', borderRight: '1px solid var(--border-color)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', padding: '1.25rem' }}>
+                                <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.1rem', marginBottom: '0.5rem' }}>
+                                    <Settings size={20} /> Global Salary Configuration
+                                </h2>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                                    Control which deductions are applied company-wide.
                                 </p>
                                 
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '1.5rem' }}>
-                                    <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                                    <div style={{ padding: '0.75rem 1rem', background: '#F9FAFB', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                                             <div>
-                                                <div style={{ fontWeight: 'bold', color: '#000000' }}>Enable Tax (TDS)</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#000000' }}>Global tax deduction toggle</div>
+                                                <div style={{ fontWeight: 'bold', color: '#000000', fontSize: '0.85rem' }}>Enable Tax (TDS)</div>
+                                                <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Global tax toggle</div>
                                             </div>
                                             <input 
                                                 type="checkbox" 
@@ -2121,17 +2229,17 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 step="0.1"
                                                 value={salarySettings.tax_rate}
                                                 onChange={(e) => setSalarySettings({...salarySettings, tax_rate: parseFloat(e.target.value)})}
-                                                style={{ width: '70px', padding: '0.4rem', borderRadius: '6px', border: '1px solid #D1D5DB' }}
+                                                style={{ width: '60px', padding: '0.3rem', borderRadius: '6px', border: '1px solid #D1D5DB', fontSize: '0.85rem' }}
                                             />
                                             <span style={{ fontSize: '0.85rem', color: '#000000' }}>%</span>
                                         </div>
                                     </div>
 
-                                    <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                    <div style={{ padding: '0.75rem 1rem', background: '#F9FAFB', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                                             <div>
-                                                <div style={{ fontWeight: 'bold', color: '#000000' }}>Enable PF & PT</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#000000' }}>Global PF deduction toggle</div>
+                                                <div style={{ fontWeight: 'bold', color: '#000000', fontSize: '0.85rem' }}>Enable PF & PT</div>
+                                                <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Global PF toggle</div>
                                             </div>
                                             <input 
                                                 type="checkbox" 
@@ -2147,7 +2255,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 step="0.1"
                                                 value={salarySettings.pf_rate}
                                                 onChange={(e) => setSalarySettings({...salarySettings, pf_rate: parseFloat(e.target.value)})}
-                                                style={{ width: '70px', padding: '0.4rem', borderRadius: '6px', border: '1px solid #D1D5DB' }}
+                                                style={{ width: '60px', padding: '0.3rem', borderRadius: '6px', border: '1px solid #D1D5DB', fontSize: '0.85rem' }}
                                             />
                                             <span style={{ fontSize: '0.85rem', color: '#000000' }}>%</span>
                                         </div>
@@ -2165,7 +2273,9 @@ const AdminDashboard = ({ activeTab, user }) => {
                             </div>
 
                             <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                                <h2 className="card-title">🚀 Payslip Release Control</h2>
+                                <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Rocket size={24} /> Payslip Release Control
+                                </h2>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     {['February 2026', 'March 2026'].map(month => {
                                         const isReleased = payrollStatus.some(p => p.month_year === month && p.released);
@@ -2201,7 +2311,9 @@ const AdminDashboard = ({ activeTab, user }) => {
                     {activeTab === 'salary_report' && (
                         <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                                <h2 className="card-title" style={{ margin: 0 }}>📊 Monthly Salary Report</h2>
+                                <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <BarChart3 size={24} /> Monthly Salary Report
+                                </h2>
                                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                                     <select 
                                         value={salaryReportMonth} 
@@ -2212,7 +2324,9 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             <option key={m} value={m}>{m}</option>
                                         ))}
                                     </select>
-                                    <button onClick={fetchData} className="btn btn-secondary">🔄 Refresh</button>
+                                    <button onClick={fetchData} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <RefreshCw size={16} /> Refresh
+                                    </button>
                                 </div>
                             </div>
 
@@ -2255,7 +2369,9 @@ const AdminDashboard = ({ activeTab, user }) => {
                     {/* TAB: ITEMS */}
                     {activeTab === 'items' && (
                         <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                            <h2 className="card-title">📦 Item Requests ({itemRequests.length})</h2>
+                            <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Package size={24} /> Item Requests ({itemRequests.length})
+                            </h2>
                             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
                                 <thead>
                                     <tr style={{ textAlign: 'left', borderBottom: '2px solid rgba(255,255,255,0.1)', color: '#000000', fontSize: '0.85rem' }}>
@@ -2312,23 +2428,25 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                     {/* TAB: TEMPLATES */}
                     {activeTab === 'templates' && (
-                        <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                            <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '1.5rem' }}>📄 AI Document Templates</h1>
-                            <p style={{ color: '#000000', marginBottom: '2rem' }}>Train our AI on your specific company documents. Upload any PDF/HTML format and we'll convert it into a dynamic system template.</p>
+                        <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.5rem' }}>
+                            <h1 className="card-title" style={{ fontSize: '1.5rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <FileText size={24} /> AI Document Templates
+                            </h1>
+                            <p style={{ color: '#000000', marginBottom: '1.25rem', fontSize: '0.9rem' }}>Train our AI on your specific company documents. Upload any PDF/HTML format and we'll convert it into a dynamic system template.</p>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2.5rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
                                 {/* CARD 1: OFFER LETTERS */}
-                                <div className="card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
-                                    <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <span style={{ fontSize: '1.5rem' }}>📑</span> Offer Letters
+                                <div className="card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '1rem' }}>
+                                    <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                         <FileText size={20} /> Offer Letters
                                     </h3>
-                                    <p style={{ fontSize: '0.85rem', color: '#000000', marginBottom: '1.5rem', flex: 1 }}>Upload layouts for Intern and Full-Time appointment letters.</p>
+                                    <p style={{ fontSize: '0.8rem', color: '#000000', marginBottom: '0.75rem', flex: 1 }}>Upload layouts for Intern and Full-Time appointment letters.</p>
 
-                                    <div style={{ marginBottom: '1rem' }}>
+                                    <div style={{ marginBottom: '0.75rem' }}>
                                         <select
                                             value={selectedTemplateType}
                                             onChange={(e) => setSelectedTemplateType(e.target.value)}
-                                            style={{ width: '100%', padding: '0.7rem', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '0.8rem' }}
                                         >
                                             <option value="Intern">Intern Format</option>
                                             <option value="Full-Time">Full-Time Format</option>
@@ -2338,25 +2456,24 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                                     <button
                                         onClick={() => {
-                                            // Ensure type is set before trigger
                                             if (selectedTemplateType !== 'Intern' && selectedTemplateType !== 'Full-Time') {
                                                 setSelectedTemplateType('Intern');
                                             }
                                             document.getElementById('template-upload-input').click();
                                         }}
                                         className="btn btn-primary"
-                                        style={{ width: '100%', background: '#ff4500' }}
+                                        style={{ width: '100%', background: '#ff4500', fontSize: '0.8rem', padding: '0.6rem' }}
                                     >
                                         Upload Offer Template
                                     </button>
                                 </div>
 
                                 {/* CARD 2: PAYSLIPS */}
-                                <div className="card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
-                                    <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <span style={{ fontSize: '1.5rem' }}>💰</span> Payslip Design
+                                <div className="card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '1rem' }}>
+                                    <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                         <Banknote size={20} /> Payslip Design
                                     </h3>
-                                    <p style={{ fontSize: '0.85rem', color: '#000000', marginBottom: '1.5rem', flex: 1 }}>Train AI to recognize your payslip components and ROI investment fields.</p>
+                                    <p style={{ fontSize: '0.8rem', color: '#000000', marginBottom: '0.75rem', flex: 1 }}>Train AI to recognize your payslip components and ROI investment fields.</p>
 
                                     <button
                                         onClick={() => {
@@ -2365,24 +2482,24 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         }}
                                         disabled={uploadingTemplate}
                                         className="btn btn-primary"
-                                        style={{ width: '100%', background: '#ff4500' }}
+                                        style={{ width: '100%', background: '#ff4500', fontSize: '0.8rem', padding: '0.6rem' }}
                                     >
                                         {uploadingTemplate && selectedTemplateType === 'Payslip' ? "Analyzing..." : "Upload Payslip Template"}
                                     </button>
                                 </div>
 
                                 {/* CARD 3: EXIT DOCUMENTS */}
-                                <div className="card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
-                                    <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <span style={{ fontSize: '1.5rem' }}>🚪</span> Exit Documents
+                                <div className="card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '1rem' }}>
+                                    <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                         <LogOut size={20} /> Exit Documents
                                     </h3>
-                                    <p style={{ fontSize: '0.85rem', color: '#000000', marginBottom: '1.5rem', flex: 1 }}>Upload professional formats for Relieving Letters and Experience Certificates.</p>
+                                    <p style={{ fontSize: '0.8rem', color: '#000000', marginBottom: '0.75rem', flex: 1 }}>Upload professional formats for Relieving Letters and Experience Certificates.</p>
 
-                                    <div style={{ marginBottom: '1rem' }}>
+                                    <div style={{ marginBottom: '0.75rem' }}>
                                         <select
                                             value={selectedTemplateType}
                                             onChange={(e) => setSelectedTemplateType(e.target.value)}
-                                            style={{ width: '100%', padding: '0.7rem', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '0.8rem' }}
                                         >
                                             <option value="Relieving">Relieving Letter</option>
                                             <option value="Experience">Experience Certificate</option>
@@ -2399,7 +2516,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         }}
                                         disabled={uploadingTemplate}
                                         className="btn btn-primary"
-                                        style={{ width: '100%', background: '#ff7a00' }}
+                                        style={{ width: '100%', background: '#ff7a00', fontSize: '0.8rem', padding: '0.6rem' }}
                                     >
                                         {uploadingTemplate && (selectedTemplateType === 'Relieving' || selectedTemplateType === 'Experience') ? "Analyzing..." : "Upload Exit Template"}
                                     </button>
@@ -2412,7 +2529,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Active System Templates</h3>
                                 {offerLetterTemplates.length === 0 ? (
                                     <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#000000' }}>
-                                        <div style={{ fontSize: '2.5rem', marginBottom: '1rem', opacity: 0.5 }}>📂</div>
+                                         <div style={{ color: '#9ca3af', marginBottom: '1rem' }}><FolderOpen size={48} /></div>
                                         No templates configured yet.
                                     </div>
                                 ) : (
@@ -2467,7 +2584,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 <div className="card shadow-2xl" style={{ width: '100%', maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto', border: '1px solid #ff7a00', background: '#ffffff' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                                         <div>
-                                            <h2 className="card-title" style={{ margin: 0 }}>🧠 AI Analysis Complete</h2>
+                                             <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><BrainCircuit size={28} color="var(--primary)" /> AI Analysis Complete</h2>
                                             <p style={{ fontSize: '0.8rem', color: '#000000', margin: '0.5rem 0 0' }}>We've scanned your {selectedTemplateType} template and extracted the logic.</p>
                                         </div>
                                         <button className="btn" onClick={() => setTemplateAnalysis(null)}>✕</button>
@@ -2476,9 +2593,9 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                             <div style={{ padding: '1.5rem', background: '#eff6ff', borderRadius: '12px', border: '1px solid #bfdbfe' }}>
-                                                <h3 style={{ fontSize: '1rem', color: '#ff4500', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                    <span>🏷️</span> Detected Placeholders
-                                                </h3>
+                                                 <h3 style={{ fontSize: '1rem', color: '#ff4500', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                     <Tag size={18} /> Detected Placeholders
+                                                 </h3>
                                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                                                     {templateAnalysis.placeholders?.map(p => (
                                                         <span key={p} style={{ padding: '0.4rem 0.8rem', background: '#ffffff', color: '#1f2937', borderRadius: '4px', fontSize: '0.75rem', border: '1px solid #e2e8f0' }}>
@@ -2493,9 +2610,9 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                                             {templateAnalysis.roi_fields?.length > 0 && (
                                                 <div style={{ padding: '1.5rem', background: '#ecfdf5', borderRadius: '12px', border: '1px solid #a7f3d0' }}>
-                                                    <h3 style={{ fontSize: '1rem', color: '#ff4500', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                        <span>💰</span> ROI / Investment Fields Found
-                                                    </h3>
+                                                     <h3 style={{ fontSize: '1rem', color: '#ff4500', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                         <Banknote size={18} /> ROI / Investment Fields Found
+                                                     </h3>
                                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                                                         {templateAnalysis.roi_fields.map(field => (
                                                             <span key={field} style={{ padding: '0.4rem 0.8rem', background: '#d1fae5', color: '#065f46', borderRadius: '20px', fontSize: '0.75rem', border: '1px solid #ff4500' }}>
@@ -2512,7 +2629,7 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                                         <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', background: '#ffffff' }}>
                                             <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#000000' }}>🖥️ LIVE HTML PREVIEW</span>
+                                                 <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#000000', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Monitor size={14} /> LIVE HTML PREVIEW</span>
                                                 <span style={{ fontSize: '0.6rem', color: '#ff4500' }}>● Responsive AI Layout</span>
                                             </div>
                                             <div style={{ padding: '0px', height: '450px', background: '#fff' }}>
@@ -2563,7 +2680,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 }
                                             }}
                                         >
-                                            ✅ Confirm & Save Template
+                                             <CheckCircle2 size={18} /> Confirm & Save Template
                                         </button>
                                     </div>
                                 </div>
@@ -2577,7 +2694,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200, padding: '1rem' }}>
                                 <div className="card shadow-2xl" style={{ width: '95vw', maxWidth: '1600px', height: '95vh', display: 'flex', flexDirection: 'column', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                        <h2 className="card-title" style={{ margin: 0 }}>👁️ Template Preview</h2>
+                                         <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Eye size={20} /> Template Preview</h2>
                                         <button className="btn" onClick={() => setPreviewActiveTemplate(null)}>✕</button>
                                     </div>
                                     <div style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', background: '#ffffff', minHeight: 0 }}>
@@ -2595,7 +2712,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                     {/* TAB: ANNOUNCEMENTS */}
                     {activeTab === 'announcements' && (
                                 <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                                <h2 className="card-title">📢 Manage System Announcements</h2>
+                                 <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Megaphone size={24} /> Manage System Announcements</h2>
                                 <p style={{ color: '#000000', marginBottom: '1.5rem' }}>This message will be visible to all employees in their Engage module.</p>
 
                                 <form onSubmit={handleUpdateAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px' }}>
@@ -2606,7 +2723,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             value={announcementMsg.title}
                                             onChange={(e) => setAnnouncementMsg({ ...announcementMsg, title: e.target.value })}
                                             style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
-                                            placeholder="e.g. 📌 Essential Office Guidelines"
+                                             placeholder="e.g. Essential Office Guidelines"
                                         />
                                     </div>
                                     <div>
@@ -2639,7 +2756,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '2rem' }}>
                     <div className="card" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 className="card-title">📝 {offerLetterParams.employment_type} Offer Letter Preview</h2>
+                             <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={20} /> {offerLetterParams.employment_type} Offer Letter Preview</h2>
                             <button className="btn" onClick={() => setIsOfferLetterModalOpen(false)}>✕</button>
                         </div>
 
@@ -2703,7 +2820,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             </div>
                                         )}
                                         <div style={{ padding: '0.75rem', background: 'rgba(255, 69, 0, 0.1)', borderRadius: '6px', border: '1px solid #ff4500', marginTop: '0.5rem' }}>
-                                            <p style={{ margin: 0, fontSize: '0.9rem', color: '#ff4500', fontWeight: 'bold' }}>💰 In-Hand Amount: ₹{offerLetterParams.in_hand_salary}</p>
+                                             <p style={{ margin: 0, fontSize: '0.9rem', color: '#ff4500', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Banknote size={16} /> In-Hand Amount: ₹{offerLetterParams.in_hand_salary}</p>
                                         </div>
                                     </>
                                 )}
@@ -2713,7 +2830,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     <textarea rows="3" value={offerLetterParams.role_description} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, role_description: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }} />
                                 </div>
                                 <button className="btn btn-primary" onClick={() => handleGenerateOfferLetter(viewedEmp.employee_id)} disabled={isGeneratingOL}>
-                                    {isGeneratingOL ? 'Generating Draft...' : '🔄 Update/Generate Draft'}
+                                     {isGeneratingOL ? 'Generating Draft...' : <><RefreshCw size={14} /> Update/Generate Draft</>}
                                 </button>
                             </div>
 
@@ -2741,7 +2858,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 disabled={viewedEmp.offer_letter_status !== 'draft'}
                                 onClick={() => handleFinalizeOfferLetter(viewedEmp.employee_id)}
                             >
-                                ✅ Approve & Send to {offerLetterParams.employment_type === 'Intern' ? 'Intern' : 'Employee'}
+                                 <CheckCircle2 size={18} /> Approve & Send to {offerLetterParams.employment_type === 'Intern' ? 'Intern' : 'Employee'}
                             </button>
                         </div>
                     </div >
@@ -2760,7 +2877,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                             {/* --- RELIEVING LETTER SECTION --- */}
                             <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem', background: '#fff9f5' }}>
                                 <h3 style={{ fontSize: '1.1rem', color: '#ff4500', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    📑 1. Relieving Letter
+                                     <FileText size={20} /> 1. Relieving Letter
                                 </h3>
                                 <div className="grid-2">
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -2790,7 +2907,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         </div>
                                         <div style={{ display: 'flex', gap: '1rem' }}>
                                             <button className="btn btn-primary" onClick={() => handleGenerateRelievingLetter(selectedApprovedEmp.employee_id)} disabled={isGeneratingRL} style={{ backgroundColor: '#10b981', flex: 1 }}>
-                                                {isGeneratingRL ? 'Generating...' : '🔄 Update/Generate Draft'}
+                                                 {isGeneratingRL ? 'Generating...' : <><RefreshCw size={14} /> Update/Generate Draft</>}
                                             </button>
                                             <button
                                                 className="btn btn-primary"
@@ -2798,7 +2915,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 disabled={selectedApprovedEmp?.relieving_letter_status !== 'draft'}
                                                 onClick={() => handleFinalizeRelievingLetter(selectedApprovedEmp.employee_id)}
                                             >
-                                                ✅ Finalize & Release
+                                                 <CheckCircle2 size={18} /> Finalize & Release
                                             </button>
                                         </div>
                                     </div>
@@ -2816,7 +2933,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                             {/* --- EXPERIENCE CERTIFICATE SECTION --- */}
                             <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', background: '#f0f9ff' }}>
                                 <h3 style={{ fontSize: '1.1rem', color: '#ff4500', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    🏆 2. Experience Certificate
+                                     <Trophy size={20} /> 2. Experience Certificate
                                 </h3>
                                 <div className="grid-2">
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -2851,7 +2968,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         </div>
                                         <div style={{ display: 'flex', gap: '1rem' }}>
                                             <button className="btn btn-primary" onClick={() => handleGenerateExperienceCertificate(selectedApprovedEmp.employee_id)} disabled={isGeneratingEC} style={{ backgroundColor: '#ff4500', flex: 1 }}>
-                                                {isGeneratingEC ? 'Generating...' : '🔄 Update/Generate Draft'}
+                                                 {isGeneratingEC ? 'Generating...' : <><RefreshCw size={14} /> Update/Generate Draft</>}
                                             </button>
                                             <button
                                                 className="btn btn-primary"
@@ -2859,7 +2976,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 disabled={selectedApprovedEmp?.experience_cert_status !== 'draft'}
                                                 onClick={() => handleFinalizeExperienceCertificate(selectedApprovedEmp.employee_id)}
                                             >
-                                                ✅ Finalize & Release
+                                                 <CheckCircle2 size={18} /> Finalize & Release
                                             </button>
                                         </div>
                                     </div>
@@ -2888,7 +3005,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                         <div className="card shadow-2xl" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                 <div>
-                                    <h2 className="card-title" style={{ margin: 0 }}>💰 Release Payslips</h2>
+                                     <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Banknote size={24} color="var(--primary)" /> Release Payslips</h2>
                                     <p style={{ fontSize: '0.875rem', color: '#000000', margin: '0.25rem 0 0' }}>Month: <strong>{payslipManagerMonth}</strong></p>
                                 </div>
                                 <button className="btn" onClick={() => setIsPayslipManagerOpen(false)}>✕</button>
@@ -3008,7 +3125,11 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         fetchData();
                                     }}
                                 >
-                                    {isBatchSending ? '⏳ Generating...' : `✅ Generate & Send (${selectedPayslipEmployees.length})`}
+                                    {isBatchSending ? (
+                                        <><RefreshCw size={16} className="animate-spin" /> Generating...</>
+                                    ) : (
+                                        <><Sparkles size={16} /> Generate & Send ({selectedPayslipEmployees.length})</>
+                                    )}
                                 </button>
                             </div>
                         </div>
@@ -3035,7 +3156,9 @@ const AdminDashboard = ({ activeTab, user }) => {
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000 }}>
                     <div className="card shadow-2xl" style={{ width: '100%', maxWidth: '500px', padding: '2.5rem', border: '1px solid var(--border-color)', background: '#ffffff', animation: 'slideUp 0.3s ease-out' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                            <h2 style={{ fontSize: '1.5rem', color: 'var(--primary)', margin: 0, fontWeight: 800 }}>➕ Add New Employee</h2>
+                            <h2 style={{ fontSize: '1.5rem', color: 'var(--primary)', margin: 0, fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <UserPlus size={24} /> Add New Employee
+                            </h2>
                             <button onClick={() => setIsAddEmpModalOpen(false)} style={{ background: 'none', border: 'none', color: '#000000', cursor: 'pointer', fontSize: '1.25rem' }}>✕</button>
                         </div>
                         <form onSubmit={handleAddEmployee} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -3117,7 +3240,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     className="btn btn-primary" 
                                     style={{ padding: '1rem', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', fontWeight: 'bold', border: 'none' }}
                                 >
-                                    {addEmpLoading ? '⌛...' : '✨ Create & Gen Letter'}
+                                    {addEmpLoading ? <RefreshCw size={16} className="animate-spin" /> : <><Sparkles size={16} /> Create & Gen Letter</>}
                                 </button>
                                 <button 
                                     type="submit" 
@@ -3125,7 +3248,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     className="btn btn-primary" 
                                     style={{ padding: '1rem', background: '#ff4500', fontWeight: 'bold' }}
                                 >
-                                    {addEmpLoading ? 'Creating...' : '🚀 Create Only'}
+                                    {addEmpLoading ? 'Creating...' : <><CheckCircle2 size={16} /> Create Only</>}
                                 </button>
                             </div>
                         </form>

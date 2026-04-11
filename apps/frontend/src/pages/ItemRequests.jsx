@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { 
+    Package, Mail, Plus, Send, 
+    Loader2, History, CheckCircle2, 
+    AlertTriangle, X, User, MessageSquare
+} from 'lucide-react';
 import { API_URL } from '../config';
 
 const ItemRequests = ({ userId, user }) => {
@@ -98,13 +103,13 @@ const ItemRequests = ({ userId, user }) => {
     return (
         <div className="item-requests-page">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h1 className="card-title" style={{ fontSize: '1.75rem', margin: 0 }}>📦 Item Requests</h1>
+                <h1 className="card-title" style={{ fontSize: '1.75rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Package size={32} color="var(--primary)" /> Item Requests</h1>
                 <button 
                     className="btn btn-primary" 
                     onClick={() => setIsItemModalOpen(true)}
                     style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                 >
-                    + New Request
+                    <Plus size={16} /> New Request
                 </button>
             </div>
 
@@ -174,9 +179,9 @@ const ItemRequests = ({ userId, user }) => {
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                             <h2 className="card-title" style={{ margin: 0 }}>
-                                {requestType === 'item' ? '📦 New Item Request' : '✉️ General Message'}
+                                {requestType === 'item' ? <><Package size={20} /> New Item Request</> : <><Mail size={20} /> General Message</>}
                             </h2>
-                            <button onClick={() => setIsItemModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
+                            <button onClick={() => setIsItemModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}><X size={20} /></button>
                         </div>
 
                         {/* Mode Switcher */}
@@ -322,9 +327,9 @@ const ItemRequests = ({ userId, user }) => {
                                 style={{ height: '3.5rem', fontWeight: 'bold', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
                             >
                                 {isSubmitting ? (
-                                    <>⌛ Processing...</>
+                                    <><Loader2 size={18} className="animate-spin" /> Processing...</>
                                 ) : (
-                                    requestType === 'item' ? <>📤 Submit Item Request</> : <>📧 Send Message</>
+                                    requestType === 'item' ? <><Send size={18} /> Submit Item Request</> : <><Send size={18} /> Send Message</>
                                 )}
                             </button>
                         </div>

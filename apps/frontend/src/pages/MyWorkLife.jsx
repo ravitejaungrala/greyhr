@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { 
+    Heart, Rocket, Camera, Upload, 
+    Trophy, Calendar, Star, Package, 
+    FileText, Download, TrendingUp, BadgeCheck
+} from 'lucide-react';
 import { API_URL } from '../config';
 import { PLACEHOLDER_IMAGE } from '../utils';
 
@@ -66,7 +71,7 @@ const MyWorkLife = ({ userId, setActiveMenu }) => {
         const diffTime = Math.abs(now - start);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        if (diffDays < 30) return "New Joinee 🚀";
+        if (diffDays < 30) return <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>New Joinee <Rocket size={14} /></span>;
 
         const years = (diffDays / 365.25).toFixed(1);
         return `${years}y`;
@@ -77,7 +82,7 @@ const MyWorkLife = ({ userId, setActiveMenu }) => {
     return (
         <div className="work-life-page">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h1 className="card-title" style={{ fontSize: '1.75rem', margin: 0 }}>❤️ My Work Life</h1>
+                <h1 className="card-title" style={{ fontSize: '1.75rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Heart size={32} color="var(--primary)" fill="var(--primary)" /> My Work Life</h1>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <span style={{ background: '#e0e7ff', color: 'var(--primary)', padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold', border: '1px solid #c7d2fe' }}>
                         {profile?.position || 'Staff'}
@@ -120,7 +125,7 @@ const MyWorkLife = ({ userId, setActiveMenu }) => {
 
                 {/* Upload Section */}
                 <div className="card shadow-sm" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '1.5rem', textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '3rem' }}>📸</div>
+                    <div style={{ padding: '1rem', background: 'var(--bg-color)', borderRadius: '50%' }}><Camera size={48} color="var(--text-muted)" /></div>
                     <div>
                         <h2 className="card-title" style={{ marginBottom: '0.5rem' }}>Update ID Photo</h2>
                         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
@@ -129,7 +134,7 @@ const MyWorkLife = ({ userId, setActiveMenu }) => {
                         </p>
                     </div>
                     <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
-                        📤 Upload Photo
+                        <Upload size={18} /> Upload Photo
                         <input type="file" hidden onChange={handlePhotoUpload} accept="image/*" />
                     </label>
                 </div>
@@ -137,19 +142,19 @@ const MyWorkLife = ({ userId, setActiveMenu }) => {
 
             <div className="grid-3">
                 <div className="card shadow-sm" style={{ textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🏆</div>
+                    <div style={{ marginBottom: '1rem' }}><Trophy size={32} color="var(--secondary)" /></div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--secondary)' }}>150</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Reward Points</div>
                 </div>
                 <div className="card shadow-sm" style={{ textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📅</div>
+                    <div style={{ marginBottom: '1rem' }}><Calendar size={32} color="var(--primary)" /></div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>
                         {calculateTenure(profile?.joining_date)}
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Tenure</div>
                 </div>
                 <div className="card shadow-sm" style={{ textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⭐</div>
+                    <div style={{ marginBottom: '1rem' }}><Star size={32} color="var(--secondary)" fill="var(--secondary)" /></div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--secondary)' }}>4.8</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Avg. Rating</div>
                 </div>
@@ -159,7 +164,7 @@ const MyWorkLife = ({ userId, setActiveMenu }) => {
                     style={{ textAlign: 'center', cursor: 'pointer', border: '1px solid var(--primary)', background: '#f5f3ff' }}
                     onClick={() => setActiveMenu('items')}
                 >
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📦</div>
+                    <div style={{ marginBottom: '1rem' }}><Package size={32} color="var(--primary)" /></div>
                     <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--primary)' }}>Request Item</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Apply for equipment</div>
                 </div>
@@ -170,7 +175,7 @@ const MyWorkLife = ({ userId, setActiveMenu }) => {
                 <div className="card shadow-sm" style={{ marginTop: '2rem', border: '1px solid #bfdbfe', background: '#eff6ff' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                            <h2 className="card-title" style={{ margin: 0 }}>📄 Official Offer Letter</h2>
+                            <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={20} color="var(--primary)" /> Official Offer Letter</h2>
                             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Your official internship appointment letter is available for download.</p>
                         </div>
                         <button
@@ -178,14 +183,14 @@ const MyWorkLife = ({ userId, setActiveMenu }) => {
                             style={{ backgroundColor: 'var(--secondary)' }}
                             onClick={() => window.open(`${apiUrl}/employee/offer-letter?employee_id=${userId}`, '_blank')}
                         >
-                            ⬇️ Download PDF
+                            <Download size={18} /> Download PDF
                         </button>
                     </div>
                 </div>
             )}
 
             <div className="card" style={{ marginTop: '2rem' }}>
-                <h2 className="card-title">📈 Growth Journey</h2>
+                <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><TrendingUp size={24} color="var(--primary)" /> Growth Journey</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem' }}>

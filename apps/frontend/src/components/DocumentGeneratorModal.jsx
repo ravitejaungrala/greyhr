@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { 
+    Bot, X, Sparkles, Eye, 
+    CheckCircle2, FileText, Wand2, 
+    RefreshCw, CloudUpload 
+} from 'lucide-react';
 import { base64ToBlobUrl } from '../utils';
 
 const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, initialData }) => {
@@ -185,8 +190,8 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999, padding: '2rem' }}>
             <div className="card glass-panel" style={{ width: '100%', maxWidth: '1200px', height: '90vh', display: 'flex', flexDirection: 'column', padding: '0' }}>
                 <div style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h2 className="card-title" style={{ margin: 0 }}>🤖 AI {modalTitle}</h2>
-                    <button className="btn" onClick={onClose}>✕</button>
+                    <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Bot size={24} color="var(--primary)" /> AI {modalTitle}</h2>
+                    <button className="btn" onClick={onClose} style={{ display: 'flex' }}><X size={20} /></button>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', flex: 1, overflow: 'hidden' }}>
@@ -209,7 +214,7 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
                                 className="btn btn-primary"
                                 style={{ background: '#ff4500', width: '100%' }}
                             >
-                                {isExtracting ? 'Extracting...' : '✨ Auto-Fill with AI'}
+                                {isExtracting ? 'Extracting...' : <><Sparkles size={18} /> Auto-Fill with AI</>}
                             </button>
                         </div>
 
@@ -247,7 +252,7 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
                                     className="btn btn-secondary"
                                     style={{ background: '#ffffff', color: '#ff4500', borderColor: '#ff4500' }}
                                 >
-                                    {isPreviewing ? 'Loading Preview...' : '👁️ Refresh Preview'}
+                                    {isPreviewing ? 'Loading Preview...' : <><Eye size={18} /> Refresh Preview</>}
                                 </button>
                                 <button
                                     onClick={handleFinalize}
@@ -255,7 +260,7 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
                                     className="btn btn-primary"
                                     style={{ background: '#ff4500', borderColor: '#ff4500' }}
                                 >
-                                    {isFinalizing ? 'Finalizing...' : '✅ Send to S3 & Finalize'}
+                                    {isFinalizing ? 'Finalizing...' : <><CloudUpload size={18} /> Send to S3 & Finalize</>}
                                 </button>
                             </div>
                         </div>
@@ -268,7 +273,7 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
                                 />
                             ) : (
                                 <div style={{ color: '#000000', textAlign: 'center' }}>
-                                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📄</div>
+                                    <div style={{ marginBottom: '1rem' }}><FileText size={48} color="var(--text-muted)" /></div>
                                     Click "Refresh Preview" to generate document using current fields.
                                 </div>
                             )}

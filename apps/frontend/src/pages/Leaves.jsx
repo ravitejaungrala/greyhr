@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { 
+    Plane, RefreshCw, Bot, Info, 
+    CheckCircle2, Calendar, Clock, BarChart3,
+    History, Users, Sparkles
+} from 'lucide-react';
 import { API_URL } from '../config';
 
 const Leaves = ({ userId, user }) => {
@@ -121,7 +126,7 @@ const Leaves = ({ userId, user }) => {
         <div className="leaves-page">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: 0 }}>✈️ Leave Management</h1>
+                    <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Plane size={32} color="var(--primary)" /> Leave Management</h1>
                     <button 
                         onClick={() => { fetchBalance(); fetchRecentLeaves(); }}
                         className="btn-icon" 
@@ -139,7 +144,7 @@ const Leaves = ({ userId, user }) => {
                         }}
                         title="Sync Balance"
                     >
-                        🔄
+                        <RefreshCw size={16} />
                     </button>
                     {leaveData?.accrual_info?.last_sync && (
                         <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
@@ -163,13 +168,13 @@ const Leaves = ({ userId, user }) => {
                 {/* Leave Application Form */}
                 <div className="card" style={{ gridColumn: 'span 2', opacity: leaveData.is_intern ? 0.7 : 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                        <span style={{ fontSize: '1.5rem' }}>🤖</span>
+                        <Bot size={24} color="var(--primary)" />
                         <h2 className="card-title" style={{ marginBottom: 0 }}>Smart Leave Application</h2>
                     </div>
 
                     {leaveData.is_intern && leaveData.remaining <= 0 ? (
                         <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: 'rgba(200, 76, 255, 0.1)', border: '1px dashed var(--violet)', borderRadius: '8px' }}>
-                            <span style={{ fontSize: '2rem' }}>ℹ️</span>
+                            <Info size={32} color="var(--violet)" />
                             <p style={{ color: 'var(--violet)', fontWeight: 'bold', marginTop: '1rem' }}>Internship Policy Notice</p>
                             <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
                                 {leaveData.message || "Interns are not eligible for paid leaves. You can only apply for earned Compensatory Off."}
@@ -301,7 +306,7 @@ const Leaves = ({ userId, user }) => {
 
                     {status === 'submitted' && (
                         <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: 'rgba(255, 69, 0, 0.1)', border: '1px solid var(--secondary)', borderRadius: '8px' }}>
-                            <p style={{ color: 'var(--secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>✓ Submitted Pending Admin Approval</p>
+                            <p style={{ color: 'var(--secondary)', fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckCircle2 size={18} /> Submitted Pending Admin Approval</p>
                             <p style={{ fontSize: '0.875rem', color: 'var(--text-light)' }}>The AI Smart Leave Agent has reviewed your request and forwarded it to the Administrator Space.</p>
                         </div>
                     )}
@@ -309,7 +314,7 @@ const Leaves = ({ userId, user }) => {
 
                 {/* AI Leave Insights */}
                 <div className="card shadow-sm" style={{ borderColor: 'var(--border-color)', background: '#ffffff' }}>
-                    <h2 className="card-title">Team Availability</h2>
+                    <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Users size={20} /> Team Availability</h2>
                     <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
                         AI snapshot of your team's current availability.
                     </p>
@@ -377,7 +382,7 @@ const Leaves = ({ userId, user }) => {
 
                 <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                        <h2 className="card-title" style={{ marginBottom: 0 }}>Recent Applications & Status</h2>
+                        <h2 className="card-title" style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><History size={20} /> Recent Applications & Status</h2>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Real-time approval tracking</div>
                     </div>
                     
