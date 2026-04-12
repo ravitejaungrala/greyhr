@@ -1297,20 +1297,38 @@ def get_analytics_trend():
 
     trend_data = []
     for m_prefix in months:
+        # Calculate next month prefix for range queries
+        yr, mn = map(int, m_prefix.split("-"))
+        if mn == 12:
+            next_m = f"{yr+1}-01"
+        else:
+            next_m = f"{yr}-{mn+1:02d}"
+
         # 1. Joins
         joins = mongo_db.users.count_documents({
-            "onboarding_completed_at": {"$regex": f"^{m_prefix}"},
-            "status": "approved"
+            "status": "approved",
+            "$or": [
+                {"joining_date": {"$regex": f"^{m_prefix}"}},
+                {"onboarding_completed_at": {"$regex": f"^{m_prefix}"}}
+            ]
         })
         
         # 2. Exits
         exits = mongo_db.users.count_documents({
             "status": {"$in": ["separated", "inactive"]},
-            "deactivated_at": {"$regex": f"^{m_prefix}"}
+            "$or": [
+                {"separation_date": {"$regex": f"^{m_prefix}"}},
+                {"deactivated_at": {"$regex": f"^{m_prefix}"}}
+            ]
         })
 
-        # 3. Aggregation Data
-        total_emps = mongo_db.users.count_documents({"status": "approved"})
+        # 3. Aggregation Data (Historical Context)
+        # Use point-in-time total: those joined before the end of this month
+        total_emps = mongo_db.users.count_documents({
+            "status": "approved",
+            "joining_date": {"$lt": next_m}
+        })
+        
         avg_attendance = 0
         avg_absentees = 0
         leaves_vol = 0
@@ -1341,6 +1359,7 @@ def get_analytics_trend():
                     
                     present_count = len(emps_present)
                     on_leave_count = len(on_leave_distinct)
+                    # Use point-in-time total for this specific day (simplified to month total)
                     unaccounted = max(0, total_emps - (present_count + on_leave_count))
                     
                     attendance_vals.append((present_count / total_emps) * 100)
@@ -1349,7 +1368,7 @@ def get_analytics_trend():
                 avg_attendance = round(sum(attendance_vals) / len(attendance_vals), 1)
                 avg_absentees = round(sum(absentee_vals) / len(absentee_vals), 1)
 
-        # 4. Total Approved Leaves (Unique users who had at least one leave start this month)
+        # 4. Total Approved Leaves
         leaves_vol = mongo_db.leaves.count_documents({
             "status": {"$regex": "Approved"},
             "start_date": {"$regex": f"^{m_prefix}"}
@@ -1379,21 +1398,22 @@ def get_reports_summary():
             "average_engagement_score": 0
         }
     
-    today_str = datetime.datetime.utcnow().strftime('%Y-%m-%d')
+    # Use local time for "Today" to match user expectation
+    today_dt = datetime.datetime.now() # This will use server local time
+    today_str = today_dt.strftime('%Y-%m-%d')
     
     total_employees = mongo_db.users.count_documents({"status": "approved"})
     
     # Count distinct sign-ins today
     present_today = 0
     if mongo_db.attendance is not None:
-        # We look for unique employee_ids with sign_in actions today
+        # Crucial: distinct employee IDs who have signed in today
         present_today_list = mongo_db.attendance.distinct("employee_id", {
             "timestamp": {"$regex": f"^{today_str}"},
             "action": "sign_in"
         })
         present_today = len(present_today_list)
         
-    # Count distinct approved employees on leave for today
     on_leave = 0
     if mongo_db.db is not None:
         on_leave_list = mongo_db.leaves.distinct("employee_id", {
@@ -1476,7 +1496,9 @@ def get_monthly_salary_report(month_year: str):
             "gross_salary": salary_info["gross_salary"],
             "monthly_salary": salary_info["monthly_salary"],
             "lop_deduction": salary_info["lop_deduction"],
-            "net_salary": salary_info["net_salary"]
+            "net_salary": salary_info["net_salary"],
+            "bank_details": emp.get("bank_details", {}),
+            "pan_no": emp.get("pan_no", "")
         })
         
     return {"month_year": month_year, "report": report}

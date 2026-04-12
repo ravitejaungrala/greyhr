@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    Search, RefreshCw, Calendar, CheckCircle2, X, Plus, Trash2, Edit3, 
+import {
+    Search, RefreshCw, Calendar, CheckCircle2, X, Plus, Trash2, Edit3,
     Globe, Clock, BarChart3, FileText, Megaphone, AlertTriangle, UserPlus,
     ChevronLeft, ChevronRight, ShieldCheck, TrendingUp, ClipboardList, Users,
     TreePalm, Bell, Camera, Brain, Gift, CalendarDays, Settings, Rocket,
     Banknote, LogOut, FolderOpen, Sparkles, Building2, Package, BrainCircuit, Tag,
-    GraduationCap, ClipboardCheck, MoreVertical, UserMinus, Activity
+    GraduationCap, ClipboardCheck, MoreVertical, UserMinus, Activity, Mail
 } from 'lucide-react';
 import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, LineChart, Line, AreaChart, Area, Legend
 } from 'recharts';
 import { API_URL } from '../config';
@@ -139,15 +139,17 @@ const AdminDashboard = ({ activeTab, user }) => {
     const [salarySettings, setSalarySettings] = useState({ enable_tax: true, enable_pf: true, tax_rate: 8.0, pf_rate: 5.0 });
     const [isSavingSalarySettings, setIsSavingSalarySettings] = useState(false);
     const [overviewData, setOverviewData] = useState(null);
-    
+
     // Leave Management Filter States
     const [leaveFilterName, setLeaveFilterName] = useState('');
     const [leaveFilterType, setLeaveFilterType] = useState('All');
     const [leaveFilterDate, setLeaveFilterDate] = useState('');
     const [inspectingLeave, setInspectingLeave] = useState(null);
-    const [inspectingNotification, setInspectingNotification] = useState(null);
     const [inspectingEmpHistory, setInspectingEmpHistory] = useState(null);
     const [analyticsTrend, setAnalyticsTrend] = useState([]);
+    const [employeeSearch, setEmployeeSearch] = useState('');
+    const [salaryRowMenu, setSalaryRowMenu] = useState(null);
+    const [inspectingBankDetails, setInspectingBankDetails] = useState(null);
 
     // Holiday Fetch States
     const [fetchedHolidays, setFetchedHolidays] = useState([]);
@@ -351,7 +353,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(addEmpForm)
             });
-            
+
             if (!response.ok) {
                 const text = await response.text();
                 console.error("Create Employee Failed:", text);
@@ -365,14 +367,14 @@ const AdminDashboard = ({ activeTab, user }) => {
             } else {
                 alert(`Employee ${data.employee_id} created successfully!`);
                 setIsAddEmpModalOpen(false);
-                
+
                 if (shouldGenDoc) {
                     const isIntern = addEmpForm.employment_type === 'Intern';
                     setDocGenType(isIntern ? 'internship_offer' : 'full_time_offer');
-                    setDocGenEmployee({ 
-                        ...addEmpForm, 
+                    setDocGenEmployee({
+                        ...addEmpForm,
                         employee_id: data.employee_id,
-                        full_name: addEmpForm.name 
+                        full_name: addEmpForm.name
                     });
                     setDocGenInitialData({
                         emp_name: addEmpForm.name,
@@ -588,7 +590,7 @@ const AdminDashboard = ({ activeTab, user }) => {
         try {
             const url = editingHoliday ? `${apiUrl}/admin/holidays/${editingHoliday.originalDate}` : `${apiUrl}/admin/holidays`;
             const method = editingHoliday ? 'PUT' : 'POST';
-            
+
             const response = await fetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
@@ -732,7 +734,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                 date: h.date,
                 type: 'Public Holiday'
             }));
-        
+
         if (toAdd.length === 0) return;
 
         try {
@@ -741,7 +743,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(toAdd)
             });
-            
+
             if (res.ok) {
                 const data = await res.json();
                 alert(data.message || "Bulk holidays added successfully!");
@@ -766,7 +768,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                     <button onClick={() => setIsHolidayModalOpen(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem', borderRadius: '50%', transition: 'background 0.2s' }} onMouseEnter={e => e.target.style.background = '#f3f4f6'} onMouseLeave={e => e.target.style.background = 'none'}>
                         <X size={20} />
                     </button>
-                    
+
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
                         <div style={{ color: 'var(--secondary)', display: 'flex' }}>
                             <Calendar size={28} />
@@ -785,20 +787,20 @@ const AdminDashboard = ({ activeTab, user }) => {
                         {fetchedHolidays.map((h, i) => {
                             const isAlreadyAdded = holidays.some(exist => exist.date === h.date);
                             return (
-                                <div key={i} style={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'space-between', 
-                                    padding: '0.75rem 1rem', 
-                                    borderRadius: '8px', 
+                                <div key={i} style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '0.75rem 1rem',
+                                    borderRadius: '8px',
                                     border: '1px solid #f1f5f9',
                                     background: isAlreadyAdded ? '#f8fafc' : '#ffffff',
                                     opacity: isAlreadyAdded ? 0.7 : 1
                                 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={selectedHolidays.includes(h.date)} 
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedHolidays.includes(h.date)}
                                             disabled={isAlreadyAdded}
                                             onChange={(e) => {
                                                 if (e.target.checked) setSelectedHolidays([...selectedHolidays, h.date]);
@@ -819,9 +821,9 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem' }}>
                         <button onClick={() => setIsHolidayModalOpen(false)} className="btn btn-secondary">Cancel</button>
-                        <button 
-                            onClick={submitBulkHolidays} 
-                            className="btn btn-primary" 
+                        <button
+                            onClick={submitBulkHolidays}
+                            className="btn btn-primary"
                             style={{ background: 'var(--secondary)' }}
                             disabled={selectedHolidays.filter(d => !holidays.some(e => e.date === d)).length === 0}
                         >
@@ -829,16 +831,17 @@ const AdminDashboard = ({ activeTab, user }) => {
                     </div>
                 </div>
             </div>
-        )}
+        )
+    }
 
-    {/* Helper component for document thumbnails */}
+    {/* Helper component for document thumbnails */ }
     const DocThumbnail = ({ fileKey, title, apiUrl, setPreviewDoc, icon, bgColor, borderColor, textColor }) => {
         const [isPdf, setIsPdf] = useState(fileKey?.toLowerCase().endsWith('.pdf'));
         const [loadError, setLoadError] = useState(false);
 
         if (isPdf || loadError) {
             return (
-                <div 
+                <div
                     onClick={() => setPreviewDoc({ title, url: `${apiUrl}/admin/photos/${fileKey}`, isPDF: true })}
                     style={{ width: '100%', aspectRatio: '4/3', borderRadius: '12px', border: `1px solid ${borderColor}`, background: bgColor, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: '0.5rem' }}
                 >
@@ -861,7 +864,7 @@ const AdminDashboard = ({ activeTab, user }) => {
 
     const DocPreviewModal = ({ doc, onClose }) => {
         if (!doc) return null;
-        
+
         // Robust PDF detection: check extension OR if we've flagged it as PDF
         const isActuallyPDF = doc.url.toLowerCase().endsWith('.pdf') || doc.isPDF;
 
@@ -888,7 +891,7 @@ const AdminDashboard = ({ activeTab, user }) => {
             <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
                 <div className="card" style={{ backgroundColor: 'white', borderRadius: '12px', padding: '2rem', position: 'relative', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto', color: '#1f2937' }}>
                     <button onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', color: '#6b7280', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
-                    
+
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
                         <div style={{ color: 'var(--primary)' }}><TreePalm size={32} /></div>
                         <div>
@@ -931,7 +934,7 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
                         <div style={{ fontSize: '0.875rem' }}>
-                           Status: <span style={{ fontWeight: 'bold', color: leave.status.includes('Approved') ? '#22C55E' : leave.status.includes('Rejected') ? '#EF4444' : '#F59E0B' }}>{leave.status}</span>
+                            Status: <span style={{ fontWeight: 'bold', color: leave.status.includes('Approved') ? '#22C55E' : leave.status.includes('Rejected') ? '#EF4444' : '#F59E0B' }}>{leave.status}</span>
                         </div>
                         <div style={{ display: 'flex', gap: '0.75rem' }}>
                             {leave.status.includes('Pending') && (
@@ -947,38 +950,38 @@ const AdminDashboard = ({ activeTab, user }) => {
             </div>
         );
     };
-    
+
     const NotificationDetailModal = ({ employeeId, notifications, onClose }) => {
         if (!employeeId) return null;
-        
-        const empHistory = notifications.filter(n => n.employee_id === employeeId).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
+        const empHistory = notifications.filter(n => n.employee_id === employeeId).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         const employeeName = approvedEmployees.find(e => e.employee_id === employeeId)?.name || employeeId;
 
         return (
-            <div 
-                className="modal-overlay" 
-                style={{ 
-                    position: 'fixed', 
-                    inset: 0, 
-                    background: 'rgba(15, 23, 42, 0.8)', 
-                    backdropFilter: 'blur(16px)', 
-                    zIndex: 9999, 
-                    display: 'flex', 
-                    alignItems: 'center', 
+            <div
+                className="modal-overlay"
+                style={{
+                    position: 'fixed',
+                    inset: 0,
+                    background: 'rgba(15, 23, 42, 0.8)',
+                    backdropFilter: 'blur(16px)',
+                    zIndex: 9999,
+                    display: 'flex',
+                    alignItems: 'center',
                     justifyContent: 'center',
                     padding: '1.5rem'
                 }}
                 onClick={onClose}
             >
-                <div 
-                    className="modal-content animate-zoom-in" 
-                    style={{ 
-                        width: '100%', 
-                        maxWidth: '550px', 
+                <div
+                    className="modal-content animate-zoom-in"
+                    style={{
+                        width: '100%',
+                        maxWidth: '550px',
                         maxHeight: '85vh',
                         background: '#ffffff',
-                        borderRadius: '32px', 
-                        padding: '2.5rem', 
+                        borderRadius: '32px',
+                        padding: '2.5rem',
                         position: 'relative',
                         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
                         display: 'flex',
@@ -987,26 +990,26 @@ const AdminDashboard = ({ activeTab, user }) => {
                     }}
                     onClick={e => e.stopPropagation()}
                 >
-                    <button 
-                        onClick={onClose} 
-                        style={{ 
-                            position: 'absolute', 
-                            top: '1.5rem', 
-                            right: '1.5rem', 
-                            color: '#94a3b8', 
-                            background: '#f1f5f9', 
-                            border: 'none', 
-                            width: '32px', 
-                            height: '32px', 
+                    <button
+                        onClick={onClose}
+                        style={{
+                            position: 'absolute',
+                            top: '1.5rem',
+                            right: '1.5rem',
+                            color: '#94a3b8',
+                            background: '#f1f5f9',
+                            border: 'none',
+                            width: '32px',
+                            height: '32px',
                             borderRadius: '50%',
-                            display: 'flex', 
-                            alignItems: 'center', 
+                            display: 'flex',
+                            alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer',
                             zIndex: 10
                         }}
                     >✕</button>
-                    
+
                     <div style={{ marginBottom: '2rem' }}>
                         <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.02em' }}>Activity Timeline</h3>
                         <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontWeight: '600' }}>{employeeName} • {employeeId}</p>
@@ -1022,8 +1025,8 @@ const AdminDashboard = ({ activeTab, user }) => {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                 {(() => {
                                     const groups = empHistory.reduce((acc, n) => {
-                                        const date = new Date(n.created_at).toLocaleDateString('en-US', { 
-                                            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+                                        const date = new Date(n.created_at).toLocaleDateString('en-US', {
+                                            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
                                         });
                                         if (!acc[date]) acc[date] = [];
                                         acc[date].push(n);
@@ -1040,11 +1043,11 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 {items.map((n, idx) => (
                                                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                            <div style={{ 
-                                                                width: '8px', 
-                                                                height: '8px', 
-                                                                borderRadius: '50%', 
-                                                                backgroundColor: n.action ? (n.action === 'sign_in' ? '#22c55e' : '#f59e0b') : (n.message.toLowerCase().includes('signed in') ? '#22c55e' : '#f59e0b') 
+                                                            <div style={{
+                                                                width: '8px',
+                                                                height: '8px',
+                                                                borderRadius: '50%',
+                                                                backgroundColor: n.action ? (n.action === 'sign_in' ? '#22c55e' : '#f59e0b') : (n.message.toLowerCase().includes('signed in') ? '#22c55e' : '#f59e0b')
                                                             }}></div>
                                                             <div style={{ fontSize: '0.9rem', color: '#334155', fontWeight: '600' }}>
                                                                 {n.action ? (n.action === 'sign_in' ? 'Clocked In' : 'Clocked Out') : (n.message.toLowerCase().includes('signed in') ? 'Clocked In' : 'Clocked Out')}
@@ -1063,17 +1066,17 @@ const AdminDashboard = ({ activeTab, user }) => {
                         )}
                     </div>
 
-                    <button 
-                        onClick={onClose} 
-                        style={{ 
-                            width: '100%', 
-                            marginTop: '2rem', 
-                            padding: '1rem', 
-                            borderRadius: '20px', 
-                            background: '#0f172a', 
-                            color: 'white', 
-                            border: 'none', 
-                            fontWeight: '800', 
+                    <button
+                        onClick={onClose}
+                        style={{
+                            width: '100%',
+                            marginTop: '2rem',
+                            padding: '1rem',
+                            borderRadius: '20px',
+                            background: '#0f172a',
+                            color: 'white',
+                            border: 'none',
+                            fontWeight: '800',
                             cursor: 'pointer'
                         }}
                     >
@@ -1112,737 +1115,830 @@ const AdminDashboard = ({ activeTab, user }) => {
             </h1>
 
             {loading && <p style={{ color: '#000000', textAlign: 'center' }}>Loading data...</p>}
-
             {!loading && (
-                <div className="grid-3">
+                <>
+                    <div className="grid-3">
+                        {/* TAB: OVERVIEW */}
 
-                    {/* TAB: OVERVIEW */}
-                    {activeTab === 'overview' && overviewData && (
-                        <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                            <div className="grid-3" style={{ gap: '1rem' }}>
-                                {/* Stat Cards */}
-                                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', borderLeft: '4px solid #6366f1', padding: '1rem', cursor: 'pointer' }}>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Employees</div>
-                                    <div style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0.25rem 0', color: '#1f2937' }}>{overviewData.metrics.total_employees}</div>
-                                    <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Active workforce</div>
-                                </div>
-                                
-                                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', borderLeft: '4px solid #f59e0b', padding: '1rem', cursor: 'pointer' }}>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Pending Approvals</div>
-                                    <div style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0.25rem 0', color: '#1f2937' }}>{overviewData.metrics.pending_approvals}</div>
-                                    <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Onboarding candidates</div>
-                                </div>
+                        {activeTab === 'overview' && overviewData && (
+                            <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                                <div className="grid-3" style={{ gap: '1rem' }}>
+                                    {/* Stat Cards */}
+                                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', borderLeft: '4px solid #6366f1', padding: '1rem', cursor: 'pointer' }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Employees</div>
+                                        <div style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0.25rem 0', color: '#1f2937' }}>{overviewData.metrics.total_employees}</div>
+                                        <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Active workforce</div>
+                                    </div>
 
-                                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', borderLeft: '4px solid #ef4444', padding: '1rem', cursor: 'pointer' }}>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Leaves (Today)</div>
-                                    <div style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0.25rem 0', color: '#1f2937' }}>{overviewData.metrics.active_leaves_today}</div>
-                                    <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Out of office</div>
-                                </div>
-                            </div>
+                                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', borderLeft: '4px solid #f59e0b', padding: '1rem', cursor: 'pointer' }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Pending Approvals</div>
+                                        <div style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0.25rem 0', color: '#1f2937' }}>{overviewData.metrics.pending_approvals}</div>
+                                        <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Onboarding candidates</div>
+                                    </div>
 
-                            <div className="grid-2" style={{ gap: '1.5rem' }}>
-                                {/* Recent Activity */}
-                                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
-                                    <h2 className="card-title" style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <Bell size={20} /> Recent Activity
-                                    </h2>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-                                        {overviewData.recent_activity.map((act, i) => (
-                                            <div key={i} style={{ padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border-color)' }}>
-                                                <div>
-                                                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{act.name}</div>
-                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>ID: {act.employee_id}</div>
-                                                </div>
-                                                <span style={{ 
-                                                    fontSize: '0.65rem', 
-                                                    padding: '0.15rem 0.4rem', 
-                                                    borderRadius: '4px',
-                                                    background: act.status === 'approved' ? '#dcfce7' : '#fef3c7',
-                                                    color: act.status === 'approved' ? '#166534' : '#92400e',
-                                                    fontWeight: 600,
-                                                    textTransform: 'uppercase'
-                                                }}>
-                                                    {act.status}
-                                                </span>
-                                            </div>
-                                        ))}
+                                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', borderLeft: '4px solid #ef4444', padding: '1rem', cursor: 'pointer' }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Leaves (Today)</div>
+                                        <div style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0.25rem 0', color: '#1f2937' }}>{overviewData.metrics.active_leaves_today}</div>
+                                        <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Out of office</div>
                                     </div>
                                 </div>
 
-                                {/* Active Announcement */}
-                                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                                    <h2 className="card-title" style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <Megaphone size={20} /> Current Announcement
-                                    </h2>
-                                    {overviewData.announcement ? (
-                                        <div style={{ padding: '1rem', background: '#eff6ff', borderRadius: '12px', border: '1px solid #bfdbfe', borderLeft: '4px solid var(--primary)' }}>
-                                            <div style={{ fontWeight: 700, marginBottom: '0.5rem' }}>{overviewData.announcement.title}</div>
-                                            <p style={{ fontSize: '0.85rem', margin: 0 }}>{overviewData.announcement.content}</p>
+                                <div className="grid-2" style={{ gap: '1.5rem' }}>
+                                    {/* Recent Activity */}
+                                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
+                                        <h2 className="card-title" style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Bell size={20} /> Recent Activity
+                                        </h2>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                                            {overviewData.recent_activity.map((act, i) => (
+                                                <div key={i} style={{ padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border-color)' }}>
+                                                    <div>
+                                                        <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{act.name}</div>
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>ID: {act.employee_id}</div>
+                                                    </div>
+                                                    <span style={{
+                                                        fontSize: '0.65rem',
+                                                        padding: '0.15rem 0.4rem',
+                                                        borderRadius: '4px',
+                                                        background: act.status === 'approved' ? '#dcfce7' : '#fef3c7',
+                                                        color: act.status === 'approved' ? '#166534' : '#92400e',
+                                                        fontWeight: 600,
+                                                        textTransform: 'uppercase'
+                                                    }}>
+                                                        {act.status}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Active Announcement */}
+                                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
+                                        <h2 className="card-title" style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Megaphone size={20} /> Current Announcement
+                                        </h2>
+                                        {overviewData.announcement ? (
+                                            <div style={{ padding: '1rem', background: '#eff6ff', borderRadius: '12px', border: '1px solid #bfdbfe', borderLeft: '4px solid var(--primary)' }}>
+                                                <div style={{ fontWeight: 700, marginBottom: '0.5rem' }}>{overviewData.announcement.title}</div>
+                                                <p style={{ fontSize: '0.85rem', margin: 0 }}>{overviewData.announcement.content}</p>
+                                            </div>
+                                        ) : (
+                                            <p style={{ color: '#000000', fontSize: '0.85rem' }}>No active announcement.</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: INTELLIGENCE */}
+                        {activeTab === 'intelligence' && (
+                            <div style={{ gridColumn: 'span 3' }}>
+                                <IntelligenceAgent user={user} />
+                            </div>
+                        )}
+
+                        {/* TAB: ONBOARDING */}
+                        {activeTab === 'onboarding' && (
+                            <>
+                                <div className="card shadow-sm" style={{ gridColumn: 'span 1', background: '#ffffff', border: '1px solid var(--border-color)' }}>
+                                    <h2 className="card-title" style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Pending ({pendingEmployees.length})</h2>
+                                    {pendingEmployees.length === 0 ? (
+                                        <div style={{ padding: '3rem 1.5rem', textAlign: 'center', backgroundColor: '#f0f9ff', borderRadius: '20px', border: '1px dashed var(--primary)' }}>
+                                            <div style={{ color: 'var(--primary)', marginBottom: '1rem' }}>
+                                                <CheckCircle2 size={40} />
+                                            </div>
+                                            <p style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.9rem' }}>Workflow Complete</p>
+                                            <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.25rem' }}>All profiles have been reviewed.</p>
                                         </div>
                                     ) : (
-                                        <p style={{ color: '#000000', fontSize: '0.85rem' }}>No active announcement.</p>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '600px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                                            {pendingEmployees.map(emp => (
+                                                <div
+                                                    key={emp.employee_id}
+                                                    onClick={() => setViewedEmp(emp)}
+                                                    style={{
+                                                        padding: '1.25rem',
+                                                        backgroundColor: viewedEmp?.employee_id === emp.employee_id ? '#eff6ff' : '#ffffff',
+                                                        border: `1px solid ${viewedEmp?.employee_id === emp.employee_id ? 'var(--primary)' : 'var(--border-color)'}`,
+                                                        borderRadius: '16px',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                        transform: viewedEmp?.employee_id === emp.employee_id ? 'translateX(4px)' : 'none'
+                                                    }}
+                                                >
+                                                    <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-light)' }}>{emp.name}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>ID: {emp.employee_id}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="card shadow-lg" style={{ gridColumn: 'span 2', background: '#ffffff', border: '1px solid var(--border-color)' }}>
+                                    <h2 className="card-title" style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Review Profile</h2>
+                                    {viewedEmp ? (
+                                        <div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2.5rem', marginBottom: '2.5rem' }}>
+                                                <div>
+                                                    <h3 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Personal Information</h3>
+                                                    <div style={{ display: 'grid', gap: '1rem' }}>
+                                                        <div style={{ fontSize: '0.9rem' }}><strong>Full Name:</strong> <span style={{ color: 'var(--text-light)' }}>{viewedEmp.name}</span></div>
+                                                        <div style={{ fontSize: '0.9rem' }}><strong>Email Address:</strong> <span style={{ color: 'var(--text-light)' }}>{viewedEmp.email}</span></div>
+                                                        <div style={{ fontSize: '0.9rem' }}><strong>Birth Date:</strong> <span style={{ color: 'var(--text-light)' }}>{viewedEmp.dob}</span></div>
+                                                    </div>
+
+                                                    <h3 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem', marginTop: '2rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Professional Background</h3>
+                                                    {viewedEmp.is_experienced ? (
+                                                        <div style={{ display: 'grid', gap: '0.75rem', padding: '1.25rem', background: 'var(--bg-color)', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+                                                            <div style={{ fontSize: '0.85rem' }}><strong>Previous Employer:</strong> {viewedEmp.experience?.prev_company}</div>
+                                                            <div style={{ fontSize: '0.85rem' }}><strong>Last Designation:</strong> {viewedEmp.experience?.prev_role}</div>
+                                                            <div style={{ fontSize: '0.85rem' }}><strong>Experience:</strong> {viewedEmp.experience?.years} Years</div>
+                                                        </div>
+                                                    ) : <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', padding: '1rem', background: 'var(--bg-color)', borderRadius: '12px', textAlign: 'center' }}>Fresher Candidate</div>}
+                                                </div>
+                                                <div>
+                                                    <h3 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Identity & Verifications</h3>
+
+                                                    <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 600 }}>Biometric Face Capture</div>
+                                                        <img
+                                                            src={`${apiUrl}/admin/photos/${viewedEmp.reference_image_key}`}
+                                                            alt="Face"
+                                                            style={{ width: '140px', height: '140px', borderRadius: '24px', objectFit: 'cover', border: '3px solid white', boxShadow: '0 8px 24px rgba(0,0,0,0.1)', background: '#fff' }}
+                                                            onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
+                                                        />
+                                                    </div>
+
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                                        <div className="doc-preview-thumb">
+                                                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Bank Record</div>
+                                                            <DocThumbnail
+                                                                fileKey={viewedEmp.bank_details?.bank_photo_key}
+                                                                title="Bank Document"
+                                                                apiUrl={apiUrl}
+                                                                setPreviewDoc={setPreviewDoc}
+                                                                icon={<FileText size={24} color="#ea580c" />}
+                                                                bgColor="#fff7ed"
+                                                                borderColor="#fed7aa"
+                                                                textColor="#ea580c"
+                                                            />
+                                                        </div>
+                                                        <div className="doc-preview-thumb">
+                                                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Education Qual.</div>
+                                                            <DocThumbnail
+                                                                fileKey={viewedEmp.education?.cert_key}
+                                                                title="Education Certificate"
+                                                                apiUrl={apiUrl}
+                                                                setPreviewDoc={setPreviewDoc}
+                                                                icon={<GraduationCap size={24} color="#0284c7" />}
+                                                                bgColor="#f0f9ff"
+                                                                borderColor="#e0f2fe"
+                                                                textColor="#0284c7"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ backgroundColor: '#f0f9ff', padding: '2rem', borderRadius: '24px', border: '1px solid #bfdbfe', marginBottom: '2rem' }}>
+                                                <h3 style={{ fontSize: '1rem', color: 'var(--primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 800 }}>
+                                                    <Settings size={20} /> Administrative Setup
+                                                </h3>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Employment Type</label>
+                                                        <select
+                                                            value={empRoleSetup.employment_type}
+                                                            onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, employment_type: e.target.value })}
+                                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)', fontWeight: 600 }}
+                                                        >
+                                                            <option value="Full-Time">Full-Time (Employee)</option>
+                                                            <option value="Intern">Internship (Contract)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Designation / Position</label>
+                                                        <input
+                                                            type="text"
+                                                            value={empRoleSetup.position}
+                                                            onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, position: e.target.value })}
+                                                            placeholder="e.g. Frontend Developer"
+                                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
+                                                        />
+                                                    </div>
+                                                    {empRoleSetup.employment_type === 'Intern' && (
+                                                        <div style={{ gridColumn: 'span 2' }}>
+                                                            <label style={{ fontSize: '0.75rem', color: 'var(--primary)', display: 'block', marginBottom: '0.5rem', fontWeight: 700 }}>Internship Maturity Date</label>
+                                                            <input
+                                                                type="date"
+                                                                value={empRoleSetup.internship_end_date}
+                                                                onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, internship_end_date: e.target.value })}
+                                                                style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--primary)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    <div style={{ gridColumn: 'span 2' }}>
+                                                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>In-hand Take Home (₹) - Priority</label>
+                                                        <input
+                                                            type="number"
+                                                            value={empRoleSetup.in_hand_salary}
+                                                            onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, in_hand_salary: e.target.value })}
+                                                            style={{ width: '100%', padding: '1rem', borderRadius: '16px', border: '2px solid var(--primary)', background: 'var(--bg-color)', color: 'var(--primary)', fontWeight: 800, fontSize: '1.25rem' }}
+                                                        />
+                                                    </div>
+                                                    {isSuperAdmin && (
+                                                        <div style={{ gridColumn: 'span 2' }}>
+                                                            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Platform Role Allocation</label>
+                                                            <select
+                                                                value={empRoleSetup.role}
+                                                                onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, role: e.target.value })}
+                                                                style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--primary)', background: 'var(--bg-color)', color: 'var(--text-light)', fontWeight: 600 }}
+                                                            >
+                                                                <option value="employee">Standard Employee</option>
+                                                                <option value="admin">System Administrator</option>
+                                                                <option value="hr">HR Personnel</option>
+                                                            </select>
+                                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontStyle: 'italic' }}>* Elevated permissions should only be granted to authorized stakeholders.</div>
+                                                        </div>
+                                                    )}
+
+                                                    <div style={{ gridColumn: 'span 2', marginTop: '1rem' }}>
+                                                        <label style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 800, display: 'block', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Gift size={16} /> Leave Accrual Engine (days/mo)</label>
+                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.25rem' }}>
+                                                            <div>
+                                                                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontWeight: 700 }}>Privilege</label>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.1"
+                                                                    disabled={empRoleSetup.employment_type === 'Intern'}
+                                                                    value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.privilege_leave_rate}
+                                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, privilege_leave_rate: e.target.value })}
+                                                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)', opacity: empRoleSetup.employment_type === 'Intern' ? 0.4 : 1 }}
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontWeight: 700 }}>Sick</label>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.1"
+                                                                    disabled={empRoleSetup.employment_type === 'Intern'}
+                                                                    value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.sick_leave_rate}
+                                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, sick_leave_rate: e.target.value })}
+                                                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)', opacity: empRoleSetup.employment_type === 'Intern' ? 0.4 : 1 }}
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontWeight: 700 }}>Casual</label>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.1"
+                                                                    disabled={empRoleSetup.employment_type === 'Intern'}
+                                                                    value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.casual_leave_rate}
+                                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, casual_leave_rate: e.target.value })}
+                                                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)', opacity: empRoleSetup.employment_type === 'Intern' ? 0.4 : 1 }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div style={{ gridColumn: 'span 2' }}>
+                                                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>PAN Number</label>
+                                                        <input
+                                                            type="text"
+                                                            value={empRoleSetup.pan_no}
+                                                            onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pan_no: e.target.value })}
+                                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
+                                                        />
+                                                    </div>
+                                                    <div style={{ gridColumn: 'span 2' }}>
+                                                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>PF Number</label>
+                                                        <input
+                                                            type="text"
+                                                            value={empRoleSetup.pf_no}
+                                                            onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_no: e.target.value })}
+                                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Bank Name</label>
+                                                        <input
+                                                            type="text"
+                                                            value={empRoleSetup.bank_name}
+                                                            onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_name: e.target.value })}
+                                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Recipient Account No.</label>
+                                                        <input
+                                                            type="text"
+                                                            value={empRoleSetup.bank_account}
+                                                            onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_account: e.target.value })}
+                                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Fixed Tax Deduction (%)</label>
+                                                        <input
+                                                            type="number"
+                                                            step="0.1"
+                                                            value={empRoleSetup.tax_deduction_rate}
+                                                            onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, tax_deduction_rate: e.target.value })}
+                                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Fixed PF Deduction (%)</label>
+                                                        <input
+                                                            type="number"
+                                                            step="0.1"
+                                                            value={empRoleSetup.pf_deduction_rate}
+                                                            onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_deduction_rate: e.target.value })}
+                                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem', flexWrap: 'wrap' }}>
+                                                <button onClick={() => handleApproval(viewedEmp.employee_id, 'reject')} className="btn btn-secondary" style={{ color: '#EF4444', borderColor: '#EF4444' }}>Reject Application</button>
+
+                                                <button
+                                                    onClick={() => {
+                                                        const isIntern = empRoleSetup.employment_type === 'Intern';
+                                                        setDocGenType(isIntern ? 'internship_offer' : 'full_time_offer');
+                                                        setDocGenEmployee(viewedEmp);
+                                                        setDocGenInitialData({
+                                                            emp_name: viewedEmp.name,
+                                                            employee_id: viewedEmp.employee_id,
+                                                            designation: empRoleSetup.position || (isIntern ? 'Full Stack Intern' : 'Software Engineer'),
+                                                            role: empRoleSetup.position || 'Full Stack Intern',
+                                                            doj: new Date().toISOString().split('T')[0],
+                                                            date: new Date().toISOString().split('T')[0],
+                                                            offer_date: new Date().toISOString().split('T')[0],
+                                                            total_ctc_annual: empRoleSetup.monthly_salary ? empRoleSetup.monthly_salary * 12 : 0,
+                                                            fixed_ctc_annual: empRoleSetup.monthly_salary ? empRoleSetup.monthly_salary * 12 : 0,
+                                                            inhand_amount: empRoleSetup.monthly_salary || 0,
+                                                            annual_basic: empRoleSetup.monthly_salary ? Math.round((empRoleSetup.monthly_salary * 12) * 0.4) : 0,
+                                                            monthly_basic: empRoleSetup.monthly_salary ? Math.round(empRoleSetup.monthly_salary * 0.4) : 0
+                                                        });
+                                                        setIsDocGenModalOpen(true);
+                                                    }}
+                                                    className="btn btn-secondary"
+                                                    style={{ color: '#ff7a00', borderColor: '#ff7a00', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                                >
+                                                    <Sparkles size={16} /> AI Generate Offer Letter
+                                                </button>
+
+                                                <button onClick={() => handleApproval(viewedEmp.employee_id, 'approve')} className="btn btn-primary" style={{ backgroundColor: '#ff4500', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckCircle2 size={18} /> Approve Onboarding (No Offer Letter Needed)</button>
+                                            </div>
+                                            <div style={{ fontSize: '0.75rem', color: '#000000', marginTop: '0.5rem' }}>* You can approve an application immediately without generating an offer letter.</div>
+                                        </div>
+                                    ) : <div style={{ color: '#000000', textAlign: 'center' }}>Select an employee to review.</div>}
+                                </div>
+                            </>
+                        )}
+
+                        {/* TAB: EMPLOYEES */}
+                        {activeTab === 'employees' && (
+                            <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                                {/* Premium Directory Header */}
+                                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.5rem', borderRadius: '20px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
+                                        <div>
+                                            <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                <Users size={28} color="#ff4500" /> Employee Directory
+                                                <span style={{ fontSize: '1rem', fontWeight: '500', color: '#64748b', background: '#f1f5f9', padding: '0.2rem 0.75rem', borderRadius: '20px', marginLeft: '0.5rem' }}>
+                                                    {approvedEmployees.length}
+                                                </span>
+                                            </h2>
+                                            <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '0.25rem' }}>Manage your workforce and professional documents.</p>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '1rem', flex: 1, justifyContent: 'flex-end', minWidth: '300px' }}>
+                                            <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+                                                <Search style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} size={20} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search by name or ID..."
+                                                    value={employeeSearch}
+                                                    onChange={(e) => setEmployeeSearch(e.target.value)}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '0.875rem 1rem 0.875rem 3rem',
+                                                        borderRadius: '15px',
+                                                        border: '1px solid #e2e8f0',
+                                                        background: '#f8fafc',
+                                                        fontSize: '0.9rem',
+                                                        outline: 'none',
+                                                        transition: 'all 0.3s'
+                                                    }}
+                                                    onFocus={(e) => { e.target.style.background = '#ffffff'; e.target.style.borderColor = '#ff4500'; e.target.style.boxShadow = '0 0 0 4px rgba(255, 69, 0, 0.1)'; }}
+                                                    onBlur={(e) => { e.target.style.background = '#f8fafc'; e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none'; }}
+                                                />
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                                <button
+                                                    onClick={() => setIsAddEmpModalOpen(true)}
+                                                    className="btn btn-primary"
+                                                    style={{ background: 'linear-gradient(135deg, #ff4500 0%, #e63e00 100%)', border: 'none', borderRadius: '12px', padding: '0 1.5rem', fontWeight: '700' }}
+                                                >
+                                                    <Plus size={18} /> Add
+                                                </button>
+                                                <button
+                                                    onClick={() => setIsEnhancedDocGenOpen(true)}
+                                                    className="btn btn-secondary"
+                                                    style={{ background: '#ffffff', border: '2px solid #6366f1', color: '#6366f1', borderRadius: '12px', padding: '0 1.5rem', fontWeight: '700' }}
+                                                >
+                                                    <Sparkles size={18} /> Docs
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Employee Grid */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                                    {approvedEmployees
+                                        .filter(emp =>
+                                            emp.name.toLowerCase().includes(employeeSearch.toLowerCase()) ||
+                                            emp.employee_id.toLowerCase().includes(employeeSearch.toLowerCase())
+                                        )
+                                        .map(emp => (
+                                            <div
+                                                key={emp.employee_id}
+                                                className="card shadow-sm profile-card"
+                                                onClick={() => {
+                                                    setSelectedApprovedEmp(emp);
+                                                    setEmpRoleSetup({
+                                                        employment_type: emp.employment_type || 'Full-Time',
+                                                        position: emp.position || 'Software Engineer',
+                                                        monthly_salary: emp.monthly_salary || 0,
+                                                        privilege_leave_rate: emp.privilege_leave_rate || 0,
+                                                        sick_leave_rate: emp.sick_leave_rate || 0.5,
+                                                        casual_leave_rate: emp.casual_leave_rate || 1.0,
+                                                        role: emp.role || 'employee',
+                                                        in_hand_salary: emp.in_hand_salary || 0,
+                                                        pan_no: emp.pan_no || '',
+                                                        pf_no: emp.pf_no || '',
+                                                        bank_name: emp.bank_details?.bank_name || '',
+                                                        bank_account: emp.bank_details?.account_number || '',
+                                                        tax_deduction_rate: emp.tax_deduction_rate || 0,
+                                                        pf_deduction_rate: emp.pf_deduction_rate || 0
+                                                    });
+                                                }}
+                                                style={{
+                                                    background: '#ffffff',
+                                                    border: '1px solid var(--border-color)',
+                                                    borderRadius: '24px',
+                                                    padding: '2rem',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.3s ease',
+                                                    position: 'relative',
+                                                    overflow: 'hidden'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.transform = 'translateY(-8px)';
+                                                    e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
+                                                    e.currentTarget.style.borderColor = '#ff4500';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.transform = 'translateY(0)';
+                                                    e.currentTarget.style.boxShadow = 'none';
+                                                    e.currentTarget.style.borderColor = 'var(--border-color)';
+                                                }}
+                                            >
+                                                <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem' }}>
+                                                    <span style={{
+                                                        background: '#ecfdf5',
+                                                        color: '#10b981',
+                                                        padding: '0.35rem 0.75rem',
+                                                        borderRadius: '20px',
+                                                        fontSize: '0.7rem',
+                                                        fontWeight: '800',
+                                                        textTransform: 'uppercase',
+                                                        letterSpacing: '0.05em',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.35rem'
+                                                    }}>
+                                                        <div style={{ width: '6px', height: '6px', background: '#10b981', borderRadius: '50%' }}></div>
+                                                        Active
+                                                    </span>
+                                                </div>
+
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                                                    <div style={{ position: 'relative', marginBottom: '1.25rem' }}>
+                                                        <div style={{
+                                                            position: 'absolute',
+                                                            inset: '-4px',
+                                                            background: 'linear-gradient(135deg, #ff4500 0%, #ff8c00 100%)',
+                                                            borderRadius: '50%',
+                                                            opacity: 0.15
+                                                        }}></div>
+                                                        <img
+                                                            src={emp.id_card_photo_key ? `${apiUrl}/admin/photos/${emp.id_card_photo_key}` : (emp.reference_image_key ? `${apiUrl}/admin/photos/${emp.reference_image_key}` : PLACEHOLDER_IMAGE)}
+                                                            alt=""
+                                                            style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #ffffff', position: 'relative', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                                                            onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
+                                                        />
+                                                    </div>
+                                                    <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800', color: '#1e293b' }}>{emp.name}</h3>
+                                                    <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.25rem', fontFamily: 'monospace', background: '#f1f5f9', padding: '0.1rem 0.5rem', borderRadius: '6px' }}>{emp.employee_id}</div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', color: '#64748b', fontSize: '0.8rem' }}>
+                                                        <Mail size={14} /> {emp.email}
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '2rem', borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem', justifyContent: 'center' }}>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setPreviewDoc({ title: 'Bank Details', url: `${apiUrl}/admin/photos/${emp.bank_details?.bank_photo_key}` }); }}
+                                                        className="card shadow-sm"
+                                                        style={{ border: 'none', padding: '0.75rem', borderRadius: '12px', background: '#f8fafc', color: '#64748b', display: 'flex', transition: 'all 0.2s' }}
+                                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.color = '#3b82f6'; }}
+                                                        onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}
+                                                        title="View Bank Profile"
+                                                    >
+                                                        <Building2 size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setPreviewDoc({ title: 'Education Cert', url: `${apiUrl}/admin/photos/${emp.education?.cert_key}` }); }}
+                                                        className="card shadow-sm"
+                                                        style={{ border: 'none', padding: '0.75rem', borderRadius: '12px', background: '#f8fafc', color: '#64748b', display: 'flex', transition: 'all 0.2s' }}
+                                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#ef4444'; }}
+                                                        onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}
+                                                        title="View Academic Profile"
+                                                    >
+                                                        <GraduationCap size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); window.location.href = `mailto:${emp.email}`; }}
+                                                        className="card shadow-sm"
+                                                        style={{ border: 'none', padding: '0.75rem', borderRadius: '12px', background: '#f8fafc', color: '#64748b', display: 'flex', transition: 'all 0.2s' }}
+                                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#f0fdf4'; e.currentTarget.style.color = '#22c55e'; }}
+                                                        onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}
+                                                        title="Send Quick Email"
+                                                    >
+                                                        <Mail size={18} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    {approvedEmployees.length === 0 && (
+                                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '5rem', background: '#ffffff', borderRadius: '24px', border: '2px dashed #e2e8f0' }}>
+                                            <Users size={48} color="#94a3b8" style={{ marginBottom: '1rem' }} />
+                                            <h3 style={{ color: '#64748b', margin: 0 }}>No employees found in the directory.</h3>
+                                            <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Add a new employee to get started.</p>
+                                        </div>
                                     )}
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {/* TAB: INTELLIGENCE */}
-                    {activeTab === 'intelligence' && (
-                        <div style={{ gridColumn: 'span 3' }}>
-                            <IntelligenceAgent user={user} />
-                        </div>
-                    )}
-
-                    {/* TAB: ONBOARDING */}
-                    {activeTab === 'onboarding' && (
-                        <>
-                            <div className="card shadow-sm" style={{ gridColumn: 'span 1', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                                <h2 className="card-title" style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Pending ({pendingEmployees.length})</h2>
-                                {pendingEmployees.length === 0 ? (
-                                    <div style={{ padding: '3rem 1.5rem', textAlign: 'center', backgroundColor: '#f0f9ff', borderRadius: '20px', border: '1px dashed var(--primary)' }}>
-                                         <div style={{ color: 'var(--primary)', marginBottom: '1rem' }}>
-                                             <CheckCircle2 size={40} />
-                                         </div>
-                                        <p style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.9rem' }}>Workflow Complete</p>
-                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.25rem' }}>All profiles have been reviewed.</p>
-                                    </div>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '600px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-                                        {pendingEmployees.map(emp => (
-                                            <div 
-                                                key={emp.employee_id} 
-                                                onClick={() => setViewedEmp(emp)} 
-                                                style={{ 
-                                                    padding: '1.25rem', 
-                                                    backgroundColor: viewedEmp?.employee_id === emp.employee_id ? '#eff6ff' : '#ffffff', 
-                                                    border: `1px solid ${viewedEmp?.employee_id === emp.employee_id ? 'var(--primary)' : 'var(--border-color)'}`, 
-                                                    borderRadius: '16px', 
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                    transform: viewedEmp?.employee_id === emp.employee_id ? 'translateX(4px)' : 'none'
-                                                }}
-                                            >
-                                                <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-light)' }}>{emp.name}</div>
-                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>ID: {emp.employee_id}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="card shadow-lg" style={{ gridColumn: 'span 2', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                                <h2 className="card-title" style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Review Profile</h2>
-                                {viewedEmp ? (
-                                    <div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2.5rem', marginBottom: '2.5rem' }}>
-                                            <div>
-                                                <h3 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Personal Information</h3>
-                                                <div style={{ display: 'grid', gap: '1rem' }}>
-                                                    <div style={{ fontSize: '0.9rem' }}><strong>Full Name:</strong> <span style={{ color: 'var(--text-light)' }}>{viewedEmp.name}</span></div>
-                                                    <div style={{ fontSize: '0.9rem' }}><strong>Email Address:</strong> <span style={{ color: 'var(--text-light)' }}>{viewedEmp.email}</span></div>
-                                                    <div style={{ fontSize: '0.9rem' }}><strong>Birth Date:</strong> <span style={{ color: 'var(--text-light)' }}>{viewedEmp.dob}</span></div>
-                                                </div>
-
-                                                <h3 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem', marginTop: '2rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Professional Background</h3>
-                                                {viewedEmp.is_experienced ? (
-                                                    <div style={{ display: 'grid', gap: '0.75rem', padding: '1.25rem', background: 'var(--bg-color)', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
-                                                        <div style={{ fontSize: '0.85rem' }}><strong>Previous Employer:</strong> {viewedEmp.experience?.prev_company}</div>
-                                                        <div style={{ fontSize: '0.85rem' }}><strong>Last Designation:</strong> {viewedEmp.experience?.prev_role}</div>
-                                                        <div style={{ fontSize: '0.85rem' }}><strong>Experience:</strong> {viewedEmp.experience?.years} Years</div>
-                                                    </div>
-                                                ) : <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', padding: '1rem', background: 'var(--bg-color)', borderRadius: '12px', textAlign: 'center' }}>Fresher Candidate</div>}
-                                            </div>
-                                            <div>
-                                                <h3 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Identity & Verifications</h3>
-
-                                                <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
-                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 600 }}>Biometric Face Capture</div>
-                                                    <img
-                                                        src={`${apiUrl}/admin/photos/${viewedEmp.reference_image_key}`}
-                                                        alt="Face"
-                                                        style={{ width: '140px', height: '140px', borderRadius: '24px', objectFit: 'cover', border: '3px solid white', boxShadow: '0 8px 24px rgba(0,0,0,0.1)', background: '#fff' }}
-                                                        onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
-                                                    />
-                                                </div>
-
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                                    <div className="doc-preview-thumb">
-                                                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Bank Record</div>
-                                                        <DocThumbnail 
-                                                            fileKey={viewedEmp.bank_details?.bank_photo_key}
-                                                            title="Bank Document"
-                                                            apiUrl={apiUrl}
-                                                            setPreviewDoc={setPreviewDoc}
-                                                            icon={<FileText size={24} color="#ea580c" />}
-                                                            bgColor="#fff7ed"
-                                                            borderColor="#fed7aa"
-                                                            textColor="#ea580c"
-                                                        />
-                                                    </div>
-                                                    <div className="doc-preview-thumb">
-                                                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Education Qual.</div>
-                                                        <DocThumbnail 
-                                                            fileKey={viewedEmp.education?.cert_key}
-                                                            title="Education Certificate"
-                                                            apiUrl={apiUrl}
-                                                            setPreviewDoc={setPreviewDoc}
-                                                            icon={<GraduationCap size={24} color="#0284c7" />}
-                                                            bgColor="#f0f9ff"
-                                                            borderColor="#e0f2fe"
-                                                            textColor="#0284c7"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div style={{ backgroundColor: '#f0f9ff', padding: '2rem', borderRadius: '24px', border: '1px solid #bfdbfe', marginBottom: '2rem' }}>
-                                             <h3 style={{ fontSize: '1rem', color: 'var(--primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 800 }}>
-                                                 <Settings size={20} /> Administrative Setup
-                                             </h3>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-                                                <div>
-                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Employment Type</label>
-                                                    <select
-                                                        value={empRoleSetup.employment_type}
-                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, employment_type: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)', fontWeight: 600 }}
-                                                    >
-                                                        <option value="Full-Time">Full-Time (Employee)</option>
-                                                        <option value="Intern">Internship (Contract)</option>
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Designation / Position</label>
-                                                    <input
-                                                        type="text"
-                                                        value={empRoleSetup.position}
-                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, position: e.target.value })}
-                                                        placeholder="e.g. Frontend Developer"
-                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
-                                                    />
-                                                </div>
-                                                {empRoleSetup.employment_type === 'Intern' && (
-                                                    <div style={{ gridColumn: 'span 2' }}>
-                                                        <label style={{ fontSize: '0.75rem', color: 'var(--primary)', display: 'block', marginBottom: '0.5rem', fontWeight: 700 }}>Internship Maturity Date</label>
-                                                        <input
-                                                            type="date"
-                                                            value={empRoleSetup.internship_end_date}
-                                                            onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, internship_end_date: e.target.value })}
-                                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--primary)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
-                                                        />
-                                                    </div>
-                                                )}
-                                                <div style={{ gridColumn: 'span 2' }}>
-                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>In-hand Take Home (₹) - Priority</label>
-                                                    <input
-                                                        type="number"
-                                                        value={empRoleSetup.in_hand_salary}
-                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, in_hand_salary: e.target.value })}
-                                                        style={{ width: '100%', padding: '1rem', borderRadius: '16px', border: '2px solid var(--primary)', background: 'var(--bg-color)', color: 'var(--primary)', fontWeight: 800, fontSize: '1.25rem' }}
-                                                    />
-                                                </div>
-                                                {isSuperAdmin && (
-                                                    <div style={{ gridColumn: 'span 2' }}>
-                                                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Platform Role Allocation</label>
-                                                        <select
-                                                            value={empRoleSetup.role}
-                                                            onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, role: e.target.value })}
-                                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--primary)', background: 'var(--bg-color)', color: 'var(--text-light)', fontWeight: 600 }}
-                                                        >
-                                                            <option value="employee">Standard Employee</option>
-                                                            <option value="admin">System Administrator</option>
-                                                            <option value="hr">HR Personnel</option>
-                                                        </select>
-                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontStyle: 'italic' }}>* Elevated permissions should only be granted to authorized stakeholders.</div>
-                                                    </div>
-                                                )}
-
-                                                <div style={{ gridColumn: 'span 2', marginTop: '1rem' }}>
-                                                     <label style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 800, display: 'block', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Gift size={16} /> Leave Accrual Engine (days/mo)</label>
-                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.25rem' }}>
-                                                        <div>
-                                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontWeight: 700 }}>Privilege</label>
-                                                            <input
-                                                                type="number"
-                                                                step="0.1"
-                                                                disabled={empRoleSetup.employment_type === 'Intern'}
-                                                                value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.privilege_leave_rate}
-                                                                onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, privilege_leave_rate: e.target.value })}
-                                                                style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)', opacity: empRoleSetup.employment_type === 'Intern' ? 0.4 : 1 }}
-                                                            />
-                                                        </div>
-                                                        <div>
-                                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontWeight: 700 }}>Sick</label>
-                                                            <input
-                                                                type="number"
-                                                                step="0.1"
-                                                                disabled={empRoleSetup.employment_type === 'Intern'}
-                                                                value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.sick_leave_rate}
-                                                                onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, sick_leave_rate: e.target.value })}
-                                                                style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)', opacity: empRoleSetup.employment_type === 'Intern' ? 0.4 : 1 }}
-                                                            />
-                                                        </div>
-                                                        <div>
-                                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontWeight: 700 }}>Casual</label>
-                                                            <input
-                                                                type="number"
-                                                                step="0.1"
-                                                                disabled={empRoleSetup.employment_type === 'Intern'}
-                                                                value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.casual_leave_rate}
-                                                                onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, casual_leave_rate: e.target.value })}
-                                                                style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)', opacity: empRoleSetup.employment_type === 'Intern' ? 0.4 : 1 }}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div style={{ gridColumn: 'span 2' }}>
-                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>PAN Number</label>
-                                                    <input
-                                                        type="text"
-                                                        value={empRoleSetup.pan_no}
-                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pan_no: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
-                                                    />
-                                                </div>
-                                                <div style={{ gridColumn: 'span 2' }}>
-                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>PF Number</label>
-                                                    <input
-                                                        type="text"
-                                                        value={empRoleSetup.pf_no}
-                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_no: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Bank Name</label>
-                                                    <input
-                                                        type="text"
-                                                        value={empRoleSetup.bank_name}
-                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_name: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Recipient Account No.</label>
-                                                    <input
-                                                        type="text"
-                                                        value={empRoleSetup.bank_account}
-                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_account: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Fixed Tax Deduction (%)</label>
-                                                    <input
-                                                        type="number"
-                                                        step="0.1"
-                                                        value={empRoleSetup.tax_deduction_rate}
-                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, tax_deduction_rate: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Fixed PF Deduction (%)</label>
-                                                    <input
-                                                        type="number"
-                                                        step="0.1"
-                                                        value={empRoleSetup.pf_deduction_rate}
-                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_deduction_rate: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-light)' }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem', flexWrap: 'wrap' }}>
-                                            <button onClick={() => handleApproval(viewedEmp.employee_id, 'reject')} className="btn btn-secondary" style={{ color: '#EF4444', borderColor: '#EF4444' }}>Reject Application</button>
-
-                                            <button
-                                                onClick={() => {
-                                                    const isIntern = empRoleSetup.employment_type === 'Intern';
-                                                    setDocGenType(isIntern ? 'internship_offer' : 'full_time_offer');
-                                                    setDocGenEmployee(viewedEmp);
-                                                    setDocGenInitialData({
-                                                        emp_name: viewedEmp.name,
-                                                        employee_id: viewedEmp.employee_id,
-                                                        designation: empRoleSetup.position || (isIntern ? 'Full Stack Intern' : 'Software Engineer'),
-                                                        role: empRoleSetup.position || 'Full Stack Intern',
-                                                        doj: new Date().toISOString().split('T')[0],
-                                                        date: new Date().toISOString().split('T')[0],
-                                                        offer_date: new Date().toISOString().split('T')[0],
-                                                        total_ctc_annual: empRoleSetup.monthly_salary ? empRoleSetup.monthly_salary * 12 : 0,
-                                                        fixed_ctc_annual: empRoleSetup.monthly_salary ? empRoleSetup.monthly_salary * 12 : 0,
-                                                        inhand_amount: empRoleSetup.monthly_salary || 0,
-                                                        annual_basic: empRoleSetup.monthly_salary ? Math.round((empRoleSetup.monthly_salary * 12) * 0.4) : 0,
-                                                        monthly_basic: empRoleSetup.monthly_salary ? Math.round(empRoleSetup.monthly_salary * 0.4) : 0
-                                                    });
-                                                    setIsDocGenModalOpen(true);
-                                                }}
-                                                className="btn btn-secondary"
-                                                style={{ color: '#ff7a00', borderColor: '#ff7a00', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                                            >
-                                                <Sparkles size={16} /> AI Generate Offer Letter
-                                            </button>
-
-                                             <button onClick={() => handleApproval(viewedEmp.employee_id, 'approve')} className="btn btn-primary" style={{ backgroundColor: '#ff4500', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckCircle2 size={18} /> Approve Onboarding (No Offer Letter Needed)</button>
-                                        </div>
-                                        <div style={{ fontSize: '0.75rem', color: '#000000', marginTop: '0.5rem' }}>* You can approve an application immediately without generating an offer letter.</div>
-                                    </div>
-                                ) : <div style={{ color: '#000000', textAlign: 'center' }}>Select an employee to review.</div>}
-                            </div>
-                        </>
-                    )}
-
-                    {/* TAB: EMPLOYEES */}
-                    {activeTab === 'employees' && (
-                        <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                <h2 className="card-title">Employee Directory ({approvedEmployees.length})</h2>
-                                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                    <button
-                                        onClick={() => setIsAddEmpModalOpen(true)}
-                                        className="btn btn-primary"
-                                        style={{ 
-                                            background: 'linear-gradient(135deg, #ff4500 0%, #e63e00 100%)',
-                                            border: 'none',
-                                            padding: '0.75rem 1.25rem',
-                                            fontSize: '0.85rem',
-                                            fontWeight: '700',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.5rem'
-                                        }}
-                                    >
-                                         <Plus size={18} /> Add New Employee
-                                    </button>
-                                    <button
-                                        onClick={() => setIsEnhancedDocGenOpen(true)}
-                                        className="btn btn-primary"
-                                        style={{ 
-                                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                            border: 'none',
-                                            padding: '0.75rem 1.25rem',
-                                            fontSize: '0.85rem',
-                                            fontWeight: '600'
-                                        }}
-                                    >
-                                         <FileText size={18} /> Enhanced Document Generator
-                                    </button>
+                        {selectedApprovedEmp && (
+                            <div className="card shadow-sm" style={{ marginTop: '2rem', borderTop: '4px solid #ff7a00', background: '#ffffff', borderRight: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', borderLeft: '1px solid var(--border-color)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                    <h3 style={{ fontSize: '1.25rem', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Edit3 size={20} /> Edit Profile: {selectedApprovedEmp.name}
+                                    </h3>
+                                    <button onClick={() => setSelectedApprovedEmp(null)} style={{ background: 'none', border: 'none', color: '#000000', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><X size={16} /> Close</button>
                                 </div>
-                            </div>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#000000' }}>
-                                        <th style={{ padding: '1rem' }}>Photo</th>
-                                        <th style={{ padding: '1rem' }}>ID</th>
-                                        <th style={{ padding: '1rem' }}>Name</th>
-                                        <th style={{ padding: '1rem' }}>Email</th>
-                                        <th style={{ padding: '1rem' }}>Status</th>
-                                        <th style={{ padding: '1rem' }}>Documents</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {approvedEmployees.map(emp => (
-                                        <tr
-                                            key={emp.employee_id}
-                                            onClick={() => {
-                                                setSelectedApprovedEmp(emp);
-                                                setEmpRoleSetup({
-                                                    employment_type: emp.employment_type || 'Full-Time',
-                                                    position: emp.position || 'Software Engineer',
-                                                    monthly_salary: emp.monthly_salary || 0,
-                                                    privilege_leave_rate: emp.privilege_leave_rate || 0,
-                                                    sick_leave_rate: emp.sick_leave_rate || 0.5,
-                                                    casual_leave_rate: emp.casual_leave_rate || 1.0,
-                                                    role: emp.role || 'employee',
-                                                    in_hand_salary: emp.in_hand_salary || 0,
-                                                    pan_no: emp.pan_no || '',
-                                                    pf_no: emp.pf_no || '',
-                                                    bank_name: emp.bank_details?.bank_name || '',
-                                                    bank_account: emp.bank_details?.account_number || '',
-                                                    tax_deduction_rate: emp.tax_deduction_rate || 0,
-                                                    pf_deduction_rate: emp.pf_deduction_rate || 0
-                                                });
-                                            }}
-                                            style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer', background: selectedApprovedEmp?.employee_id === emp.employee_id ? '#eff6ff' : 'transparent' }}
-                                        >
-                                            <td style={{ padding: '0.5rem 1rem' }}>
-                                                <img
-                                                    src={emp.id_card_photo_key ? `${apiUrl}/admin/photos/${emp.id_card_photo_key}` : (emp.reference_image_key ? `${apiUrl}/admin/photos/${emp.reference_image_key}` : PLACEHOLDER_IMAGE)}
-                                                    alt=""
-                                                    style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #e2e8f0' }}
-                                                    onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
-                                                />
-                                            </td>
-                                            <td style={{ padding: '1rem', fontFamily: 'monospace' }}>{emp.employee_id}</td>
-                                            <td style={{ padding: '1rem', fontWeight: 'bold' }}>{emp.name}</td>
-                                            <td style={{ padding: '1rem', color: '#000000' }}>{emp.email}</td>
-                                            <td style={{ padding: '1rem' }}><span style={{ background: 'rgba(255, 69, 0, 0.2)', color: '#ff4500', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem' }}>Active</span></td>
-                                            <td style={{ padding: '1rem' }}>
-                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                    <button 
-                                                        onClick={(e) => { e.stopPropagation(); setPreviewDoc({ title: 'Bank Details', url: `${apiUrl}/admin/photos/${emp.bank_details?.bank_photo_key}` }); }} 
-                                                        className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }}
-                                                     > <Building2 size={12} /> Bank</button>
-                                                    <button 
-                                                        onClick={(e) => { e.stopPropagation(); setPreviewDoc({ title: 'Education Cert', url: `${apiUrl}/admin/photos/${emp.education?.cert_key}` }); }} 
-                                                        className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }}
-                                                     > <GraduationCap size={12} /> Edu</button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
 
-                            {selectedApprovedEmp && (
-                                <div className="card shadow-sm" style={{ marginTop: '2rem', borderTop: '4px solid #ff7a00', background: '#ffffff', borderRight: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', borderLeft: '1px solid var(--border-color)' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                        <h3 style={{ fontSize: '1.25rem', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <Edit3 size={20} /> Edit Profile: {selectedApprovedEmp.name}
-                                        </h3>
-                                         <button onClick={() => setSelectedApprovedEmp(null)} style={{ background: 'none', border: 'none', color: '#000000', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><X size={16} /> Close</button>
-                                    </div>
-
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                                        {/* Same role setup fields as onboarding */}
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                            <div>
-                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Employment Type</label>
-                                                <select
-                                                    value={empRoleSetup.employment_type}
-                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, employment_type: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
-                                                >
-                                                    <option>Full-Time</option>
-                                                    <option>Intern</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Designation / Position</label>
-                                                <input
-                                                    type="text"
-                                                    value={empRoleSetup.position}
-                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, position: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
-                                                />
-                                            </div>
-                                            <div style={{ gridColumn: 'span 2' }}>
-                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Monthly Gross Salary (₹)</label>
-                                                <input
-                                                    type="number"
-                                                    value={empRoleSetup.monthly_salary}
-                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, monthly_salary: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
-                                                />
-                                            </div>
-                                            <div style={{ gridColumn: 'span 2' }}>
-                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>In-hand Salary (₹) - Overrides calculations if set</label>
-                                                <input
-                                                    type="number"
-                                                    value={empRoleSetup.in_hand_salary}
-                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, in_hand_salary: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937', fontWeight: 'bold', borderColor: '#ff7a00' }}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Fixed Tax Deduction (%)</label>
-                                                <input
-                                                    type="number"
-                                                    step="0.1"
-                                                    value={empRoleSetup.tax_deduction_rate}
-                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, tax_deduction_rate: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Fixed PF Deduction (%)</label>
-                                                <input
-                                                    type="number"
-                                                    step="0.1"
-                                                    value={empRoleSetup.pf_deduction_rate}
-                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_deduction_rate: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
-                                                />
-                                            </div>
-                                        </div>
-                                            <div style={{ gridColumn: 'span 2' }}>
-                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>PAN Number</label>
-                                                <input
-                                                    type="text"
-                                                    value={empRoleSetup.pan_no}
-                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pan_no: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
-                                                />
-                                            </div>
-                                            <div style={{ gridColumn: 'span 2' }}>
-                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>PF Number</label>
-                                                <input
-                                                    type="text"
-                                                    value={empRoleSetup.pf_no}
-                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_no: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Bank Name</label>
-                                                <input
-                                                    type="text"
-                                                    value={empRoleSetup.bank_name}
-                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_name: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Bank Account Number</label>
-                                                <input
-                                                    type="text"
-                                                    value={empRoleSetup.bank_account}
-                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_account: e.target.value })}
-                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
-                                                />
-                                            </div>
-
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                                    {/* Same role setup fields as onboarding */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                         <div>
-                                            <label style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 'bold', display: 'block', marginBottom: '0.75rem' }}>🎁 Monthly Leave Accrual Rate (days/month)</label>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                                                <div>
-                                                    <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block' }}>Privilege</label>
-                                                    <input
-                                                        type="number"
-                                                        step="0.1"
-                                                        disabled={empRoleSetup.employment_type === 'Intern'}
-                                                        value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.privilege_leave_rate}
-                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, privilege_leave_rate: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937', opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block' }}>Sick</label>
-                                                    <input
-                                                        type="number"
-                                                        step="0.1"
-                                                        disabled={empRoleSetup.employment_type === 'Intern'}
-                                                        value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.sick_leave_rate}
-                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, sick_leave_rate: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937', opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block' }}>Casual</label>
-                                                    <input
-                                                        type="number"
-                                                        step="0.1"
-                                                        disabled={empRoleSetup.employment_type === 'Intern'}
-                                                        value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.casual_leave_rate}
-                                                        onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, casual_leave_rate: e.target.value })}
-                                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937', opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }}
-                                                    />
-                                                </div>
+                                            <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Employment Type</label>
+                                            <select
+                                                value={empRoleSetup.employment_type}
+                                                onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, employment_type: e.target.value })}
+                                                style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
+                                            >
+                                                <option>Full-Time</option>
+                                                <option>Intern</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Designation / Position</label>
+                                            <input
+                                                type="text"
+                                                value={empRoleSetup.position}
+                                                onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, position: e.target.value })}
+                                                style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
+                                            />
+                                        </div>
+                                        <div style={{ gridColumn: 'span 2' }}>
+                                            <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Monthly Gross Salary (₹)</label>
+                                            <input
+                                                type="number"
+                                                value={empRoleSetup.monthly_salary}
+                                                onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, monthly_salary: e.target.value })}
+                                                style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
+                                            />
+                                        </div>
+                                        <div style={{ gridColumn: 'span 2' }}>
+                                            <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>In-hand Salary (₹) - Overrides calculations if set</label>
+                                            <input
+                                                type="number"
+                                                value={empRoleSetup.in_hand_salary}
+                                                onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, in_hand_salary: e.target.value })}
+                                                style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937', fontWeight: 'bold', borderColor: '#ff7a00' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Fixed Tax Deduction (%)</label>
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                value={empRoleSetup.tax_deduction_rate}
+                                                onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, tax_deduction_rate: e.target.value })}
+                                                style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Fixed PF Deduction (%)</label>
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                value={empRoleSetup.pf_deduction_rate}
+                                                onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_deduction_rate: e.target.value })}
+                                                style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div style={{ gridColumn: 'span 2' }}>
+                                        <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>PAN Number</label>
+                                        <input
+                                            type="text"
+                                            value={empRoleSetup.pan_no}
+                                            onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pan_no: e.target.value })}
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
+                                        />
+                                    </div>
+                                    <div style={{ gridColumn: 'span 2' }}>
+                                        <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>PF Number</label>
+                                        <input
+                                            type="text"
+                                            value={empRoleSetup.pf_no}
+                                            onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pf_no: e.target.value })}
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Bank Name</label>
+                                        <input
+                                            type="text"
+                                            value={empRoleSetup.bank_name}
+                                            onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_name: e.target.value })}
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.25rem' }}>Bank Account Number</label>
+                                        <input
+                                            type="text"
+                                            value={empRoleSetup.bank_account}
+                                            onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_account: e.target.value })}
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 'bold', display: 'block', marginBottom: '0.75rem' }}>🎁 Monthly Leave Accrual Rate (days/month)</label>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block' }}>Privilege</label>
+                                                <input
+                                                    type="number"
+                                                    step="0.1"
+                                                    disabled={empRoleSetup.employment_type === 'Intern'}
+                                                    value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.privilege_leave_rate}
+                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, privilege_leave_rate: e.target.value })}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937', opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block' }}>Sick</label>
+                                                <input
+                                                    type="number"
+                                                    step="0.1"
+                                                    disabled={empRoleSetup.employment_type === 'Intern'}
+                                                    value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.sick_leave_rate}
+                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, sick_leave_rate: e.target.value })}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937', opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block' }}>Casual</label>
+                                                <input
+                                                    type="number"
+                                                    step="0.1"
+                                                    disabled={empRoleSetup.employment_type === 'Intern'}
+                                                    value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.casual_leave_rate}
+                                                    onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, casual_leave_rate: e.target.value })}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937', opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }}
+                                                />
                                             </div>
                                         </div>
                                     </div>
-
-                                    <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                                        <button onClick={() => setSelectedApprovedEmp(null)} className="btn btn-secondary">Cancel</button>
-                                        <button
-                                            onClick={() => {
-                                                setDocGenType('relieving');
-                                                setDocGenEmployee(selectedApprovedEmp);
-                                                setDocGenInitialData({
-                                                    emp_name: selectedApprovedEmp.name,
-                                                    employee_id: selectedApprovedEmp.employee_id,
-                                                    designation: selectedApprovedEmp.position || 'Software Engineer',
-                                                    joining_date: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : '',
-                                                    last_working_day: new Date().toISOString().split('T')[0],
-                                                    relieving_date: new Date().toISOString().split('T')[0]
-                                                });
-                                                setIsDocGenModalOpen(true);
-                                            }}
-                                            className="btn btn-secondary"
-                                            style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}
-                                        >
-                                            <Sparkles size={16} /> AI Relieving Letter
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setDocGenType('experience');
-                                                setDocGenEmployee(selectedApprovedEmp);
-                                                setDocGenInitialData({
-                                                    emp_name: selectedApprovedEmp.name,
-                                                    employee_id: selectedApprovedEmp.employee_id,
-                                                    designation: selectedApprovedEmp.position || 'Software Engineer',
-                                                    joining_date: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : '',
-                                                    last_working_day: new Date().toISOString().split('T')[0],
-                                                    issue_date: new Date().toISOString().split('T')[0]
-                                                });
-                                                setIsDocGenModalOpen(true);
-                                            }}
-                                            className="btn btn-secondary"
-                                            style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}
-                                        >
-                                            <Sparkles size={16} /> AI Experience Cert
-                                        </button>
-                                        {selectedApprovedEmp.employment_type === 'Intern' && (
-                                            <button
-                                                onClick={() => {
-                                                    setDocGenType('internship_completion');
-                                                    setDocGenEmployee(selectedApprovedEmp);
-                                                    setDocGenInitialData({
-                                                        emp_name: selectedApprovedEmp.name,
-                                                        employee_id: selectedApprovedEmp.employee_id,
-                                                        designation: selectedApprovedEmp.position || 'Software Engineer',
-                                                        start_date: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : '',
-                                                        end_date: new Date().toISOString().split('T')[0],
-                                                        current_date: new Date().toISOString().split('T')[0]
-                                                    });
-                                                    setIsDocGenModalOpen(true);
-                                                }}
-                                                className="btn btn-secondary"
-                                                style={{ color: '#c84cff', borderColor: '#c84cff' }}
-                                            >
-                                                <GraduationCap size={16} /> AI Intern Cert
-                                            </button>
-                                        )}
-                                        <button
-                                            onClick={() => {
-                                                setDocGenType('payslip');
-                                                setDocGenEmployee(selectedApprovedEmp);
-                                                const monthlySalary = selectedApprovedEmp.monthly_salary || 50000;
-                                                const basicSalary = Math.round(monthlySalary * 0.4);
-                                                const hra = Math.round(monthlySalary * 0.2);
-                                                const specialAllowance = monthlySalary - basicSalary - hra;
-                                                setDocGenInitialData({
-                                                    emp_name: selectedApprovedEmp.name,
-                                                    employee_id: selectedApprovedEmp.employee_id,
-                                                    designation: selectedApprovedEmp.position || 'Software Engineer',
-                                                    department: selectedApprovedEmp.department || '',
-                                                    doj: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : '',
-                                                    month_year: new Date().toLocaleString('default', { month: 'long', year: 'numeric' }),
-                                                    bank_name: selectedApprovedEmp.bank_name || '',
-                                                    bank_account: selectedApprovedEmp.bank_account || '',
-                                                    basic_salary: basicSalary,
-                                                    hra: hra,
-                                                    special_allowance: specialAllowance,
-                                                    total_earnings: monthlySalary,
-                                                    net_salary: monthlySalary - 200
-                                                });
-                                                setIsDocGenModalOpen(true);
-                                            }}
-                                            className="btn btn-secondary"
-                                            style={{ color: '#ff4500', borderColor: '#ff4500' }}
-                                        >
-                                            <Banknote size={16} /> AI Payslip
-                                        </button>
-                                        <button onClick={() => handleUpdateEmployee(selectedApprovedEmp.employee_id)} className="btn btn-primary" style={{ backgroundColor: '#ff4500' }}>Save Profile Changes</button>
-                                    </div>
                                 </div>
-                            )}
-                        </div>
-                    )}
+
+                                <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                                    <button onClick={() => setSelectedApprovedEmp(null)} className="btn btn-secondary">Cancel</button>
+                                    <button
+                                        onClick={() => {
+                                            setDocGenType('relieving');
+                                            setDocGenEmployee(selectedApprovedEmp);
+                                            setDocGenInitialData({
+                                                emp_name: selectedApprovedEmp.name,
+                                                employee_id: selectedApprovedEmp.employee_id,
+                                                designation: selectedApprovedEmp.position || 'Software Engineer',
+                                                joining_date: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : '',
+                                                last_working_day: new Date().toISOString().split('T')[0],
+                                                relieving_date: new Date().toISOString().split('T')[0]
+                                            });
+                                            setIsDocGenModalOpen(true);
+                                        }}
+                                        className="btn btn-secondary"
+                                        style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}
+                                    >
+                                        <Sparkles size={16} /> AI Relieving Letter
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setDocGenType('experience');
+                                            setDocGenEmployee(selectedApprovedEmp);
+                                            setDocGenInitialData({
+                                                emp_name: selectedApprovedEmp.name,
+                                                employee_id: selectedApprovedEmp.employee_id,
+                                                designation: selectedApprovedEmp.position || 'Software Engineer',
+                                                joining_date: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : '',
+                                                last_working_day: new Date().toISOString().split('T')[0],
+                                                issue_date: new Date().toISOString().split('T')[0]
+                                            });
+                                            setIsDocGenModalOpen(true);
+                                        }}
+                                        className="btn btn-secondary"
+                                        style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}
+                                    >
+                                        <Sparkles size={16} /> AI Experience Cert
+                                    </button>
+                                    {selectedApprovedEmp.employment_type === 'Intern' && (
+                                        <button
+                                            onClick={() => {
+                                                setDocGenType('internship_completion');
+                                                setDocGenEmployee(selectedApprovedEmp);
+                                                setDocGenInitialData({
+                                                    emp_name: selectedApprovedEmp.name,
+                                                    employee_id: selectedApprovedEmp.employee_id,
+                                                    designation: selectedApprovedEmp.position || 'Software Engineer',
+                                                    start_date: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : '',
+                                                    end_date: new Date().toISOString().split('T')[0],
+                                                    current_date: new Date().toISOString().split('T')[0]
+                                                });
+                                                setIsDocGenModalOpen(true);
+                                            }}
+                                            className="btn btn-secondary"
+                                            style={{ color: '#c84cff', borderColor: '#c84cff' }}
+                                        >
+                                            <GraduationCap size={16} /> AI Intern Cert
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => {
+                                            setDocGenType('payslip');
+                                            setDocGenEmployee(selectedApprovedEmp);
+                                            const monthlySalary = selectedApprovedEmp.monthly_salary || 50000;
+                                            const basicSalary = Math.round(monthlySalary * 0.4);
+                                            const hra = Math.round(monthlySalary * 0.2);
+                                            const specialAllowance = monthlySalary - basicSalary - hra;
+                                            setDocGenInitialData({
+                                                emp_name: selectedApprovedEmp.name,
+                                                employee_id: selectedApprovedEmp.employee_id,
+                                                designation: selectedApprovedEmp.position || 'Software Engineer',
+                                                department: selectedApprovedEmp.department || '',
+                                                doj: selectedApprovedEmp.joining_date ? selectedApprovedEmp.joining_date.split('T')[0] : '',
+                                                month_year: new Date().toLocaleString('default', { month: 'long', year: 'numeric' }),
+                                                bank_name: selectedApprovedEmp.bank_name || '',
+                                                bank_account: selectedApprovedEmp.bank_account || '',
+                                                basic_salary: basicSalary,
+                                                hra: hra,
+                                                special_allowance: specialAllowance,
+                                                total_earnings: monthlySalary,
+                                                net_salary: monthlySalary - 200
+                                            });
+                                            setIsDocGenModalOpen(true);
+                                        }}
+                                        className="btn btn-secondary"
+                                        style={{ color: '#ff4500', borderColor: '#ff4500' }}
+                                    >
+                                        <Banknote size={16} /> AI Payslip
+                                    </button>
+                                    <button onClick={() => handleUpdateEmployee(selectedApprovedEmp.employee_id)} className="btn btn-primary" style={{ backgroundColor: '#ff4500' }}>Save Profile Changes</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+            )}
 
                     {/* TAB: LEAVES */}
                     {activeTab === 'leaves' && (
@@ -1851,15 +1947,15 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 <h2 className="card-title" style={{ margin: 0 }}>Leave Management</h2>
                                 <div style={{ display: 'flex', gap: '0.75rem' }}>
                                     <div style={{ position: 'relative' }}>
-                                        <input 
-                                            type="text" 
-                                            placeholder="Search Employee..." 
+                                        <input
+                                            type="text"
+                                            placeholder="Search Employee..."
                                             value={leaveFilterName}
                                             onChange={(e) => setLeaveFilterName(e.target.value)}
                                             style={{ padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem', width: '200px' }}
                                         />
                                     </div>
-                                    <select 
+                                    <select
                                         value={leaveFilterType}
                                         onChange={(e) => setLeaveFilterType(e.target.value)}
                                         style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }}
@@ -1870,13 +1966,13 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         <option value="Paid Leave">Paid Leave</option>
                                         <option value="Compensatory Off">Compensatory Off</option>
                                     </select>
-                                    <input 
-                                        type="date" 
+                                    <input
+                                        type="date"
                                         value={leaveFilterDate}
                                         onChange={(e) => setLeaveFilterDate(e.target.value)}
                                         style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }}
                                     />
-                                    <button 
+                                    <button
                                         onClick={() => { setLeaveFilterName(''); setLeaveFilterType('All'); setLeaveFilterDate(''); }}
                                         style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}
                                         title="Clear Filters"
@@ -1896,74 +1992,74 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             return nameMatch && typeMatch && dateMatch;
                                         })
                                         .map((l, idx) => (
-                                        <div key={idx} className="hover-shadow-sm" style={{ 
-                                            display: 'flex', 
-                                            justifyContent: 'space-between', 
-                                            alignItems: 'center', 
-                                            border: '1px solid #f1f5f9', 
-                                            borderRadius: '8px', 
-                                            padding: '0.5rem 1rem', 
-                                            background: '#ffffff', 
-                                            transition: 'all 0.2s' 
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-                                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: l.status.includes('Approved') ? '#22C55E' : l.status.includes('Rejected') ? '#EF4444' : '#F59E0B' }}></div>
-                                                
-                                                <div style={{ minWidth: '150px' }}>
-                                                    <div style={{ fontWeight: '700', fontSize: '0.875rem', color: '#1f2937' }}>{l.employee_name || 'Employee'}</div>
-                                                    <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>{l.employee_id}</div>
-                                                </div>
+                                            <div key={idx} className="hover-shadow-sm" style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                border: '1px solid #f1f5f9',
+                                                borderRadius: '8px',
+                                                padding: '0.5rem 1rem',
+                                                background: '#ffffff',
+                                                transition: 'all 0.2s'
+                                            }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+                                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: l.status.includes('Approved') ? '#22C55E' : l.status.includes('Rejected') ? '#EF4444' : '#F59E0B' }}></div>
 
-                                                <div style={{ minWidth: '130px' }}>
-                                                    <div style={{ fontWeight: '600', fontSize: '0.8rem', color: 'var(--primary)' }}>{l.leave_type}</div>
-                                                    <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>{l.start_date} ({l.days || 1}d)</div>
-                                                </div>
-
-                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                    <span style={{ 
-                                                        padding: '0.15rem 0.5rem', 
-                                                        borderRadius: '4px', 
-                                                        fontSize: '0.65rem', 
-                                                        fontWeight: '700',
-                                                        backgroundColor: l.status.includes('Approved') ? '#DCFCE7' : l.status.includes('Rejected') ? '#FEE2E2' : '#FEF3C7',
-                                                        color: l.status.includes('Approved') ? '#166534' : l.status.includes('Rejected') ? '#991B1B' : '#92400E'
-                                                    }}>
-                                                        {l.status}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                {l.status.includes('Pending') && !user?.role.includes('hr_responsible') && (
-                                                    <div style={{ display: 'flex', gap: '0.3rem' }}>
-                                                        <button onClick={() => handleLeaveStatus(l.id, 'Rejected')} className="btn" style={{ padding: '0.25rem 0.6rem', fontSize: '0.7rem', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '4px' }}>Reject</button>
-                                                        <button onClick={() => handleLeaveStatus(l.id, 'Approved by Admin')} className="btn" style={{ padding: '0.25rem 0.6rem', fontSize: '0.7rem', background: '#ff4500', color: 'white', border: 'none', borderRadius: '4px' }}>Approve</button>
+                                                    <div style={{ minWidth: '150px' }}>
+                                                        <div style={{ fontWeight: '700', fontSize: '0.875rem', color: '#1f2937' }}>{l.employee_name || 'Employee'}</div>
+                                                        <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>{l.employee_id}</div>
                                                     </div>
-                                                )}
-                                                
-                                                <button 
-                                                    onClick={() => setInspectingLeave(l)}
-                                                    style={{ 
-                                                        fontSize: '1.25rem', 
-                                                        width: '32px',
-                                                        height: '32px',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        cursor: 'pointer', 
-                                                        background: 'none', 
-                                                        border: 'none',
-                                                        color: '#9ca3af',
-                                                        borderRadius: '50%'
-                                                    }}
-                                                    className="btn-hover-light"
-                                                    title="View Full Details"
-                                                >
-                                                    ⋮
-                                                </button>
+
+                                                    <div style={{ minWidth: '130px' }}>
+                                                        <div style={{ fontWeight: '600', fontSize: '0.8rem', color: 'var(--primary)' }}>{l.leave_type}</div>
+                                                        <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>{l.start_date} ({l.days || 1}d)</div>
+                                                    </div>
+
+                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                        <span style={{
+                                                            padding: '0.15rem 0.5rem',
+                                                            borderRadius: '4px',
+                                                            fontSize: '0.65rem',
+                                                            fontWeight: '700',
+                                                            backgroundColor: l.status.includes('Approved') ? '#DCFCE7' : l.status.includes('Rejected') ? '#FEE2E2' : '#FEF3C7',
+                                                            color: l.status.includes('Approved') ? '#166534' : l.status.includes('Rejected') ? '#991B1B' : '#92400E'
+                                                        }}>
+                                                            {l.status}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    {l.status.includes('Pending') && !user?.role.includes('hr_responsible') && (
+                                                        <div style={{ display: 'flex', gap: '0.3rem' }}>
+                                                            <button onClick={() => handleLeaveStatus(l.id, 'Rejected')} className="btn" style={{ padding: '0.25rem 0.6rem', fontSize: '0.7rem', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '4px' }}>Reject</button>
+                                                            <button onClick={() => handleLeaveStatus(l.id, 'Approved by Admin')} className="btn" style={{ padding: '0.25rem 0.6rem', fontSize: '0.7rem', background: '#ff4500', color: 'white', border: 'none', borderRadius: '4px' }}>Approve</button>
+                                                        </div>
+                                                    )}
+
+                                                    <button
+                                                        onClick={() => setInspectingLeave(l)}
+                                                        style={{
+                                                            fontSize: '1.25rem',
+                                                            width: '32px',
+                                                            height: '32px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            cursor: 'pointer',
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            color: '#9ca3af',
+                                                            borderRadius: '50%'
+                                                        }}
+                                                        className="btn-hover-light"
+                                                        title="View Full Details"
+                                                    >
+                                                        ⋮
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
                                 </div>
                             )}
                         </div>
@@ -1996,9 +2092,9 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             <button type="button" className="btn btn-secondary" onClick={() => { setEditingHoliday(null); setNewHoliday({ name: '', date: '', type: 'Public Holiday' }); }} style={{ flex: 1, padding: '0.75rem' }}>{editingHoliday ? "Cancel" : "Clear"}</button>
                                         </div>
                                         {editingHoliday && (
-                                            <button 
-                                                type="button" 
-                                                className="btn" 
+                                            <button
+                                                type="button"
+                                                className="btn"
                                                 onClick={() => handleDeleteHoliday(editingHoliday.originalDate)}
                                                 style={{ padding: '0.75rem', background: '#FEF2F2', color: '#EF4444', border: '1px solid #FEE2E2', fontWeight: 'bold' }}
                                             >
@@ -2012,62 +2108,62 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                     <h2 className="card-title" style={{ margin: 0 }}>Holiday Calendar</h2>
                                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                         <button 
-                                             className="btn btn-secondary" 
-                                             onClick={fetchExternalHolidays}
-                                             disabled={isFetchingHolidays}
-                                             style={{ 
-                                                 fontSize: '0.85rem', 
-                                                 display: 'flex', 
-                                                 alignItems: 'center', 
-                                                 gap: '0.5rem', 
-                                                 border: '1px solid #e2e8f0',
-                                                 padding: '0.5rem 1rem',
-                                                 borderRadius: '10px',
-                                                 background: '#ffffff',
-                                                 transition: 'all 0.2s ease',
-                                                 boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                                             }}
-                                         >
-                                             {isFetchingHolidays ? (
-                                                 <><RefreshCw size={14} className="animate-spin" /> Fetching...</>
-                                             ) : (
-                                                 <><Search size={14} /> Fetch {calYear} Holidays</>
-                                             )}
-                                         </button>
+                                        <button
+                                            className="btn btn-secondary"
+                                            onClick={fetchExternalHolidays}
+                                            disabled={isFetchingHolidays}
+                                            style={{
+                                                fontSize: '0.85rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem',
+                                                border: '1px solid #e2e8f0',
+                                                padding: '0.5rem 1rem',
+                                                borderRadius: '10px',
+                                                background: '#ffffff',
+                                                transition: 'all 0.2s ease',
+                                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                            }}
+                                        >
+                                            {isFetchingHolidays ? (
+                                                <><RefreshCw size={14} className="animate-spin" /> Fetching...</>
+                                            ) : (
+                                                <><Search size={14} /> Fetch {calYear} Holidays</>
+                                            )}
+                                        </button>
                                         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginLeft: '1rem' }}>
-                                         <button className="btn btn-secondary" onClick={() => {
-                                             if (calMonth === 0) { setCalMonth(11); setCalYear(calYear - 1); }
-                                             else setCalMonth(calMonth - 1);
-                                         }} style={{ padding: '0.25rem' }}><ChevronLeft size={16} /></button>
-                                        <div style={{ fontWeight: 'bold', minWidth: '120px', textAlign: 'center' }}>
-                                            {new Date(calYear, calMonth).toLocaleString('default', { month: 'long' })} {calYear}
-                                        </div>
-                                         <button className="btn btn-secondary" onClick={() => {
-                                             if (calMonth === 11) { setCalMonth(0); setCalYear(calYear + 1); }
-                                             else setCalMonth(calMonth + 1);
-                                         }} style={{ padding: '0.25rem' }}><ChevronRight size={16} /></button>
+                                            <button className="btn btn-secondary" onClick={() => {
+                                                if (calMonth === 0) { setCalMonth(11); setCalYear(calYear - 1); }
+                                                else setCalMonth(calMonth - 1);
+                                            }} style={{ padding: '0.25rem' }}><ChevronLeft size={16} /></button>
+                                            <div style={{ fontWeight: 'bold', minWidth: '120px', textAlign: 'center' }}>
+                                                {new Date(calYear, calMonth).toLocaleString('default', { month: 'long' })} {calYear}
+                                            </div>
+                                            <button className="btn btn-secondary" onClick={() => {
+                                                if (calMonth === 11) { setCalMonth(0); setCalYear(calYear + 1); }
+                                                else setCalMonth(calMonth + 1);
+                                            }} style={{ padding: '0.25rem' }}><ChevronRight size={16} /></button>
                                         </div>
                                     </div>
                                 </div>
-                                
-                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: 'var(--border-color)', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-                                     {/* DAY HEADERS */}
-                                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                                         <div key={day} style={{ 
-                                             padding: '0.75rem 0', 
-                                             background: '#f8fafc', 
-                                             textAlign: 'center', 
-                                             fontWeight: '700', 
-                                             color: '#64748b', 
-                                             fontSize: '0.75rem', 
-                                             textTransform: 'uppercase', 
-                                             letterSpacing: '0.05em',
-                                             borderBottom: '1px solid var(--border-color)'
-                                         }}>
-                                             {day}
-                                         </div>
-                                     ))}
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: 'var(--border-color)', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                                    {/* DAY HEADERS */}
+                                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                                        <div key={day} style={{
+                                            padding: '0.75rem 0',
+                                            background: '#f8fafc',
+                                            textAlign: 'center',
+                                            fontWeight: '700',
+                                            color: '#64748b',
+                                            fontSize: '0.75rem',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.05em',
+                                            borderBottom: '1px solid var(--border-color)'
+                                        }}>
+                                            {day}
+                                        </div>
+                                    ))}
 
                                     {Array.from({ length: new Date(calYear, calMonth, 1).getDay() }).map((_, i) => (
                                         <div key={`empty-${i}`} style={{ padding: '1rem', background: '#F9FAFB' }}></div>
@@ -2077,11 +2173,11 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                                         const dayHolidays = holidays.filter(h => h.date === dateStr);
                                         const isToday = dateStr === new Date().toISOString().split('T')[0];
-                                        
+
                                         return (
-                                            <div key={day} style={{ 
-                                                minHeight: '70px', 
-                                                padding: '0.6rem', 
+                                            <div key={day} style={{
+                                                minHeight: '70px',
+                                                padding: '0.6rem',
                                                 background: '#ffffff',
                                                 display: 'flex',
                                                 flexDirection: 'column',
@@ -2089,12 +2185,12 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 transition: 'background 0.2s',
                                                 cursor: 'default'
                                             }}
-                                            onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
-                                            onMouseLeave={e => e.currentTarget.style.background = '#ffffff'}
+                                                onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                                                onMouseLeave={e => e.currentTarget.style.background = '#ffffff'}
                                             >
-                                                <div style={{ 
-                                                    fontWeight: '700', 
-                                                    marginBottom: '0.4rem', 
+                                                <div style={{
+                                                    fontWeight: '700',
+                                                    marginBottom: '0.4rem',
                                                     color: isToday ? '#ff4500' : '#475569',
                                                     fontSize: '0.8rem',
                                                     display: 'flex',
@@ -2106,11 +2202,11 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 </div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
                                                     {dayHolidays.map((h, hi) => (
-                                                        <div key={hi} style={{ 
-                                                            fontSize: '0.65rem', 
-                                                            background: h.type === 'Public Holiday' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(245, 158, 11, 0.08)', 
-                                                            color: h.type === 'Public Holiday' ? '#DC2626' : '#D97706', 
-                                                            padding: '0.2rem 0.4rem', 
+                                                        <div key={hi} style={{
+                                                            fontSize: '0.65rem',
+                                                            background: h.type === 'Public Holiday' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(245, 158, 11, 0.08)',
+                                                            color: h.type === 'Public Holiday' ? '#DC2626' : '#D97706',
+                                                            padding: '0.2rem 0.4rem',
                                                             borderRadius: '4px',
                                                             textAlign: 'left',
                                                             cursor: 'pointer',
@@ -2124,7 +2220,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                                 {h.name}
                                                             </span>
-                                                            <button 
+                                                            <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     handleDeleteHoliday(h.date);
@@ -2236,7 +2332,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
                                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
-                                                <Tooltip 
+                                                <Tooltip
                                                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
                                                     cursor={{ fill: '#f8fafc' }}
                                                 />
@@ -2260,8 +2356,8 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             <AreaChart data={analyticsTrend}>
                                                 <defs>
                                                     <linearGradient id="colorAttend" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.1}/>
-                                                        <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                                                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.1} />
+                                                        <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
                                                     </linearGradient>
                                                 </defs>
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -2325,13 +2421,13 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         {approvedEmployees.map((emp, index) => {
                                             const latestNote = [...notifications]
                                                 .filter(n => n.employee_id === emp.employee_id)
-                                                .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))[0];
+                                                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
 
                                             const isOnline = latestNote?.action ? (latestNote.action === 'sign_in') : latestNote?.message?.toLowerCase().includes('signed in');
 
                                             return (
-                                                <tr 
-                                                    key={emp.employee_id} 
+                                                <tr
+                                                    key={emp.employee_id}
                                                     style={{ borderBottom: index === approvedEmployees.length - 1 ? 'none' : '1px solid #f1f5f9', cursor: 'pointer', transition: 'all 0.2s' }}
                                                     onClick={() => setInspectingEmpHistory(emp.employee_id)}
                                                     onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
@@ -2361,9 +2457,9 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                         </div>
                                                     </td>
                                                     <td style={{ padding: '0.6rem 1.5rem' }}>
-                                                        <div style={{ 
-                                                            display: 'inline-flex', 
-                                                            alignItems: 'center', 
+                                                        <div style={{
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
                                                             gap: '0.3rem',
                                                             padding: '0.25rem 0.6rem',
                                                             borderRadius: '100px',
@@ -2378,7 +2474,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                         </div>
                                                     </td>
                                                     <td style={{ padding: '0.6rem 1.5rem', textAlign: 'right' }}>
-                                                        <button 
+                                                        <button
                                                             style={{ background: '#f1f5f9', border: 'none', padding: '0.35rem', borderRadius: '6px', color: '#64748b' }}
                                                         >
                                                             <MoreVertical size={14} />
@@ -2536,7 +2632,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
                                     Control which deductions are applied company-wide.
                                 </p>
-                                
+
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
                                     <div style={{ padding: '0.75rem 1rem', background: '#F9FAFB', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -2544,20 +2640,20 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 <div style={{ fontWeight: 'bold', color: '#000000', fontSize: '0.85rem' }}>Enable Tax (TDS)</div>
                                                 <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Global tax toggle</div>
                                             </div>
-                                            <input 
-                                                type="checkbox" 
+                                            <input
+                                                type="checkbox"
                                                 checked={salarySettings.enable_tax}
-                                                onChange={(e) => setSalarySettings({...salarySettings, enable_tax: e.target.checked})}
+                                                onChange={(e) => setSalarySettings({ ...salarySettings, enable_tax: e.target.checked })}
                                                 style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                                             />
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             <span style={{ fontSize: '0.85rem', color: '#000000' }}>Fixed Rate:</span>
-                                            <input 
-                                                type="number" 
+                                            <input
+                                                type="number"
                                                 step="0.1"
                                                 value={salarySettings.tax_rate}
-                                                onChange={(e) => setSalarySettings({...salarySettings, tax_rate: parseFloat(e.target.value)})}
+                                                onChange={(e) => setSalarySettings({ ...salarySettings, tax_rate: parseFloat(e.target.value) })}
                                                 style={{ width: '60px', padding: '0.3rem', borderRadius: '6px', border: '1px solid #D1D5DB', fontSize: '0.85rem' }}
                                             />
                                             <span style={{ fontSize: '0.85rem', color: '#000000' }}>%</span>
@@ -2570,20 +2666,20 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 <div style={{ fontWeight: 'bold', color: '#000000', fontSize: '0.85rem' }}>Enable PF & PT</div>
                                                 <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Global PF toggle</div>
                                             </div>
-                                            <input 
-                                                type="checkbox" 
+                                            <input
+                                                type="checkbox"
                                                 checked={salarySettings.enable_pf}
-                                                onChange={(e) => setSalarySettings({...salarySettings, enable_pf: e.target.checked})}
+                                                onChange={(e) => setSalarySettings({ ...salarySettings, enable_pf: e.target.checked })}
                                                 style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                                             />
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             <span style={{ fontSize: '0.85rem', color: '#000000' }}>Fixed Rate:</span>
-                                            <input 
-                                                type="number" 
+                                            <input
+                                                type="number"
                                                 step="0.1"
                                                 value={salarySettings.pf_rate}
-                                                onChange={(e) => setSalarySettings({...salarySettings, pf_rate: parseFloat(e.target.value)})}
+                                                onChange={(e) => setSalarySettings({ ...salarySettings, pf_rate: parseFloat(e.target.value) })}
                                                 style={{ width: '60px', padding: '0.3rem', borderRadius: '6px', border: '1px solid #D1D5DB', fontSize: '0.85rem' }}
                                             />
                                             <span style={{ fontSize: '0.85rem', color: '#000000' }}>%</span>
@@ -2591,8 +2687,8 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     </div>
                                 </div>
 
-                                <button 
-                                    className="btn btn-primary" 
+                                <button
+                                    className="btn btn-primary"
                                     disabled={isSavingSalarySettings}
                                     onClick={handleUpdateSalarySettings}
                                     style={{ width: 'fit-content' }}
@@ -2644,8 +2740,8 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     <BarChart3 size={24} /> Monthly Salary Report
                                 </h2>
                                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                    <select 
-                                        value={salaryReportMonth} 
+                                    <select
+                                        value={salaryReportMonth}
                                         onChange={(e) => setSalaryReportMonth(e.target.value)}
                                         style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }}
                                     >
@@ -2662,35 +2758,159 @@ const AdminDashboard = ({ activeTab, user }) => {
                             <div className="table-container">
                                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                     <thead>
-                                        <tr style={{ borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#000000', fontSize: '0.85rem' }}>
-                                            <th style={{ padding: '1rem' }}>Employee</th>
-                                            <th style={{ padding: '1rem' }}>Exp. Days</th>
-                                            <th style={{ padding: '1rem' }}>Present</th>
-                                            <th style={{ padding: '1rem' }}>Leaves</th>
-                                            <th style={{ padding: '1rem' }}>Absent (LOP)</th>
-                                            <th style={{ padding: '1rem' }}>Gross Salary</th>
-                                            <th style={{ padding: '1rem' }}>Deductions</th>
-                                            <th style={{ padding: '1rem', color: '#ff4500' }}>Net Payable</th>
+                                        <tr style={{ borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#0f172a', fontSize: '0.8rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            <th style={{ padding: '0.4rem 0.6rem' }}>Employee</th>
+                                            <th style={{ padding: '0.4rem 0.6rem' }}>Exp. Days</th>
+                                            <th style={{ padding: '0.4rem 0.6rem' }}>Present</th>
+                                            <th style={{ padding: '0.4rem 0.6rem' }}>Leaves</th>
+                                            <th style={{ padding: '0.4rem 0.6rem' }}>Absent (LOP)</th>
+                                            <th style={{ padding: '0.4rem 0.6rem' }}>Gross</th>
+                                            <th style={{ padding: '0.4rem 0.6rem' }}>Deductions</th>
+                                            <th style={{ padding: '0.4rem 0.6rem', color: '#ff4500' }}>Net Payable</th>
+                                            <th style={{ padding: '0.4rem 0.6rem', textAlign: 'center' }}>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {salaryReport.map((row, i) => (
-                                            <tr key={i} style={{ borderBottom: '1px solid #F3F4F6' }}>
-                                                <td style={{ padding: '1rem' }}>
-                                                    <div style={{ fontWeight: '600' }}>{row.name}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: '#000000' }}>{row.employee_id}</div>
+                                            <tr
+                                                key={i}
+                                                style={{ borderBottom: '1px solid #f1f5f9', background: salaryRowMenu === i ? '#f8fafc' : 'transparent', transition: 'background 0.2s' }}
+                                                onMouseEnter={(e) => { if (salaryRowMenu !== i) e.currentTarget.style.background = '#f8fafc'; }}
+                                                onMouseLeave={(e) => { if (salaryRowMenu !== i) e.currentTarget.style.background = 'transparent'; }}
+                                            >
+                                                <td style={{ padding: '0.4rem 0.6rem' }}>
+                                                    <div style={{ fontWeight: '700', color: '#1e293b' }}>{row.name}</div>
+                                                    <div style={{ fontSize: '0.7rem', color: '#64748b', fontFamily: 'monospace' }}>{row.employee_id}</div>
                                                 </td>
-                                                <td style={{ padding: '1rem' }}>{row.expected_working_days}</td>
-                                                <td style={{ padding: '1rem', color: '#ff4500' }}>{row.actual_presence}</td>
-                                                <td style={{ padding: '1rem', color: '#6366F1' }}>{row.leaves_taken}</td>
-                                                <td style={{ padding: '1rem', color: row.absent_days > 0 ? '#EF4444' : '#000000' }}>{row.absent_days}</td>
-                                                <td style={{ padding: '1rem' }}>₹{row.monthly_salary.toLocaleString()}</td>
-                                                <td style={{ padding: '1rem', color: '#EF4444' }}>-₹{row.lop_deduction.toLocaleString()}</td>
-                                                <td style={{ padding: '1rem', fontWeight: 'bold', color: '#ff4500' }}>₹{row.net_salary.toLocaleString()}</td>
+                                                <td style={{ padding: '0.4rem 0.6rem', color: '#334155', fontWeight: '500' }}>{row.expected_working_days}</td>
+                                                <td style={{ padding: '0.4rem 0.6rem', color: '#0f172a', fontWeight: '600' }}>{row.actual_presence}</td>
+                                                <td style={{ padding: '0.4rem 0.6rem', color: '#6366f1', fontWeight: '600' }}>{row.leaves_taken}</td>
+                                                <td style={{ padding: '0.4rem 0.6rem', color: row.absent_days > 0 ? '#ef4444' : '#334155', fontWeight: '600' }}>{row.absent_days}</td>
+                                                <td style={{ padding: '0.4rem 0.6rem', color: '#334155' }}>₹{row.monthly_salary.toLocaleString()}</td>
+                                                <td style={{ padding: '0.4rem 0.6rem', color: '#ef4444', fontWeight: '500' }}>-₹{row.lop_deduction.toLocaleString()}</td>
+                                                <td style={{ padding: '0.4rem 0.6rem', fontWeight: '800', color: '#ff4500' }}>₹{row.net_salary.toLocaleString()}</td>
+                                                <td style={{ padding: '0.4rem 0.6rem', textAlign: 'center', position: 'relative' }}>
+                                                    <button
+                                                        onClick={() => setSalaryRowMenu(salaryRowMenu === i ? null : i)}
+                                                        style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '0.25rem' }}
+                                                    >
+                                                        <MoreVertical size={18} />
+                                                    </button>
+                                                    {salaryRowMenu === i && (
+                                                        <>
+                                                            <div
+                                                                style={{ position: 'fixed', inset: 0, zIndex: 90 }}
+                                                                onClick={() => setSalaryRowMenu(null)}
+                                                            ></div>
+                                                            <div style={{
+                                                                position: 'absolute',
+                                                                right: '100%',
+                                                                top: '50%',
+                                                                transform: 'translateY(-50%)',
+                                                                zIndex: 100,
+                                                                background: '#ffffff',
+                                                                border: '1px solid #e2e8f0',
+                                                                padding: '0.25rem',
+                                                                marginRight: '0.5rem',
+                                                                textAlign: 'left',
+                                                                borderRadius: '8px',
+                                                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                                                            }}>
+                                                                <button
+                                                                    onClick={() => { setInspectingBankDetails(row); setSalaryRowMenu(null); }}
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        padding: '0.5rem 0.75rem',
+                                                                        background: 'none',
+                                                                        border: 'none',
+                                                                        textAlign: 'left',
+                                                                        fontSize: '0.8rem',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '0.5rem',
+                                                                        color: '#1e293b',
+                                                                        borderRadius: '6px',
+                                                                        cursor: 'pointer',
+                                                                        whiteSpace: 'nowrap'
+                                                                    }}
+                                                                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                                >
+                                                                    <Building2 size={14} /> View Bank Details
+                                                                </button>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Bank Details Modal */}
+                    {inspectingBankDetails && (
+                        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                            <div className="card shadow-sm" style={{ background: '#ffffff', width: '100%', maxWidth: '450px', borderRadius: '24px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)' }}>
+                                <div style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', padding: '1.5rem', color: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '0.5rem', borderRadius: '12px' }}>
+                                            <Building2 size={24} color="#38bdf8" />
+                                        </div>
+                                        <div>
+                                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800' }}>Bank Account Profile</h3>
+                                            <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>Employee ID: {inspectingBankDetails.employee_id}</div>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setInspectingBankDetails(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#ffffff', cursor: 'pointer', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <X size={18} />
+                                    </button>
+                                </div>
+
+                                <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                    <div>
+                                        <div style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Employee Name</div>
+                                        <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>{inspectingBankDetails.name}</div>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                        <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                                            <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: '700', marginBottom: '0.25rem' }}>BANK NAME</div>
+                                            <div style={{ fontWeight: '700', color: '#1e293b', fontSize: '0.9rem' }}>{inspectingBankDetails.bank_details?.bank_name || 'Not Provided'}</div>
+                                        </div>
+                                        <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                                            <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: '700', marginBottom: '0.25rem' }}>PAN NUMBER</div>
+                                            <div style={{ fontWeight: '700', color: '#1e293b', fontSize: '0.9rem', fontFamily: 'monospace' }}>{inspectingBankDetails.pan_no || 'Pending'}</div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ padding: '1.25rem', background: '#eff6ff', borderRadius: '20px', border: '1px solid #dbeafe' }}>
+                                        <div style={{ fontSize: '0.7rem', color: '#3b82f6', fontWeight: '800', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <ShieldCheck size={14} /> ACCOUNT VERIFICATION
+                                        </div>
+                                        <div style={{ marginBottom: '0.75rem' }}>
+                                            <div style={{ fontSize: '0.6rem', color: '#64748b', fontWeight: '700' }}>ACCOUNT NUMBER</div>
+                                            <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#1e3a8a', letterSpacing: '0.05em' }}>
+                                                {inspectingBankDetails.bank_details?.account_number || 'N/A'}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '0.6rem', color: '#64748b', fontWeight: '700' }}>IFSC CODE</div>
+                                            <div style={{ fontSize: '1rem', fontWeight: '700', color: '#1e3a8a' }}>{inspectingBankDetails.bank_details?.ifsc_code || 'N/A'}</div>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={() => setInspectingBankDetails(null)}
+                                        style={{ marginTop: '0.5rem', width: '100%', padding: '1rem', borderRadius: '16px', background: '#0f172a', color: '#ffffff', border: 'none', fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer', transition: 'all 0.2s' }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = '#1e293b'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = '#0f172a'}
+                                    >
+                                        Dismiss Profile
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -2725,10 +2945,10 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 <td style={{ padding: '1rem' }}>{req.quantity}</td>
                                                 <td style={{ padding: '1rem', fontSize: '0.85rem', maxWidth: '200px' }}>{req.reason}</td>
                                                 <td style={{ padding: '1rem' }}>
-                                                    <span style={{ 
-                                                        padding: '0.25rem 0.6rem', 
-                                                        borderRadius: '4px', 
-                                                        fontSize: '0.75rem', 
+                                                    <span style={{
+                                                        padding: '0.25rem 0.6rem',
+                                                        borderRadius: '4px',
+                                                        fontSize: '0.75rem',
                                                         background: req.status === 'Approved' ? 'rgba(16, 185, 129, 0.2)' : (req.status === 'Rejected' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'),
                                                         color: req.status === 'Approved' ? '#10b981' : (req.status === 'Rejected' ? '#ef4444' : '#f59e0b')
                                                     }}>
@@ -2767,7 +2987,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 {/* CARD 1: OFFER LETTERS */}
                                 <div className="card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '1rem' }}>
                                     <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                         <FileText size={20} /> Offer Letters
+                                        <FileText size={20} /> Offer Letters
                                     </h3>
                                     <p style={{ fontSize: '0.8rem', color: '#000000', marginBottom: '0.75rem', flex: 1 }}>Upload layouts for Intern and Full-Time appointment letters.</p>
 
@@ -2800,7 +3020,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 {/* CARD 2: PAYSLIPS */}
                                 <div className="card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '1rem' }}>
                                     <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                         <Banknote size={20} /> Payslip Design
+                                        <Banknote size={20} /> Payslip Design
                                     </h3>
                                     <p style={{ fontSize: '0.8rem', color: '#000000', marginBottom: '0.75rem', flex: 1 }}>Train AI to recognize your payslip components and ROI investment fields.</p>
 
@@ -2820,7 +3040,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 {/* CARD 3: EXIT DOCUMENTS */}
                                 <div className="card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '1rem' }}>
                                     <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                         <LogOut size={20} /> Exit Documents
+                                        <LogOut size={20} /> Exit Documents
                                     </h3>
                                     <p style={{ fontSize: '0.8rem', color: '#000000', marginBottom: '0.75rem', flex: 1 }}>Upload professional formats for Relieving Letters and Experience Certificates.</p>
 
@@ -2858,7 +3078,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Active System Templates</h3>
                                 {offerLetterTemplates.length === 0 ? (
                                     <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#000000' }}>
-                                         <div style={{ color: '#9ca3af', marginBottom: '1rem' }}><FolderOpen size={48} /></div>
+                                        <div style={{ color: '#9ca3af', marginBottom: '1rem' }}><FolderOpen size={48} /></div>
                                         No templates configured yet.
                                     </div>
                                 ) : (
@@ -2913,7 +3133,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 <div className="card shadow-2xl" style={{ width: '100%', maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto', border: '1px solid #ff7a00', background: '#ffffff' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                                         <div>
-                                             <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><BrainCircuit size={28} color="var(--primary)" /> AI Analysis Complete</h2>
+                                            <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><BrainCircuit size={28} color="var(--primary)" /> AI Analysis Complete</h2>
                                             <p style={{ fontSize: '0.8rem', color: '#000000', margin: '0.5rem 0 0' }}>We've scanned your {selectedTemplateType} template and extracted the logic.</p>
                                         </div>
                                         <button className="btn" onClick={() => setTemplateAnalysis(null)}>✕</button>
@@ -2922,9 +3142,9 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                             <div style={{ padding: '1.5rem', background: '#eff6ff', borderRadius: '12px', border: '1px solid #bfdbfe' }}>
-                                                 <h3 style={{ fontSize: '1rem', color: '#ff4500', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                     <Tag size={18} /> Detected Placeholders
-                                                 </h3>
+                                                <h3 style={{ fontSize: '1rem', color: '#ff4500', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <Tag size={18} /> Detected Placeholders
+                                                </h3>
                                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                                                     {templateAnalysis.placeholders?.map(p => (
                                                         <span key={p} style={{ padding: '0.4rem 0.8rem', background: '#ffffff', color: '#1f2937', borderRadius: '4px', fontSize: '0.75rem', border: '1px solid #e2e8f0' }}>
@@ -2939,9 +3159,9 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                                             {templateAnalysis.roi_fields?.length > 0 && (
                                                 <div style={{ padding: '1.5rem', background: '#ecfdf5', borderRadius: '12px', border: '1px solid #a7f3d0' }}>
-                                                     <h3 style={{ fontSize: '1rem', color: '#ff4500', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                         <Banknote size={18} /> ROI / Investment Fields Found
-                                                     </h3>
+                                                    <h3 style={{ fontSize: '1rem', color: '#ff4500', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <Banknote size={18} /> ROI / Investment Fields Found
+                                                    </h3>
                                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                                                         {templateAnalysis.roi_fields.map(field => (
                                                             <span key={field} style={{ padding: '0.4rem 0.8rem', background: '#d1fae5', color: '#065f46', borderRadius: '20px', fontSize: '0.75rem', border: '1px solid #ff4500' }}>
@@ -2958,7 +3178,7 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                                         <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', background: '#ffffff' }}>
                                             <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#000000', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Monitor size={14} /> LIVE HTML PREVIEW</span>
+                                                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#000000', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Monitor size={14} /> LIVE HTML PREVIEW</span>
                                                 <span style={{ fontSize: '0.6rem', color: '#ff4500' }}>● Responsive AI Layout</span>
                                             </div>
                                             <div style={{ padding: '0px', height: '450px', background: '#fff' }}>
@@ -3009,7 +3229,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                 }
                                             }}
                                         >
-                                             <CheckCircle2 size={18} /> Confirm & Save Template
+                                            <CheckCircle2 size={18} /> Confirm & Save Template
                                         </button>
                                     </div>
                                 </div>
@@ -3023,7 +3243,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200, padding: '1rem' }}>
                                 <div className="card shadow-2xl" style={{ width: '95vw', maxWidth: '1600px', height: '95vh', display: 'flex', flexDirection: 'column', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                         <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Eye size={20} /> Template Preview</h2>
+                                        <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Eye size={20} /> Template Preview</h2>
                                         <button className="btn" onClick={() => setPreviewActiveTemplate(null)}>✕</button>
                                     </div>
                                     <div style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', background: '#ffffff', minHeight: 0 }}>
@@ -3040,35 +3260,35 @@ const AdminDashboard = ({ activeTab, user }) => {
 
                     {/* TAB: ANNOUNCEMENTS */}
                     {activeTab === 'announcements' && (
-                                <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                                 <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Megaphone size={24} /> Manage System Announcements</h2>
-                                <p style={{ color: '#000000', marginBottom: '1.5rem' }}>This message will be visible to all employees in their Engage module.</p>
+                        <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
+                            <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Megaphone size={24} /> Manage System Announcements</h2>
+                            <p style={{ color: '#000000', marginBottom: '1.5rem' }}>This message will be visible to all employees in their Engage module.</p>
 
-                                <form onSubmit={handleUpdateAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px' }}>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#000000' }}>Announcement Title</label>
-                                        <input
-                                            type="text"
-                                            value={announcementMsg.title}
-                                            onChange={(e) => setAnnouncementMsg({ ...announcementMsg, title: e.target.value })}
-                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
-                                             placeholder="e.g. Essential Office Guidelines"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#000000' }}>Content</label>
-                                        <textarea
-                                            rows="6"
-                                            value={announcementMsg.content}
-                                            onChange={(e) => setAnnouncementMsg({ ...announcementMsg, content: e.target.value })}
-                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937', lineHeight: '1.5' }}
-                                            placeholder="Type the announcement content here..."
-                                        />
-                                    </div>
-                                    <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', padding: '0.75rem 2rem' }}>Update Announcement</button>
-                                </form>
-                            </div>
-                        )}
+                            <form onSubmit={handleUpdateAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#000000' }}>Announcement Title</label>
+                                    <input
+                                        type="text"
+                                        value={announcementMsg.title}
+                                        onChange={(e) => setAnnouncementMsg({ ...announcementMsg, title: e.target.value })}
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
+                                        placeholder="e.g. Essential Office Guidelines"
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#000000' }}>Content</label>
+                                    <textarea
+                                        rows="6"
+                                        value={announcementMsg.content}
+                                        onChange={(e) => setAnnouncementMsg({ ...announcementMsg, content: e.target.value })}
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937', lineHeight: '1.5' }}
+                                        placeholder="Type the announcement content here..."
+                                    />
+                                </div>
+                                <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', padding: '0.75rem 2rem' }}>Update Announcement</button>
+                            </form>
+                        </div>
+                    )}
 
                     {/* TAB: HISTORICAL DOCS */}
                     {activeTab === 'historical_docs' && (
@@ -3076,513 +3296,189 @@ const AdminDashboard = ({ activeTab, user }) => {
                             <HistoricalDocGenerator apiUrl={apiUrl} />
                         </div>
                     )}
-                </div>
-            )}
+                    {/* --- MODALS --- */}
 
-
-            {/* OFFER LETTER MODAL */}
-            {isOfferLetterModalOpen && viewedEmp && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '2rem' }}>
-                    <div className="card" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                             <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={20} /> {offerLetterParams.employment_type} Offer Letter Preview</h2>
-                            <button className="btn" onClick={() => setIsOfferLetterModalOpen(false)}>✕</button>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: '#000000' }}>Employment Type</label>
-                                    <select
-                                        value={offerLetterParams.employment_type}
-                                        onChange={(e) => setOfferLetterParams({ ...offerLetterParams, employment_type: e.target.value })}
-                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }}
-                                    >
-                                        <option value="Intern">Intern</option>
-                                        <option value="Full-Time">Full-Time</option>
-                                    </select>
+                    {/* MODAL: OFFER LETTER */}
+                    {isOfferLetterModalOpen && viewedEmp && (
+                        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 4000, padding: '2rem' }}>
+                            <div className="card shadow-2xl" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', background: '#ffffff', border: '1px solid var(--border-color)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                    <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={20} /> Preview Offer Letter</h2>
+                                    <button className="btn" onClick={() => setIsOfferLetterModalOpen(false)}>✕</button>
                                 </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: '#000000' }}>Offer Date</label>
-                                    <input type="date" value={offerLetterParams.date} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }} />
+                                <div style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', background: '#ffffff', minHeight: '400px', marginBottom: '1.5rem' }}>
+                                    <iframe srcDoc={offerLetterPreview} style={{ width: '100%', height: '500px', border: 'none' }} title="Offer Letter Preview" />
                                 </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: '#000000' }}>{offerLetterParams.employment_type === 'Intern' ? 'Internship Role' : 'Employee Role'}</label>
-                                    <input type="text" value={offerLetterParams.role} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, role: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }} />
+                                <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
+                                    <button className="btn btn-secondary" onClick={() => setIsOfferLetterModalOpen(false)}>Cancel</button>
+                                    <button className="btn btn-primary" style={{ backgroundColor: '#ff4500' }} disabled={viewedEmp.offer_letter_status !== 'draft'} onClick={() => handleFinalizeOfferLetter(viewedEmp.employee_id)}>
+                                        <CheckCircle2 size={18} /> Approve & Send
+                                    </button>
                                 </div>
-
-                                {offerLetterParams.employment_type === 'Intern' ? (
-                                    <>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: '#000000' }}>Stipend / Benefits</label>
-                                            <input type="text" value={offerLetterParams.stipend} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, stipend: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }} />
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: '#000000' }}>Duration</label>
-                                            <input type="text" value={offerLetterParams.duration} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, duration: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }} />
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: '#000000' }}>Annual CTC (₹)</label>
-                                            <input type="number" value={offerLetterParams.annual_ctc} onChange={(e) => {
-                                                const ctc = parseFloat(e.target.value);
-                                                setOfferLetterParams({ ...offerLetterParams, annual_ctc: ctc, in_hand_salary: ctc - offerLetterParams.pf_amount });
-                                            }} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }} />
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: '#000000' }}>Notice Period</label>
-                                            <input type="text" value={offerLetterParams.notice_period} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, notice_period: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }} />
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                            <input type="checkbox" checked={offerLetterParams.has_pf} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, has_pf: e.target.checked })} id="pf-checkbox" />
-                                            <label htmlFor="pf-checkbox" style={{ fontSize: '0.8rem', color: '#000000' }}>Company has PF?</label>
-                                        </div>
-                                        {offerLetterParams.has_pf && (
-                                            <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>PF Amount (Annual ₹)</label>
-                                                <input type="number" value={offerLetterParams.pf_amount} onChange={(e) => {
-                                                    const pf = parseFloat(e.target.value);
-                                                    setOfferLetterParams({ ...offerLetterParams, pf_amount: pf, in_hand_salary: offerLetterParams.annual_ctc - pf });
-                                                }} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }} />
-                                            </div>
-                                        )}
-                                        <div style={{ padding: '0.75rem', background: 'rgba(255, 69, 0, 0.1)', borderRadius: '6px', border: '1px solid #ff4500', marginTop: '0.5rem' }}>
-                                             <p style={{ margin: 0, fontSize: '0.9rem', color: '#ff4500', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Banknote size={16} /> In-Hand Amount: ₹{offerLetterParams.in_hand_salary}</p>
-                                        </div>
-                                    </>
-                                )}
-
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: '#000000' }}>Role Description / Annexure Details</label>
-                                    <textarea rows="3" value={offerLetterParams.role_description} onChange={(e) => setOfferLetterParams({ ...offerLetterParams, role_description: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#ffffff', color: '#1f2937' }} />
-                                </div>
-                                <button className="btn btn-primary" onClick={() => handleGenerateOfferLetter(viewedEmp.employee_id)} disabled={isGeneratingOL}>
-                                     {isGeneratingOL ? 'Generating Draft...' : <><RefreshCw size={14} /> Update/Generate Draft</>}
-                                </button>
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', background: '#f9fafb' }}>
-                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#ff7a00' }}>📄 PREVIEW AREA</div>
-                                {viewedEmp.offer_letter_status === 'draft' ? (
-                                    <iframe
-                                        src={`${apiUrl}/admin/interns/offer-letter-preview/${viewedEmp.employee_id}?t=${previewTimestamp}`}
-                                        style={{ width: '100%', height: '400px', border: 'none' }}
-                                        title="Offer Letter Preview"
-                                    />
-                                ) : (
-                                    <div style={{ height: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', color: '#000000', border: '1px dashed #e2e8f0' }}>
-                                        Draft not generated yet.<br />Fill details and click Generate.
-                                    </div>
-                                )}
                             </div>
                         </div>
+                    )}
 
-                        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
-                            <button className="btn btn-secondary" onClick={() => setIsOfferLetterModalOpen(false)}>Cancel</button>
-                            <button
-                                className="btn btn-primary"
-                                style={{ backgroundColor: '#ff4500' }}
-                                disabled={viewedEmp.offer_letter_status !== 'draft'}
-                                onClick={() => handleFinalizeOfferLetter(viewedEmp.employee_id)}
-                            >
-                                 <CheckCircle2 size={18} /> Approve & Send to {offerLetterParams.employment_type === 'Intern' ? 'Intern' : 'Employee'}
-                            </button>
-                        </div>
-                    </div >
-                </div>
-            )}
+                    {/* MODAL: RELIEVING LETTER & EXPERIENCE CERTIFICATE */}
+                    {isRelievingLetterModalOpen && (
+                        <div className="modal-overlay" style={{ zIndex: 3000 }}>
+                            <div className="modal-content shadow-2xl" style={{ maxWidth: '1000px', width: '95%', maxHeight: '95vh', overflowY: 'auto', background: '#ffffff', border: '1px solid var(--border-color)', padding: '2rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                    <h2 className="card-title">📄 Exit Documents</h2>
+                                    <button className="btn" onClick={() => setIsRelievingLetterModalOpen(false)}>✕</button>
+                                </div>
 
-            {
-                isRelievingLetterModalOpen && (
-                    <div className="modal-overlay">
-                        <div className="modal-content shadow-2xl" style={{ maxWidth: '1000px', width: '95%', maxHeight: '95vh', overflowY: 'auto', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                <h2 className="card-title">📄 Exit Documents: Relieving & Experience</h2>
-                                <button onClick={() => setIsRelievingLetterModalOpen(false)} style={{ background: 'none', border: 'none', color: '#000000', cursor: 'pointer', fontSize: '1.5rem' }}>✕</button>
-                            </div>
-
-                            {/* --- RELIEVING LETTER SECTION --- */}
-                            <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem', background: '#fff9f5' }}>
-                                <h3 style={{ fontSize: '1.1rem', color: '#ff4500', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                     <FileText size={20} /> 1. Relieving Letter
-                                </h3>
-                                <div className="grid-2">
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="grid-2" style={{ gap: '1.5rem' }}>
+                                    {/* Relieving Letter Section */}
+                                    <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', background: '#fff9f5' }}>
+                                        <h3 style={{ fontSize: '1rem', color: '#ff4500', marginBottom: '1rem' }}>1. Relieving Letter</h3>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
                                             <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>Joining Date</label>
-                                                <input type="date" value={relievingLetterParams.joining_date} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, joining_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
+                                                <label style={{ fontSize: '0.75rem' }}>Joining</label>
+                                                <input type="date" value={relievingLetterParams.joining_date} onChange={e => setRelievingLetterParams({ ...relievingLetterParams, joining_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '4px' }} />
                                             </div>
                                             <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>Relieving Date</label>
-                                                <input type="date" value={relievingLetterParams.relieving_date} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, relieving_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
+                                                <label style={{ fontSize: '0.75rem' }}>Relieving</label>
+                                                <input type="date" value={relievingLetterParams.relieving_date} onChange={e => setRelievingLetterParams({ ...relievingLetterParams, relieving_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '4px' }} />
                                             </div>
                                         </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                            <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>Last Working Day</label>
-                                                <input type="date" value={relievingLetterParams.last_working_day} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, last_working_day: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>Designation</label>
-                                                <input type="text" value={relievingLetterParams.designation} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, designation: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: '#000000' }}>Reason for Leaving</label>
-                                            <textarea rows="2" value={relievingLetterParams.reason_for_leaving} onChange={(e) => setRelievingLetterParams({ ...relievingLetterParams, reason_for_leaving: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '1rem' }}>
-                                            <button className="btn btn-primary" onClick={() => handleGenerateRelievingLetter(selectedApprovedEmp.employee_id)} disabled={isGeneratingRL} style={{ backgroundColor: '#10b981', flex: 1 }}>
-                                                 {isGeneratingRL ? 'Generating...' : <><RefreshCw size={14} /> Update/Generate Draft</>}
-                                            </button>
-                                            <button
-                                                className="btn btn-primary"
-                                                style={{ backgroundColor: '#ff4500', flex: 1 }}
-                                                disabled={selectedApprovedEmp?.relieving_letter_status !== 'draft'}
-                                                onClick={() => handleFinalizeRelievingLetter(selectedApprovedEmp.employee_id)}
-                                            >
-                                                 <CheckCircle2 size={18} /> Finalize & Release
-                                            </button>
-                                        </div>
+                                        <button className="btn btn-primary" style={{ width: '100%', background: '#10b981' }} onClick={() => handleGenerateRelievingLetter(selectedApprovedEmp.employee_id)}>Generate Draft</button>
                                     </div>
-                                    <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.5rem', background: '#f9fafb' }}>
-                                        <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#ff7a00', marginBottom: '0.5rem' }}>DRAFT PREVIEW</div>
-                                        {selectedApprovedEmp?.relieving_letter_status === 'draft' ? (
-                                            <iframe src={`${apiUrl}/admin/employee/relieving-letter-preview/${selectedApprovedEmp.employee_id}?t=${previewTimestamp}`} style={{ width: '100%', height: '250px', border: 'none', background: '#fff' }} title="RL Preview" />
-                                        ) : (
-                                            <div style={{ height: '250px', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', color: '#000000', border: '1px dashed #e2e8f0', background: '#fff', fontSize: '0.8rem' }}>Draft not generated yet.</div>
-                                        )}
+
+                                    {/* Experience Certificate Section */}
+                                    <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', background: '#f0f9ff' }}>
+                                        <h3 style={{ fontSize: '1rem', color: '#ff4500', marginBottom: '1rem' }}>2. Experience Certificate</h3>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem' }}>Issue Date</label>
+                                                <input type="date" value={experienceCertificateParams.issue_date} onChange={e => setExperienceCertificateParams({ ...experienceCertificateParams, issue_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '4px' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem' }}>Grade</label>
+                                                <select value={experienceCertificateParams.performance_summary} onChange={e => setExperienceCertificateParams({ ...experienceCertificateParams, performance_summary: e.target.value })} style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                                                    <option>Outstanding</option><option>Excellent</option><option>Good</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <button className="btn btn-primary" style={{ width: '100%', background: '#ff4500' }} onClick={() => handleGenerateExperienceCertificate(selectedApprovedEmp.employee_id)}>Generate Draft</button>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* --- EXPERIENCE CERTIFICATE SECTION --- */}
-                            <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', background: '#f0f9ff' }}>
-                                <h3 style={{ fontSize: '1.1rem', color: '#ff4500', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                     <Trophy size={20} /> 2. Experience Certificate
-                                </h3>
-                                <div className="grid-2">
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                            <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>Joining Date</label>
-                                                <input type="date" value={experienceCertificateParams.joining_date} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, joining_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>Issue Date</label>
-                                                <input type="date" value={experienceCertificateParams.issue_date} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, issue_date: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                            <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>Last Working Day</label>
-                                                <input type="date" value={experienceCertificateParams.last_working_day} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, last_working_day: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: '0.8rem', color: '#000000' }}>Designation</label>
-                                                <input type="text" value={experienceCertificateParams.designation} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, designation: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: '#000000' }}>Performance Summary</label>
-                                            <select value={experienceCertificateParams.performance_summary} onChange={(e) => setExperienceCertificateParams({ ...experienceCertificateParams, performance_summary: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
-                                                <option>Outstanding</option>
-                                                <option>Excellent</option>
-                                                <option>Good</option>
-                                                <option>Satisfactory</option>
-                                            </select>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '1rem' }}>
-                                            <button className="btn btn-primary" onClick={() => handleGenerateExperienceCertificate(selectedApprovedEmp.employee_id)} disabled={isGeneratingEC} style={{ backgroundColor: '#ff4500', flex: 1 }}>
-                                                 {isGeneratingEC ? 'Generating...' : <><RefreshCw size={14} /> Update/Generate Draft</>}
-                                            </button>
-                                            <button
-                                                className="btn btn-primary"
-                                                style={{ backgroundColor: '#ff4500', flex: 1 }}
-                                                disabled={selectedApprovedEmp?.experience_cert_status !== 'draft'}
-                                                onClick={() => handleFinalizeExperienceCertificate(selectedApprovedEmp.employee_id)}
-                                            >
-                                                 <CheckCircle2 size={18} /> Finalize & Release
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.5rem', background: '#f9fafb' }}>
-                                        <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#ff4500', marginBottom: '0.5rem' }}>DRAFT PREVIEW</div>
-                                        {selectedApprovedEmp?.experience_cert_status === 'draft' ? (
-                                            <iframe src={`${apiUrl}/admin/employee/experience-certificate-preview/${selectedApprovedEmp.employee_id}?t=${previewTimestamp}`} style={{ width: '100%', height: '250px', border: 'none', background: '#fff' }} title="EC Preview" />
-                                        ) : (
-                                            <div style={{ height: '250px', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', color: '#000000', border: '1px dashed #e2e8f0', background: '#fff', fontSize: '0.8rem' }}>Draft not generated yet.</div>
-                                        )}
-                                    </div>
+                                <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+                                    <button className="btn btn-secondary" onClick={() => setIsRelievingLetterModalOpen(false)}>Close Window</button>
                                 </div>
-                            </div>
-
-                            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
-                                <button className="btn btn-secondary" onClick={() => setIsRelievingLetterModalOpen(false)} style={{ minWidth: '200px' }}>Done / Close</button>
                             </div>
                         </div>
-                    </div>
-                )
-            }
+                    )}
 
-            {
-                isPayslipManagerOpen && (
-                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '2rem' }}>
-                        <div className="card shadow-2xl" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                <div>
-                                     <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Banknote size={24} color="var(--primary)" /> Release Payslips</h2>
-                                    <p style={{ fontSize: '0.875rem', color: '#000000', margin: '0.25rem 0 0' }}>Month: <strong>{payslipManagerMonth}</strong></p>
+                    {/* MODAL: PAYSLIP MANAGER */}
+                    {isPayslipManagerOpen && (
+                        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+                            <div className="card shadow-2xl" style={{ width: '100%', maxWidth: '800px', background: '#ffffff', border: '1px solid var(--border-color)', padding: '2rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                    <h2 className="card-title">Release Payslips ({payslipManagerMonth})</h2>
+                                    <button className="btn" onClick={() => setIsPayslipManagerOpen(false)}>✕</button>
                                 </div>
-                                <button className="btn" onClick={() => setIsPayslipManagerOpen(false)}>✕</button>
-                            </div>
 
-                            <p style={{ color: '#000000', fontSize: '0.875rem', marginBottom: '1.5rem' }}>Select employees to generate and send payslips for. You can preview individual payslips using the AI Generator before sending all.</p>
-
-                            <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', marginBottom: '1.5rem' }}>
-                                <div style={{ background: '#f9fafb', padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedPayslipEmployees.length === approvedEmployees.length && approvedEmployees.length > 0}
-                                        onChange={(e) => {
-                                            if (e.target.checked) setSelectedPayslipEmployees(approvedEmployees.map(emp => emp.employee_id));
-                                            else setSelectedPayslipEmployees([]);
-                                        }}
-                                        style={{ width: '1rem', height: '1rem' }}
-                                    />
-                                    <span style={{ fontSize: '0.875rem', fontWeight: 'bold', color: '#000000' }}>Select All ({approvedEmployees.length})</span>
+                                <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px', marginBottom: '1.5rem', background: '#f8fafc' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                        <thead style={{ background: '#f1f5f9' }}>
+                                            <tr>
+                                                <th style={{ padding: '0.75rem', textAlign: 'left' }}><input type="checkbox" onChange={e => setSelectedPayslipEmployees(e.target.checked ? approvedEmployees.map(x => x.employee_id) : [])} /></th>
+                                                <th style={{ padding: '0.75rem', textAlign: 'left' }}>Employee</th>
+                                                <th style={{ padding: '0.75rem', textAlign: 'left' }}>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {approvedEmployees.map(emp => (
+                                                <tr key={emp.employee_id} style={{ borderTop: '1px solid #e2e8f0' }}>
+                                                    <td style={{ padding: '0.75rem' }}><input type="checkbox" checked={selectedPayslipEmployees.includes(emp.employee_id)} onChange={e => setSelectedPayslipEmployees(e.target.checked ? [...selectedPayslipEmployees, emp.employee_id] : selectedPayslipEmployees.filter(id => id !== emp.employee_id))} /></td>
+                                                    <td style={{ padding: '0.75rem' }}>{emp.name} ({emp.employee_id})</td>
+                                                    <td style={{ padding: '0.75rem' }}>Ready</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
-                                <div style={{ maxHeight: '400px', overflowY: 'auto', background: '#ffffff' }}>
-                                    {approvedEmployees.length === 0 && <div style={{ padding: '1rem', color: '#000000', textAlign: 'center' }}>No employees found.</div>}
-                                    {approvedEmployees.map(emp => (
-                                        <div key={emp.employee_id} style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedPayslipEmployees.includes(emp.employee_id)}
-                                                    onChange={(e) => {
-                                                        if (e.target.checked) setSelectedPayslipEmployees([...selectedPayslipEmployees, emp.employee_id]);
-                                                        else setSelectedPayslipEmployees(selectedPayslipEmployees.filter(id => id !== emp.employee_id));
-                                                    }}
-                                                    style={{ width: '1rem', height: '1rem' }}
-                                                />
-                                                <div>
-                                                    <div style={{ fontWeight: '600', color: '#000000', fontSize: '0.875rem' }}>{emp.name}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: '#000000' }}>
-                                                        ID: {emp.employee_id} | Salary: ₹{emp.monthly_salary || 0}
-                                                        {emp.pf_number && ` | PF: ${emp.pf_number}`}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={() => {
-                                                    setDocGenType('payslip');
-                                                    setDocGenEmployee(emp);
-                                                    setDocGenInitialData({
-                                                        emp_name: emp.name,
-                                                        employee_id: emp.employee_id,
-                                                        designation: emp.position || 'Software Engineer',
-                                                        month_year: payslipManagerMonth,
-                                                        gross_salary: emp.monthly_salary || 50000,
-                                                        net_salary: (emp.in_hand_salary && emp.in_hand_salary > 0) ? emp.in_hand_salary : (emp.monthly_salary ? emp.monthly_salary - 200 : 49800),
-                                                        pf_number: emp.pf_number || ''
-                                                    });
-                                                    setIsDocGenModalOpen(true);
-                                                }}
-                                                className="btn btn-secondary"
-                                                style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', color: '#ff4500', borderColor: '#ff4500' }}
-                                            >
-                                                👁️ AI Preview
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
-                                <button className="btn btn-secondary" onClick={() => setIsPayslipManagerOpen(false)} disabled={isBatchSending}>Cancel</button>
-                                <button
-                                    className="btn btn-primary"
-                                    style={{ background: '#ff4500', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                                    disabled={selectedPayslipEmployees.length === 0 || isBatchSending}
-                                    onClick={async () => {
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                                    <button className="btn btn-secondary" onClick={() => setIsPayslipManagerOpen(false)}>Cancel</button>
+                                    <button className="btn btn-primary" style={{ background: '#ff4500' }} disabled={isBatchSending || selectedPayslipEmployees.length === 0} onClick={async () => {
                                         setIsBatchSending(true);
-                                        let successCount = 0;
-                                        for (const empId of selectedPayslipEmployees) {
-                                            const emp = approvedEmployees.find(e => e.employee_id === empId);
-                                            if (!emp) continue;
-                                            const data = {
-                                                emp_name: emp.name,
-                                                employee_id: emp.employee_id,
-                                                designation: emp.position || 'Software Engineer',
-                                                month_year: payslipManagerMonth,
-                                                gross_salary: emp.monthly_salary || 50000,
-                                                net_salary: (emp.in_hand_salary && emp.in_hand_salary > 0) ? emp.in_hand_salary : (emp.monthly_salary ? emp.monthly_salary - 200 : 49800),
-                                                
-                                                // NEW: Infuse persistent payroll structure if available
-                                                ...(emp.payroll_settings || {})
-                                            };
-                                            try {
-                                                const res = await fetch(`${apiUrl}/enhanced-docs/generate`, {
+                                        try {
+                                            for (const id of selectedPayslipEmployees) {
+                                                const emp = approvedEmployees.find(e => e.employee_id === id);
+                                                await fetch(`${apiUrl}/enhanced-docs/generate`, {
                                                     method: 'POST',
                                                     headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ 
-                                                        employee_id: empId, 
-                                                        doc_type: 'payslip', 
-                                                        roi_data: data 
-                                                    })
+                                                    body: JSON.stringify({ employee_id: id, doc_type: 'payslip', roi_data: { emp_name: emp.name, month_year: payslipManagerMonth, gross_salary: emp.monthly_salary || 50000, net_salary: emp.monthly_salary ? emp.monthly_salary - 200 : 49800 } })
                                                 });
-                                                const result = await res.json();
-                                                if (result.status === 'success') successCount++;
-                                            } catch (err) {
-                                                console.error('Error generating payslip for', empId, err);
                                             }
-                                        }
-                                        setIsBatchSending(false);
-                                        alert(`Successfully generated and sent ${successCount} payslips out of ${selectedPayslipEmployees.length}!`);
-                                        setIsPayslipManagerOpen(false);
-
-                                        // Mark as released
-                                        await fetch(`${apiUrl}/admin/payslips/release`, {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ month_year: payslipManagerMonth, release: true })
-                                        });
-                                        fetchData();
-                                    }}
-                                >
-                                    {isBatchSending ? (
-                                        <><RefreshCw size={16} className="animate-spin" /> Generating...</>
-                                    ) : (
-                                        <><Sparkles size={16} /> Generate & Send ({selectedPayslipEmployees.length})</>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
-
-            <DocumentGeneratorModal
-                isOpen={isDocGenModalOpen}
-                onClose={() => setIsDocGenModalOpen(false)}
-                apiUrl={apiUrl}
-                docType={docGenType}
-                initialData={docGenInitialData}
-                employee={docGenEmployee}
-            />
-
-            <EnhancedDocumentGenerator
-                isOpen={isEnhancedDocGenOpen}
-                onClose={() => setIsEnhancedDocGenOpen(false)}
-                apiUrl={apiUrl}
-            />
-            {/* MODAL: ADD EMPLOYEE */}
-            {isAddEmpModalOpen && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000 }}>
-                    <div className="card shadow-2xl" style={{ width: '100%', maxWidth: '500px', padding: '2.5rem', border: '1px solid var(--border-color)', background: '#ffffff', animation: 'slideUp 0.3s ease-out' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                            <h2 style={{ fontSize: '1.5rem', color: 'var(--primary)', margin: 0, fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <UserPlus size={24} /> Add New Employee
-                            </h2>
-                            <button onClick={() => setIsAddEmpModalOpen(false)} style={{ background: 'none', border: 'none', color: '#000000', cursor: 'pointer', fontSize: '1.25rem' }}>✕</button>
-                        </div>
-                        <form onSubmit={handleAddEmployee} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                            <div>
-                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Full Name</label>
-                                <input 
-                                    required 
-                                    className="premium-input" 
-                                    placeholder="John Doe"
-                                    value={addEmpForm.name} 
-                                    onChange={e => setAddEmpForm({...addEmpForm, name: e.target.value})} 
-                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f9fafb', color: '#1f2937' }}
-                                />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Company Email (@neuzenai.com)</label>
-                                <input 
-                                    required 
-                                    type="email" 
-                                    className="premium-input" 
-                                    placeholder="john@neuzenai.com"
-                                    value={addEmpForm.email} 
-                                    onChange={e => setAddEmpForm({...addEmpForm, email: e.target.value})} 
-                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f9fafb', color: '#1f2937' }}
-                                />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Temporary Password</label>
-                                <input 
-                                    required 
-                                    type="password" 
-                                    className="premium-input" 
-                                    value={addEmpForm.password} 
-                                    onChange={e => setAddEmpForm({...addEmpForm, password: e.target.value})} 
-                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f9fafb', color: '#1f2937' }}
-                                />
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Employment Type</label>
-                                    <select 
-                                        value={addEmpForm.employment_type} 
-                                        onChange={e => setAddEmpForm({...addEmpForm, employment_type: e.target.value})}
-                                        style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f9fafb', color: '#1f2937', fontWeight: 600 }}
-                                    >
-                                        <option value="Full-Time">Full-Time</option>
-                                        <option value="Intern">Intern</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Monthly Salary (₹)</label>
-                                    <input 
-                                        required 
-                                        type="number" 
-                                        className="premium-input" 
-                                        value={addEmpForm.monthly_salary} 
-                                        onChange={e => setAddEmpForm({...addEmpForm, monthly_salary: e.target.value})} 
-                                        style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f9fafb', color: '#1f2937' }}
-                                    />
+                                            alert('Successfully generated and sent payslips!');
+                                        } catch (err) { alert('Failed to send some payslips.'); }
+                                        finally { setIsBatchSending(false); setIsPayslipManagerOpen(false); fetchData(); }
+                                    }}>
+                                        {isBatchSending ? 'Sending...' : 'Generate & Send Selected'}
+                                    </button>
                                 </div>
                             </div>
-                            <div>
-                                <label style={{ fontSize: '0.75rem', color: '#000000', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Designation / Position</label>
-                                <input 
-                                    required 
-                                    className="premium-input" 
-                                    placeholder="e.g. Sales Executive"
-                                    value={addEmpForm.position} 
-                                    onChange={e => setAddEmpForm({...addEmpForm, position: e.target.value})} 
-                                    style={{ width: '100%', padding: '0.875rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f9fafb', color: '#1f2937' }}
-                                />
+                        </div>
+                    )}
+
+                    <DocumentGeneratorModal isOpen={isDocGenModalOpen} onClose={() => setIsDocGenModalOpen(false)} apiUrl={apiUrl} docType={docGenType} initialData={docGenInitialData} employee={docGenEmployee} />
+                    <EnhancedDocumentGenerator isOpen={isEnhancedDocGenOpen} onClose={() => setIsEnhancedDocGenOpen(false)} apiUrl={apiUrl} />
+
+                    {/* MODAL: ADD EMPLOYEE */}
+                    {isAddEmpModalOpen && (
+                        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000 }}>
+                            <div className="card shadow-2xl" style={{ width: '100%', maxWidth: '600px', background: '#ffffff', borderRadius: '16px', padding: '2.5rem' }}>
+                                <h2 className="card-title">Add New Employee</h2>
+                                <div className="grid-2" style={{ gap: '1.25rem', margin: '2rem 0' }}>
+                                    <div><label style={{ fontSize: '0.8rem' }}>Full Name</label><input className="premium-input" value={addEmpForm.name} onChange={e => setAddEmpForm({ ...addEmpForm, name: e.target.value })} style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px' }} /></div>
+                                    <div><label style={{ fontSize: '0.8rem' }}>Personal Email</label><input className="premium-input" value={addEmpForm.personal_email} onChange={e => setAddEmpForm({ ...addEmpForm, personal_email: e.target.value })} style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px' }} /></div>
+                                    <div><label style={{ fontSize: '0.8rem' }}>Password</label><input type="password" value={addEmpForm.password} onChange={e => setAddEmpForm({ ...addEmpForm, password: e.target.value })} style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px' }} /></div>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                                    <button className="btn btn-secondary" onClick={() => setIsAddEmpModalOpen(false)}>Cancel</button>
+                                    <button className="btn btn-primary" style={{ background: '#ff4500' }} onClick={handleAddEmployee}>Create Employee</button>
+                                </div>
                             </div>
-                            
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-                                <button 
-                                    type="button" 
-                                    onClick={(e) => handleAddEmployee(e, true)}
-                                    disabled={addEmpLoading}
-                                    className="btn btn-primary" 
-                                    style={{ padding: '1rem', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', fontWeight: 'bold', border: 'none' }}
-                                >
-                                    {addEmpLoading ? <RefreshCw size={16} className="animate-spin" /> : <><Sparkles size={16} /> Create & Gen Letter</>}
-                                </button>
-                                <button 
-                                    type="submit" 
-                                    disabled={addEmpLoading}
-                                    className="btn btn-primary" 
-                                    style={{ padding: '1rem', background: '#ff4500', fontWeight: 'bold' }}
-                                >
-                                    {addEmpLoading ? 'Creating...' : <><CheckCircle2 size={16} /> Create Only</>}
-                                </button>
+                        </div>
+                    )}
+
+                    {/* MODAL: BANK DETAILS */}
+                    {inspectingBankDetails && (
+                        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 5000 }}>
+                            <div className="card shadow-2xl" style={{ width: '100%', maxWidth: '450px', background: '#ffffff', padding: '2rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                    <h2 className="card-title">Bank Details</h2>
+                                    <button className="btn" onClick={() => setInspectingBankDetails(null)}>✕</button>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px' }}>
+                                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Account Holder</div>
+                                        <div style={{ fontWeight: 700 }}>{inspectingBankDetails.name}</div>
+                                    </div>
+                                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px' }}>
+                                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Bank Name</div>
+                                        <div style={{ fontWeight: 700 }}>{inspectingBankDetails.bank_details?.bank_name || 'N/A'}</div>
+                                    </div>
+                                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px' }}>
+                                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Account Number</div>
+                                        <div style={{ fontWeight: 700 }}>{inspectingBankDetails.bank_details?.account_number || 'N/A'}</div>
+                                    </div>
+                                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px' }}>
+                                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>IFSC Code</div>
+                                        <div style={{ fontWeight: 700 }}>{inspectingBankDetails.bank_details?.ifsc_code || 'N/A'}</div>
+                                    </div>
+                                </div>
+                                <button className="btn btn-primary" style={{ width: '100%', marginTop: '1.5rem' }} onClick={() => setInspectingBankDetails(null)}>Close</button>
                             </div>
-                        </form>
-                    </div>
-                </div>
+                        </div>
+                    )}
+
+                    {/* Final closure */}
+                </>
             )}
         </div>
     );
