@@ -5,7 +5,7 @@ import {
   ClipboardCheck, Users, Settings, Calendar, BarChart3, Bell, Megaphone, 
   Camera, CreditCard, PieChart, FileText, History, Layout, Timer, 
   MessageSquare, Heart, Wallet, Palmtree, Folder, Package, LogOut,
-  ChevronDown, ChevronRight, Activity, BrainCircuit
+  ChevronDown, ChevronRight, Activity, BrainCircuit, UserPlus
 } from 'lucide-react';
 
 // Pages
@@ -210,7 +210,7 @@ function AppContent() {
                 isExpanded={isManagementExpanded}
                 setIsExpanded={setIsManagementExpanded}
               >
-                <NavItem path="/admin/approvals" icon={ClipboardCheck} title="Approvals" subtitle="ACTION REQUIRED" isSub />
+                <NavItem path="/admin/onboarding" icon={UserPlus} title="Onboarding" subtitle="CANDIDATE SETUP" isSub />
                 <NavItem path="/admin/leaves" icon={Palmtree} title="Leave Mgmt" subtitle="TIME OFF" isSub />
                 <NavItem path="/admin/items" icon={Package} title="Item Requests" subtitle="REQUISITIONS" isSub />
               </NavGroup>
@@ -318,7 +318,9 @@ function AppContent() {
           <Routes>
             <Route path="/admin/overview" element={<AdminDashboard activeTab="overview" user={user} />} />
             <Route path="/admin/dashboard" element={<AdminDashboard activeTab="employees" user={user} />} />
-            <Route path="/admin/approvals" element={<AdminDashboard activeTab="onboarding" user={user} />} />
+            <Route path="/admin/add-employee" element={<Navigate to="/admin/onboarding" replace />} />
+            <Route path="/admin/onboarding" element={<AdminDashboard activeTab="onboarding" user={user} />} />
+            <Route path="/admin/approvals" element={<Navigate to="/admin/onboarding" replace />} />
             <Route path="/admin/leaves" element={<AdminDashboard activeTab="leaves" user={user} />} />
             <Route path="/admin/items" element={<AdminDashboard activeTab="items" user={user} />} />
             <Route path="/admin/calendar" element={<AdminDashboard activeTab="holidays" user={user} />} />

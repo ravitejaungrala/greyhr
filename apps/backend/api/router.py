@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from fastapi import APIRouter, Response, UploadFile, File
 from fastapi.responses import HTMLResponse
 from fastapi.encoders import jsonable_encoder
@@ -88,12 +90,60 @@ class AdminEmployeeCreate(BaseModel):
     position: str
     monthly_salary: int
 
+class AdminAddEmployeeRequest(BaseModel):
+    # Basic Info
+    name: str
+    email: str
+    password: str
+    full_name: str
+    dob: str
+    father_name: Optional[str] = None
+    mother_name: Optional[str] = None
+    siblings_details: Optional[str] = None
+    
+    # Bank Details
+    bank_name: str
+    account_number: str
+    ifsc_code: str
+    cif_number: Optional[str] = None
+    bank_passbook_base64: str
+    
+    # Education
+    ug_details: EducationDetail
+    inter_details: Optional[EducationDetail] = None
+    ssc_details: Optional[EducationDetail] = None
+    
+    # Experience
+    has_experience: bool = False
+    experience_list: List[ExperienceDetail] = []
+    pf_number: Optional[str] = None
+    uan_number: Optional[str] = None
+    
+    # Documents
+    passport_photo_base64: str
+    pan_card_base64: str
+    
+    # Admin Setup
+    employment_type: str
+    position: str
+    in_hand_salary: int
+    role: str = "employee"
+    privilege_leave_rate: float = 1.5
+    sick_leave_rate: float = 1.0
+    casual_leave_rate: float = 1.0
+    pan_no: str
+    pf_no: Optional[str] = None
+    tax_deduction_rate: float = 0.0
+    internship_end_date: Optional[str] = None
+
 class LeaveRequest(BaseModel):
     employee_id: str
     leave_type: str
     subject: Optional[str] = ""
     start_date: str
     end_date: str
+    start_session: Optional[str] = "Full Day"  # "Full Day", "Session 1", "Session 2"
+    end_session: Optional[str] = "Full Day"    # "Full Day", "Session 1", "Session 2"
     reason: str
     approver_id: Optional[str] = None
     cc_ids: List[str] = []
@@ -101,8 +151,9 @@ class LeaveRequest(BaseModel):
 class EducationDetail(BaseModel):
     institution_name: str
     department: str
-    cgpa: float
-    pass_year: int
+    score: float
+    start_year: int
+    end_year: int
     board_university: str
     certificate_base64: str
 
@@ -184,6 +235,9 @@ def parse_base64_with_meta(b64_string: str):
         elif 'application/pdf' in header:
             ext = ".pdf"
             mime = "application/pdf"
+        elif 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' in header or 'application/msword' in header:
+            ext = ".docx"
+            mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             
     try:
         data = base64.b64decode(b64_string)
@@ -197,6 +251,9 @@ def parse_base64_with_meta(b64_string: str):
         elif data.startswith(b'\xff\xd8\xff'):
             ext = ".jpg"
             mime = "image/jpeg"
+        elif data.startswith(b'PK\x03\x04'): # ZIP format used by DOCX
+            ext = ".docx"
+            mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             
         return data, ext, mime
     except:
@@ -211,37 +268,38 @@ def parse_base64(b64_string: str) -> bytes:
     return data
     return base64.b64decode(b64_string)
 
-@router.post("/auth/register")
-def register_employee(request: EmployeeRegistrationRequest):
-    # Enforce @neuzenai.com domain for employees
-    if not request.email.lower().endswith("@neuzenai.com"):
-        return {"error": "Only @neuzenai.com email addresses are accepted for employee registration."}
+# Employee self-registration is disabled. Admins must add employees through /admin/add-employee
+# @router.post("/auth/register")
+# def register_employee(request: EmployeeRegistrationRequest):
+#     # Enforce @neuzenai.com domain for employees
+#     if not request.email.lower().endswith("@neuzenai.com"):
+#         return {"error": "Only @neuzenai.com email addresses are accepted for employee registration."}
 
-    # Check if already exists
-    if mongo_db.users is not None and mongo_db.users.find_one({"email": request.email}):
-        return {"error": "Email already exists"}
+#     # Check if already exists
+#     if mongo_db.users is not None and mongo_db.users.find_one({"email": request.email}):
+#         return {"error": "Email already exists"}
         
-    # Generate Employee ID
-    emp_id = f"EMP{uuid.uuid4().hex[:6].upper()}"
+#     # Generate Employee ID
+#     emp_id = f"EMP{uuid.uuid4().hex[:6].upper()}"
     
-    # Save to MongoDB with incomplete status
-    user_record = {
-        "employee_id": emp_id,
-        "name": request.name,
-        "email": request.email,
-        "password": request.password, # Plain text for MVP mock
-        "role": "employee",
-        "status": "incomplete_profile",
-        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
-    }
+#     # Save to MongoDB with incomplete status
+#     user_record = {
+#         "employee_id": emp_id,
+#         "name": request.name,
+#         "email": request.email,
+#         "password": request.password, # Plain text for MVP mock
+#         "role": "employee",
+#         "status": "incomplete_profile",
+#         "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+#     }
     
-    if mongo_db.users is not None:
-        mongo_db.users.insert_one(user_record)
+#     if mongo_db.users is not None:
+#         mongo_db.users.insert_one(user_record)
         
-    return {
-        "message": "Step 1/2 complete. Please login to complete your profile.",
-        "employee_id": emp_id
-    }
+#     return {
+#         "message": "Step 1/2 complete. Please login to complete your profile.",
+#         "employee_id": emp_id
+#     }
 
 @router.post("/auth/login")
 def login(request: LoginRequest):
@@ -356,7 +414,7 @@ def get_pending_employees():
     if mongo_db.users is None:
         return {"employees": []}
         
-    pending = list(mongo_db.users.find({"status": "pending_approval"}, {"_id": 0, "password": 0}))
+    pending = list(mongo_db.users.find({"status": {"$in": ["pending_approval", "onboarding_pending"]}}, {"_id": 0, "password": 0}))
     return {"employees": pending}
 
 @router.get("/auth/admin/employees")
@@ -550,6 +608,164 @@ def admin_create_employee(request: AdminEmployeeCreate):
     
     mongo_db.users.insert_one(user_record)
     return {"message": "Employee created successfully.", "employee_id": emp_id}
+
+@router.post("/admin/add-employee")
+def admin_add_employee(request: AdminAddEmployeeRequest):
+    if mongo_db.users is None:
+        return {"error": "Database error"}
+    
+    # Check if email already exists
+    if mongo_db.users.find_one({"email": request.email}):
+        return {"error": "Email already exists"}
+    
+    # Generate Employee ID
+    emp_id = f"EMP{uuid.uuid4().hex[:6].upper()}"
+    
+    try:
+        # Process and save documents to S3
+        # 1. Passport Photo
+        passport_bytes, passport_ext, passport_mime = parse_base64_with_meta(request.passport_photo_base64)
+        passport_key = f"profile_photos/{emp_id}_passport{passport_ext}"
+        s3_db.save_image(passport_key, passport_bytes, content_type=passport_mime)
+        
+        # 2. PAN Card
+        pan_bytes, pan_ext, pan_mime = parse_base64_with_meta(request.pan_card_base64)
+        pan_key = f"onboarding_docs/{emp_id}_pan_card{pan_ext}"
+        s3_db.save_image(pan_key, pan_bytes, content_type=pan_mime)
+        
+        # 3. Bank Passbook
+        bank_bytes, bank_ext, bank_mime = parse_base64_with_meta(request.bank_passbook_base64)
+        bank_key = f"onboarding_docs/{emp_id}_bank_passbook{bank_ext}"
+        s3_db.save_image(bank_key, bank_bytes, content_type=bank_mime)
+        
+        # 4. Education Certificates
+        ug_bytes, ug_ext, ug_mime = parse_base64_with_meta(request.ug_details.certificate_base64)
+        ug_key = f"onboarding_docs/{emp_id}_edu_cert{ug_ext}"
+        s3_db.save_image(ug_key, ug_bytes, content_type=ug_mime)
+        
+        # Optional intermediate certificate
+        inter_key = None
+        if request.inter_details and request.inter_details.certificate_base64:
+            inter_bytes, inter_ext, inter_mime = parse_base64_with_meta(request.inter_details.certificate_base64)
+            inter_key = f"onboarding_docs/{emp_id}_inter_cert{inter_ext}"
+            s3_db.save_image(inter_key, inter_bytes, content_type=inter_mime)
+        
+        # Optional SSC certificate
+        ssc_key = None
+        if request.ssc_details and request.ssc_details.certificate_base64:
+            ssc_bytes, ssc_ext, ssc_mime = parse_base64_with_meta(request.ssc_details.certificate_base64)
+            ssc_key = f"onboarding_docs/{emp_id}_ssc_cert{ssc_ext}"
+            s3_db.save_image(ssc_key, ssc_bytes, content_type=ssc_mime)
+        
+        # Create complete user record
+        user_record = {
+            "employee_id": emp_id,
+            "name": request.name,
+            "email": request.email,
+            "password": request.password,  # Plain text for MVP
+            "role": request.role,
+            "status": "approved",
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "onboarding_completed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            
+            # Personal Details
+            "full_name": request.full_name,
+            "dob": request.dob,
+            "father_name": request.father_name,
+            "mother_name": request.mother_name,
+            "siblings_details": request.siblings_details,
+            
+            # Bank Details
+            "bank_details": {
+                "bank_name": request.bank_name,
+                "account_number": request.account_number,
+                "ifsc_code": request.ifsc_code,
+                "cif_number": request.cif_number,
+                "passbook_url": bank_key
+            },
+            
+            # Education
+            "education": {
+                "ug": {
+                    "institution": request.ug_details.institution_name,
+                    "department": request.ug_details.department,
+                    "score": request.ug_details.score,
+                    "start_year": request.ug_details.start_year,
+                    "end_year": request.ug_details.end_year,
+                    "university": request.ug_details.board_university,
+                    "cert_url": ug_key
+                }
+            },
+            
+            # Experience
+            "experience": {
+                "has_experience": request.has_experience,
+                "list": [jsonable_encoder(exp) for exp in request.experience_list],
+                "pf_number": request.pf_number,
+                "uan_number": request.uan_number
+            },
+            
+            # Documents
+            "passport_photo_url": passport_key,
+            "pan_card_url": pan_key,
+            "pan_no": request.pan_no,
+            
+            # Employment Details
+            "employment_type": request.employment_type,
+            "position": request.position,
+            "monthly_salary": request.in_hand_salary,
+            
+            # Leave Configuration
+            "leave_rates": {
+                "privilege": request.privilege_leave_rate,
+                "sick": request.sick_leave_rate,
+                "casual": request.casual_leave_rate
+            },
+            
+            # Additional
+            "pf_no": request.pf_no,
+            "tax_deduction_rate": request.tax_deduction_rate,
+            "internship_end_date": request.internship_end_date
+        }
+        
+        # Add optional education details
+        if request.inter_details:
+            user_record["education"]["intermediate"] = {
+                "institution": request.inter_details.institution_name,
+                "department": request.inter_details.department,
+                "score": request.inter_details.score,
+                "start_year": request.inter_details.start_year,
+                "end_year": request.inter_details.end_year,
+                "board": request.inter_details.board_university,
+                "cert_url": inter_key
+            }
+        
+        if request.ssc_details:
+            user_record["education"]["ssc"] = {
+                "institution": request.ssc_details.institution_name,
+                "department": request.ssc_details.department,
+                "score": request.ssc_details.score,
+                "start_year": request.ssc_details.start_year,
+                "end_year": request.ssc_details.end_year,
+                "board": request.ssc_details.board_university,
+                "cert_url": ssc_key
+            }
+        
+        # Save to database
+        mongo_db.users.insert_one(user_record)
+        
+        # Sync to vector database for AI features
+        sync_employee_to_vector_db(emp_id, mongo_db)
+        
+        return {
+            "message": "Employee added successfully! Please provide login credentials to the employee.",
+            "employee_id": emp_id,
+            "email": request.email,
+            "password": request.password  # In production, don't return password
+        }
+        
+    except Exception as e:
+        return {"error": f"Failed to add employee: {str(e)}"}
 
 class RoleAssignment(BaseModel):
     employee_id: str
@@ -993,6 +1209,36 @@ def update_leave(leave_id: str, update: LeaveStatusUpdate):
             
     return {"message": f"Leave {leave_id} updated to {update.status}"}
 
+@router.put("/employee/leaves/{leave_id}/withdraw")
+def withdraw_leave(leave_id: str, employee_id: str):
+    """Allow employees to withdraw their pending leave requests."""
+    if mongo_db.db is not None:
+        # Find the leave request
+        leave_record = mongo_db.leaves.find_one({"id": leave_id, "employee_id": employee_id})
+        
+        if not leave_record:
+            return {"error": "Leave request not found or access denied"}
+        
+        # Only allow withdrawal if status is pending
+        if leave_record.get("status") != "Pending Admin Approval":
+            return {"error": "Only pending leave requests can be withdrawn"}
+        
+        # Update status to withdrawn
+        mongo_db.leaves.update_one(
+            {"id": leave_id, "employee_id": employee_id}, 
+            {"$set": {"status": "Withdrawn by Employee"}}
+        )
+        
+        # Sync Status Change to Vector DB
+        try:
+            updated_record = mongo_db.leaves.find_one({"id": leave_id})
+            if updated_record:
+                sync_leave_request_to_vector_db(updated_record, mongo_db)
+        except Exception as v_err:
+            print(f"Vector Sync Warning: {v_err}")
+            
+    return {"message": f"Leave request {leave_id} has been withdrawn"}
+
 @router.get("/admin/leaves/approve-direct")
 def approve_leave_direct(id: str, status: str):
     """Direct approval from email link."""
@@ -1196,7 +1442,7 @@ def get_ai_holidays(year: int = 2026):
     """
     try:
         # Read the model from .env, replace spaces with dashes as the API expects no spaces
-        model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").replace(" ", "-").lower()
+        model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview").replace(" ", "-").lower()
         model = genai.GenerativeModel(model_name)
         prompt = (
             f"List a comprehensive set of at least 25 official public, national, regional, and restricted holidays in India for the year {year}. "
@@ -1784,7 +2030,7 @@ def ask_hr_copilot(query: CopilotQuery):
         return {"agent": "HR Copilot", "response": "AI Copilot is not configured (missing API Key)."}
     
     genai.configure(api_key=api_key)
-    model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
+    model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview").strip()
     model = genai.GenerativeModel(model_name)
     
     context = "Company policies retrieval is currently disabled."
@@ -3157,7 +3403,7 @@ def analyze_payslip_template(request: PayslipTemplateRequest):
         return {"error": "AI not configured (missing API Key)."}
     
     genai.configure(api_key=api_key)
-    model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
+    model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview").strip()
     model = genai.GenerativeModel(model_name)
     
     # 1. Decode Image for Gemini
@@ -4032,7 +4278,7 @@ def analyze_and_convert_template(content_b64: str, file_type: str, document_type
         # 1. Identify placeholders
         # 2. If PDF, convert to a clean HTML template relative to the content
         
-        model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+        model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview")
         model = genai.GenerativeModel(model_name)
         
         # Specialized prompts based on document type

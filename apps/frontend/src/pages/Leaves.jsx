@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { 
     Plane, RefreshCw, Bot, Info, 
     CheckCircle2, Calendar, Clock, BarChart3,
-    History, Users, Sparkles
+    History, Users, Sparkles, Eye
 } from 'lucide-react';
 import { API_URL } from '../config';
+import LeaveDetailsView from './LeaveDetailsView';
 
 const Leaves = ({ userId, user }) => {
     const [status, setStatus] = useState('');
+    const [selectedLeaveId, setSelectedLeaveId] = useState(null);
     const [leaveData, setLeaveData] = useState({ total: 0, used: 0, remaining: 0, types: [], is_intern: false });
     const [recentLeaves, setRecentLeaves] = useState([]);
     const [teamAvailability, setTeamAvailability] = useState([]);
@@ -18,6 +20,8 @@ const Leaves = ({ userId, user }) => {
         subject: '',
         start_date: '',
         end_date: '',
+        start_session: 'Full Day',
+        end_session: 'Full Day',
         reason: '',
         approver_id: '',
         cc_ids: []
@@ -120,7 +124,34 @@ const Leaves = ({ userId, user }) => {
         }
     };
 
+    const withdrawLeave = async (leaveId) => {
+        if (!confirm('Are you sure you want to withdraw this leave request?')) return;
+
+        try {
+            const response = await fetch(`${apiUrl}/employee/leaves/${leaveId}/withdraw?employee_id=${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (response.ok) {
+                alert('Leave request withdrawn successfully');
+                fetchRecentLeaves();
+                fetchBalance();
+            } else {
+                const error = await response.json();
+                alert(`Failed to withdraw leave: ${error.error || 'Unknown error'}`);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to withdraw leave request');
+        }
+    };
+
     if (loading) return <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>Loading leave records...</div>;
+
+    if (selectedLeaveId) {
+        return <LeaveDetailsView leaveId={selectedLeaveId} userId={userId} onBack={() => setSelectedLeaveId(null)} />;
+    }
 
     return (
         <div className="leaves-page">
@@ -226,6 +257,33 @@ const Leaves = ({ userId, user }) => {
                                         <input type="date" required value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} style={{ flex: 1, padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }} />
                                         <input type="date" required value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} style={{ flex: 1, padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }} />
                                     </div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>From Date Session</label>
+                                    <select 
+                                        value={formData.start_session}
+                                        onChange={e => setFormData({ ...formData, start_session: e.target.value })}
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }}
+                                    >
+                                        <option value="Full Day">Full Day</option>
+                                        <option value="Session 1">Session 1 (Morning)</option>
+                                        <option value="Session 2">Session 2 (Afternoon)</option>
+                                    </select>
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>To Date Session</label>
+                                    <select 
+                                        value={formData.end_session}
+                                        onChange={e => setFormData({ ...formData, end_session: e.target.value })}
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }}
+                                    >
+                                        <option value="Full Day">Full Day</option>
+                                        <option value="Session 1">Session 1 (Morning)</option>
+                                        <option value="Session 2">Session 2 (Afternoon)</option>
+                                    </select>
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Send Request To (Approver)</label>
@@ -394,18 +452,23 @@ const Leaves = ({ userId, user }) => {
                                     <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Type</th>
                                     <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Reason</th>
                                     <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Status</th>
+                                    <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {recentLeaves.length === 0 ? (
                                     <tr>
-                                        <td colSpan="4" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No recent leave applications.</td>
+                                        <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No recent leave applications.</td>
                                     </tr>
                                 ) : recentLeaves.map((leaf, idx) => (
                                     <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
                                         <td style={{ padding: '1rem' }}>
-                                            <div style={{ fontWeight: '600' }}>{new Date(leaf.start_date).toLocaleDateString()} - {new Date(leaf.end_date).toLocaleDateString()}</div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Requested {new Date(leaf.applied_on).toLocaleDateString()}</div>
+                                            <div style={{ fontWeight: '600' }}>
+                                                {new Date(leaf.start_date).toLocaleDateString()} ({leaf.start_session || 'Full Day'}) 
+                                                <br />
+                                                to {new Date(leaf.end_date).toLocaleDateString()} ({leaf.end_session || 'Full Day'})
+                                            </div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Requested {new Date(leaf.applied_on).toLocaleDateString()}</div>
                                         </td>
                                         <td style={{ padding: '1rem' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -432,18 +495,63 @@ const Leaves = ({ userId, user }) => {
                                                 fontWeight: '600',
                                                 backgroundColor: leaf.status.includes('Approved') ? 'rgba(34, 197, 94, 0.15)' : 
                                                                 leaf.status.includes('Rejected') ? 'rgba(239, 68, 68, 0.15)' : 
+                                                                leaf.status.includes('Withdrawn') ? 'rgba(156, 163, 175, 0.15)' :
                                                                 'rgba(245, 158, 11, 0.15)',
                                                 color: leaf.status.includes('Approved') ? '#22C55E' : 
                                                        leaf.status.includes('Rejected') ? '#EF4444' : 
+                                                       leaf.status.includes('Withdrawn') ? '#6B7280' :
                                                        '#F59E0B',
                                                 border: `1px solid ${
                                                     leaf.status.includes('Approved') ? '#22C55E44' : 
-                                                    leaf.status.includes('Rejected') ? '#EF444444' : 
+                                                    leaf.status.includes('Rejected') ? '#EF444444' :
+                                                    leaf.status.includes('Withdrawn') ? '#6B728044' :
                                                     '#F59E0B44'
                                                 }`
                                             }}>
                                                 {leaf.status}
                                             </span>
+                                            {leaf.status === 'Pending Admin Approval' && (
+                                                <button 
+                                                    onClick={() => withdrawLeave(leaf.id)}
+                                                    style={{ 
+                                                        marginLeft: '0.5rem',
+                                                        padding: '0.2rem 0.5rem',
+                                                        fontSize: '0.7rem',
+                                                        backgroundColor: '#EF4444',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    title="Withdraw this leave request"
+                                                >
+                                                    Withdraw
+                                                </button>
+                                            )}
+                                        </td>
+                                        <td style={{ padding: '1rem' }}>
+                                            <button
+                                                onClick={() => setSelectedLeaveId(leaf.id)}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.5rem',
+                                                    padding: '0.4rem 0.8rem',
+                                                    backgroundColor: 'var(--primary)',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: '500',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--secondary)'}
+                                                onMouseLeave={(e) => e.target.style.backgroundColor = 'var(--primary)'}
+                                            >
+                                                <Eye size={14} />
+                                                View Details
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}

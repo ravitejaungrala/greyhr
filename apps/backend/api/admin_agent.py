@@ -16,7 +16,7 @@ CHROMA_TENANT = os.getenv("CHROMA_TENANT", "").strip()
 CHROMA_DATABASE = os.getenv("CHROMA_DATABASE", "").strip()
 CHROMA_COLLECTION = os.getenv("CHROMA_COLLECTION", "hrms").strip()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-MODEL_NAME = os.getenv("GEMINI_MODEL")
+MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview")
 GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE", "0.0")) # Keep 0.0 as safe cast fallback if missing
 
 # Initialize Clients

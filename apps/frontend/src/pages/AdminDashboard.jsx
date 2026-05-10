@@ -106,7 +106,7 @@ const AdminDashboard = ({ activeTab, user }) => {
         password: '',
         employment_type: 'Full-Time',
         position: '',
-        monthly_salary: ''
+        monthly_salary: 0
     });
     const [addEmpLoading, setAddEmpLoading] = useState(false);
 
@@ -238,6 +238,12 @@ const AdminDashboard = ({ activeTab, user }) => {
 
     useEffect(() => {
         fetchData();
+        // If route is /admin/add-employee, open the Add Employee modal
+        if (activeTab === 'add-employee') {
+            setIsAddEmpModalOpen(true);
+        } else {
+            setIsAddEmpModalOpen(false);
+        }
     }, [activeTab]);
 
     const handleApproval = async (empId, action) => {
@@ -348,10 +354,19 @@ const AdminDashboard = ({ activeTab, user }) => {
         if (e) e.preventDefault();
         setAddEmpLoading(true);
         try {
+            const payload = {
+                name: addEmpForm.name,
+                email: addEmpForm.email || '',
+                password: addEmpForm.password || '',
+                employment_type: addEmpForm.employment_type || 'Full-Time',
+                position: addEmpForm.position || 'Employee',
+                monthly_salary: parseInt(addEmpForm.monthly_salary || 0, 10)
+            };
+
             const response = await fetch(`${apiUrl}/admin/create-employee`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(addEmpForm)
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
@@ -362,11 +377,61 @@ const AdminDashboard = ({ activeTab, user }) => {
             }
 
             const data = await response.json();
-            if (data.error) {
-                alert(data.error);
-            } else {
-                alert(`Employee ${data.employee_id} created successfully!`);
-                setIsAddEmpModalOpen(false);
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    alert(`Employee ${data.employee_id} created successfully!`);
+
+                    // Fetch the newly created employee from both approved and pending lists
+                    try {
+                        const [approvedRes, pendingRes] = await Promise.all([
+                            fetch(`${apiUrl}/auth/admin/employees`),
+                            fetch(`${apiUrl}/auth/admin/pending`)
+                        ]);
+
+                        let createdEmp = null;
+
+                        if (approvedRes && approvedRes.ok) {
+                            const empListData = await approvedRes.json();
+                            createdEmp = (empListData.employees || []).find(e => e.employee_id === data.employee_id) || null;
+                        }
+
+                        if (!createdEmp && pendingRes && pendingRes.ok) {
+                            const pendData = await pendingRes.json();
+                            createdEmp = (pendData.employees || []).find(e => e.employee_id === data.employee_id) || null;
+                            if (createdEmp) {
+                                // Ensure the pending list in UI shows the new entry immediately
+                                setPendingEmployees(prev => [createdEmp, ...prev.filter(x => x.employee_id !== createdEmp.employee_id)]);
+                                setViewedEmp(createdEmp);
+                            }
+                        }
+
+                        if (createdEmp && createdEmp.status === 'approved') {
+                            // Prefill edit form state for approved employees
+                            setSelectedApprovedEmp(createdEmp);
+                            setEmpRoleSetup({
+                                employment_type: createdEmp.employment_type || 'Full-Time',
+                                position: createdEmp.position || '',
+                                monthly_salary: createdEmp.monthly_salary || 0,
+                                privilege_leave_rate: createdEmp.leave_rates?.privilege || 1.5,
+                                sick_leave_rate: createdEmp.leave_rates?.sick || 1.0,
+                                casual_leave_rate: createdEmp.leave_rates?.casual || 1.0,
+                                role: createdEmp.role || 'employee',
+                                in_hand_salary: createdEmp.in_hand_salary || createdEmp.monthly_salary || 0,
+                                internship_end_date: createdEmp.internship_end_date || '',
+                                internship_completed: createdEmp.internship_completed || false,
+                                pan_no: createdEmp.pan_no || '',
+                                pf_no: createdEmp.pf_no || '',
+                                bank_name: createdEmp.bank_details?.bank_name || '',
+                                bank_account: createdEmp.bank_details?.account_number || ''
+                            });
+                        }
+
+                    } catch (err) {
+                        console.error('Failed to fetch created employee:', err);
+                    }
+
+                    setIsAddEmpModalOpen(false);
 
                 if (shouldGenDoc) {
                     const isIntern = addEmpForm.employment_type === 'Intern';
@@ -393,7 +458,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                     password: '',
                     employment_type: 'Full-Time',
                     position: '',
-                    monthly_salary: ''
+                    monthly_salary: 0
                 });
                 fetchData();
             }
@@ -1363,7 +1428,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                     )}
 
                                                     <div style={{ gridColumn: 'span 2', marginTop: '1rem' }}>
-                                                        <label style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 800, display: 'block', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Gift size={16} /> Leave Accrual Engine (days/mo)</label>
+                                                        <label style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 800, marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Gift size={16} /> Leave Accrual Engine (days/mo)</label>
                                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.25rem' }}>
                                                             <div>
                                                                 <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontWeight: 700 }}>Privilege</label>
@@ -1938,7 +2003,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                             </div>
                         )}
                     </div>
-            )}
+            
 
                     {/* TAB: LEAVES */}
                     {activeTab === 'leaves' && (
@@ -3435,7 +3500,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 <h2 className="card-title">Add New Employee</h2>
                                 <div className="grid-2" style={{ gap: '1.25rem', margin: '2rem 0' }}>
                                     <div><label style={{ fontSize: '0.8rem' }}>Full Name</label><input className="premium-input" value={addEmpForm.name} onChange={e => setAddEmpForm({ ...addEmpForm, name: e.target.value })} style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px' }} /></div>
-                                    <div><label style={{ fontSize: '0.8rem' }}>Personal Email</label><input className="premium-input" value={addEmpForm.personal_email} onChange={e => setAddEmpForm({ ...addEmpForm, personal_email: e.target.value })} style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px' }} /></div>
+                                    <div><label style={{ fontSize: '0.8rem' }}>Personal Email</label><input className="premium-input" value={addEmpForm.email} onChange={e => setAddEmpForm({ ...addEmpForm, email: e.target.value })} style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px' }} /></div>
                                     <div><label style={{ fontSize: '0.8rem' }}>Password</label><input type="password" value={addEmpForm.password} onChange={e => setAddEmpForm({ ...addEmpForm, password: e.target.value })} style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px' }} /></div>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>

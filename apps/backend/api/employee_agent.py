@@ -12,7 +12,7 @@ load_dotenv()
 
 # Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
+MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview").strip()
 
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
@@ -29,16 +29,29 @@ employee_tools_schema = [
         "function_declarations": [
             {
                 "name": "apply_leave_tool",
-                "description": "Submits a formal leave request (Casual, Sick, or Privilege) to the HR system.",
+                "description": "Submits a formal leave request (Casual, Sick, or Privilege) to the HR system with optional session selection for half-day leaves.",
                 "parameters": {
                     "type": "OBJECT",
                     "properties": {
                         "leave_type": {"type": "STRING", "description": "Type of leave: 'Casual', 'Sick', or 'Privilege'."},
                         "start_date": {"type": "STRING", "description": "Start date in YYYY-MM-DD format."},
                         "end_date": {"type": "STRING", "description": "End date in YYYY-MM-DD format."},
+                        "start_session": {"type": "STRING", "description": "Session for start date: 'Full Day', 'Session 1' (morning), or 'Session 2' (afternoon)."},
+                        "end_session": {"type": "STRING", "description": "Session for end date: 'Full Day', 'Session 1' (morning), or 'Session 2' (afternoon)."},
                         "reason": {"type": "STRING", "description": "Short explanation for the leave request."}
                     },
                     "required": ["leave_type", "start_date", "end_date", "reason"]
+                }
+            },
+            {
+                "name": "withdraw_leave_tool",
+                "description": "Withdraws a pending leave request that has not yet been approved or rejected.",
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "leave_id": {"type": "STRING", "description": "The ID of the leave request to withdraw."}
+                    },
+                    "required": ["leave_id"]
                 }
             },
             {
@@ -76,7 +89,7 @@ employee_tools_schema = [
 
 # --- Tool Request Handler Logic ---
 
-def execute_apply_leave(leave_type: str, start_date: str, end_date: str, reason: str):
+def execute_apply_leave(leave_type: str, start_date: str, end_date: str, reason: str, start_session: str = "Full Day", end_session: str = "Full Day"):
     from api.router import apply_leave # Avoid circular dependency
     from pydantic import BaseModel
     
@@ -87,6 +100,8 @@ def execute_apply_leave(leave_type: str, start_date: str, end_date: str, reason:
         leave_type: str
         start_date: str
         end_date: str
+        start_session: str
+        end_session: str
         reason: str
 
     req = LeaveReq(
@@ -94,9 +109,18 @@ def execute_apply_leave(leave_type: str, start_date: str, end_date: str, reason:
         leave_type=leave_type,
         start_date=start_date,
         end_date=end_date,
+        start_session=start_session,
+        end_session=end_session,
         reason=reason
     )
     res = apply_leave(req)
+    return str(res)
+
+def execute_withdraw_leave(leave_id: str):
+    from api.router import withdraw_leave # Avoid circular dependency
+    
+    emp_id = current_employee_id.get()
+    res = withdraw_leave(leave_id, emp_id)
     return str(res)
 
 def execute_request_item(item_name: str, reason: str):
@@ -161,6 +185,7 @@ def execute_get_salary(month_name: str, year: int):
 
 TOOL_MAP = {
     "apply_leave_tool": execute_apply_leave,
+    "withdraw_leave_tool": execute_withdraw_leave,
     "request_item_tool": execute_request_item,
     "get_my_status_tool": execute_get_status,
     "get_my_salary_tool": execute_get_salary

@@ -47,6 +47,50 @@ const AttendanceInfo = ({ userId }) => {
         return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
     };
 
+    const totalWorkPerDay = () => {
+        const today = new Date().toISOString().split('T')[0];
+        const todayRecord = attendanceData.find(r => r.date === today);
+        if (todayRecord && todayRecord.total_work_hrs && todayRecord.total_work_hrs !== '-') {
+            return todayRecord.total_work_hrs;
+        }
+        return '--:--';
+    };
+
+    const totalWorkPerMonth = () => {
+        let totalMins = 0;
+        attendanceData.forEach(r => {
+            if (r.total_work_hrs && r.total_work_hrs !== '-') {
+                const parts = r.total_work_hrs.split(':');
+                totalMins += (parseInt(parts[0]) * 60) + parseInt(parts[1]);
+            }
+        });
+        if (totalMins === 0) return '--:--';
+        const hrs = Math.floor(totalMins / 60);
+        const mins = totalMins % 60;
+        return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+    };
+
+    const actualAvgWorkHrs = () => {
+        // Calculate actual average (excluding weekends and holidays)
+        let totalMins = 0;
+        let workingDays = 0;
+        attendanceData.forEach(r => {
+            const date = new Date(r.date);
+            const dayOfWeek = date.getDay();
+            // Only count weekdays (Monday to Friday)
+            if (dayOfWeek >= 1 && dayOfWeek <= 5 && r.total_work_hrs && r.total_work_hrs !== '-') {
+                const parts = r.total_work_hrs.split(':');
+                totalMins += (parseInt(parts[0]) * 60) + parseInt(parts[1]);
+                workingDays += 1;
+            }
+        });
+        if (workingDays === 0) return '--:--';
+        const avg = Math.floor(totalMins / workingDays);
+        const hrs = Math.floor(avg / 60);
+        const mins = avg % 60;
+        return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+    };
+
     const getDaysInMonth = () => {
         const d = new Date();
         const year = d.getFullYear();
@@ -134,21 +178,26 @@ const AttendanceInfo = ({ userId }) => {
     return (
         <div className="attendance-info-page" style={{ color: 'var(--text-light)' }}>
             {/* Header Metrics */}
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-                <div className="card shadow-sm" style={{ flex: 1, textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)', padding: '0.75rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="card shadow-sm" style={{ textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)', padding: '0.75rem' }}>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>AVG. WORK HRS</div>
                     <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{attendanceData.length > 0 ? avgWorkHrs() : '--:--'}</div>
                 </div>
-                <div className="card shadow-sm" style={{ flex: 1, textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)', padding: '0.75rem' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>AVG. ACTUAL WORK HRS</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{attendanceData.length > 0 ? avgWorkHrs() : '--:--'}</div>
+                <div className="card shadow-sm" style={{ textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)', padding: '0.75rem' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>ACTUAL AVG. WORK HRS</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{attendanceData.length > 0 ? actualAvgWorkHrs() : '--:--'}</div>
                 </div>
-                <div className="card shadow-sm" style={{ flex: 1, textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)', padding: '0.75rem' }}>
+                <div className="card shadow-sm" style={{ textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)', padding: '0.75rem' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>TODAY'S WORK</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{totalWorkPerDay()}</div>
+                </div>
+                <div className="card shadow-sm" style={{ textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)', padding: '0.75rem' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>MONTHLY TOTAL</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{attendanceData.length > 0 ? totalWorkPerMonth() : '--:--'}</div>
+                </div>
+                <div className="card shadow-sm" style={{ textAlign: 'center', background: '#ffffff', border: '1px solid var(--border-color)', padding: '0.75rem' }}>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>PENALTY DAYS</div>
                     <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{getDaysInMonth().filter(d => d && d.day < new Date().getDate() && d.statusChar === 'A').length}</div>
-                </div>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', color: 'var(--primary)', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer' }}>
-                    +3 INSIGHTS
                 </div>
             </div>
 

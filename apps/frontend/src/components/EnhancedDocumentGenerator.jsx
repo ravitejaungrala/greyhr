@@ -313,7 +313,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                                     <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>
                                                         {employee.name}
                                                     </div>
-                                                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.4rem', borderRadius: '4px', display: 'flex', gap: '0.5rem' }}>
+                                                    <div style={{ fontSize: '0.75rem', color: '#334155', marginTop: '0.4rem', borderRadius: '4px', display: 'flex', gap: '0.5rem' }}>
                                                         <span>{employee.employee_id}</span>
                                                         <span>•</span>
                                                         <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{employee.employment_type}</span>
@@ -373,7 +373,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                                         <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '1rem' }}>
                                                             {docType.name}
                                                         </div>
-                                                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>
+                                                        <div style={{ fontSize: '0.75rem', color: '#334155', marginTop: '0.2rem' }}>
                                                             Auto-populates {Object.keys(docType.roi_fields).length} key data points
                                                         </div>
                                                     </div>
@@ -411,7 +411,7 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                     </h3>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e' }} />
-                                        <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0, fontWeight: 500 }}>
+                                        <p style={{ color: '#334155', fontSize: '0.9rem', margin: 0, fontWeight: 500 }}>
                                             Editing profile for <strong>{selectedEmployee.name}</strong> • {selectedEmployee.employee_id}
                                         </p>
                                     </div>
@@ -506,11 +506,11 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                                     <div className="summary-card" style={{ background: '#ffffff', padding: '1.5rem', borderRadius: '20px', border: '1px solid rgba(0,0,0,0.05)', marginBottom: '2.5rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.02)', textAlign: 'left' }}>
                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                               <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>Employee</span>
+                                               <span style={{ fontSize: '0.8rem', color: '#334155', fontWeight: 600 }}>Employee</span>
                                                <span style={{ fontSize: '0.85rem', color: '#000', fontWeight: 700 }}>{selectedEmployee?.name}</span>
                                            </div>
                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                               <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>Document Type</span>
+                                               <span style={{ fontSize: '0.8rem', color: '#334155', fontWeight: 600 }}>Document Type</span>
                                                <span style={{ fontSize: '0.85rem', color: '#000', fontWeight: 700 }}>{selectedDocConfig?.name}</span>
                                            </div>
                                            <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid #f1f5f9', fontSize: '0.8rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
