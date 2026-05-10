@@ -17,6 +17,7 @@ import base64
 import uuid
 import json
 import os
+import re
 import tempfile
 import google.generativeai as genai
 import cv2
@@ -268,6 +269,179 @@ def parse_base64(b64_string: str) -> bytes:
     return data
     return base64.b64decode(b64_string)
 
+
+SUPER_ADMIN_EMAIL = 'contact@neuzenai.com'
+SUPER_ADMIN_PASSWORD = 'NeuzenAI@2026'
+
+
+def normalize_company_key(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    cleaned = str(value).strip().lower()
+    if not cleaned:
+        return None
+    if cleaned == "all":
+        return "all"
+    if "@" in cleaned:
+        cleaned = cleaned.split("@")[-1]
+    cleaned = cleaned.replace("https://", "").replace("http://", "").strip("/")
+    cleaned = re.sub(r"\s+", "", cleaned)
+    return cleaned or None
+
+
+def humanize_company_name(company_key: Optional[str]) -> str:
+    normalized = normalize_company_key(company_key)
+    if not normalized or normalized == "all":
+        return "All Companies"
+    base = normalized.split(".")[0].replace("-", " ").replace("_", " ").strip()
+    if not base:
+        base = normalized
+    return " ".join(part.capitalize() for part in base.split())
+
+
+def derive_company_metadata(
+    email: Optional[str] = None,
+    company_key: Optional[str] = None,
+    company_name: Optional[str] = None,
+) -> Dict[str, Optional[str]]:
+    normalized_key = normalize_company_key(company_key) or normalize_company_key(email)
+    resolved_name = (company_name or "").strip() or humanize_company_name(normalized_key)
+    return {
+        "company_key": normalized_key,
+        "company_name": resolved_name,
+    }
+
+
+def normalize_company_list(values: Optional[Any]) -> List[str]:
+    if values is None:
+        return []
+    if isinstance(values, str):
+        raw_values = [part.strip() for part in values.split(",") if part.strip()]
+    else:
+        raw_values = values
+
+    normalized: List[str] = []
+    for item in raw_values:
+        if isinstance(item, dict):
+            company_value = item.get("company_key") or item.get("domain") or item.get("company_name")
+        else:
+            company_value = item
+        key = normalize_company_key(company_value)
+        if key and key != "all" and key not in normalized:
+            normalized.append(key)
+    return normalized
+
+
+def enrich_user_company_fields(user_doc: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if not user_doc:
+        return user_doc
+
+    company_meta = derive_company_metadata(
+        email=user_doc.get("email"),
+        company_key=user_doc.get("company_key"),
+        company_name=user_doc.get("company_name"),
+    )
+    user_doc["company_key"] = company_meta["company_key"]
+    user_doc["company_name"] = company_meta["company_name"]
+
+    accessible_companies = normalize_company_list(
+        user_doc.get("accessible_companies") or user_doc.get("managed_companies")
+    )
+    if company_meta["company_key"] and company_meta["company_key"] not in accessible_companies:
+        accessible_companies.insert(0, company_meta["company_key"])
+    user_doc["accessible_companies"] = accessible_companies
+    return user_doc
+
+
+def merge_queries(*queries: Dict[str, Any]) -> Dict[str, Any]:
+    valid_queries = [query for query in queries if query]
+    if not valid_queries:
+        return {}
+    if len(valid_queries) == 1:
+        return valid_queries[0]
+    return {"$and": valid_queries}
+
+
+def build_company_user_query(company_keys: Optional[List[str]]) -> Dict[str, Any]:
+    if company_keys is None:
+        return {}
+    if not company_keys:
+        return {"employee_id": "__no_company_access__"}
+
+    conditions: List[Dict[str, Any]] = []
+    for key in company_keys:
+        conditions.append({"company_key": key})
+        conditions.append({"email": {"$regex": f"@{re.escape(key)}$", "$options": "i"}})
+    return {"$or": conditions}
+
+
+def resolve_admin_company_scope(admin_email: Optional[str] = None, company: Optional[str] = None) -> Optional[List[str]]:
+    requested_company = normalize_company_key(company)
+    if requested_company == "all":
+        requested_company = None
+
+    normalized_admin_email = (admin_email or "").strip().lower()
+    if not normalized_admin_email:
+        return [requested_company] if requested_company else None
+
+    if normalized_admin_email == SUPER_ADMIN_EMAIL.lower():
+        return [requested_company] if requested_company else None
+
+    admin_user = None
+    if normalized_admin_email and mongo_db.users is not None:
+        admin_user = mongo_db.users.find_one({"email": normalized_admin_email}, {"_id": 0})
+        admin_user = enrich_user_company_fields(admin_user)
+
+    allowed_companies = normalize_company_list(admin_user.get("accessible_companies") if admin_user else None)
+    if not allowed_companies and admin_user:
+        primary_company = normalize_company_key(admin_user.get("company_key") or admin_user.get("email"))
+        if primary_company:
+            allowed_companies = [primary_company]
+    elif not allowed_companies and normalized_admin_email:
+        fallback_company = normalize_company_key(normalized_admin_email)
+        if fallback_company:
+            allowed_companies = [fallback_company]
+
+    if requested_company:
+        if allowed_companies and requested_company not in allowed_companies:
+            return []
+        return [requested_company]
+    return allowed_companies
+
+
+def list_scoped_users(
+    admin_email: Optional[str] = None,
+    company: Optional[str] = None,
+    statuses: Optional[List[str]] = None,
+    projection: Optional[Dict[str, int]] = None,
+) -> List[Dict[str, Any]]:
+    if mongo_db.users is None:
+        return []
+
+    status_query = {"status": {"$in": statuses}} if statuses else {}
+    company_scope = resolve_admin_company_scope(admin_email, company)
+    query = merge_queries(status_query, build_company_user_query(company_scope))
+
+    projection = projection or {"_id": 0, "password": 0}
+    users = list(mongo_db.users.find(query, projection))
+    return [enrich_user_company_fields(user) for user in users]
+
+
+def get_scoped_employee_context(
+    admin_email: Optional[str] = None,
+    company: Optional[str] = None,
+    statuses: Optional[List[str]] = None,
+    projection: Optional[Dict[str, int]] = None,
+) -> Dict[str, Any]:
+    users = list_scoped_users(admin_email, company, statuses=statuses, projection=projection)
+    employee_ids = [user.get("employee_id") for user in users if user.get("employee_id")]
+    user_map = {user["employee_id"]: user for user in users if user.get("employee_id")}
+    return {
+        "users": users,
+        "employee_ids": employee_ids,
+        "user_map": user_map,
+    }
+
 # Employee self-registration is disabled. Admins must add employees through /admin/add-employee
 # @router.post("/auth/register")
 # def register_employee(request: EmployeeRegistrationRequest):
@@ -308,13 +482,21 @@ def login(request: LoginRequest):
         return {"error": f"Database error: {db_status.get('error', 'Unknown issue')}"}
     
     # 1. Check for Admin credentials first
-    if request.email == 'contact@neuzenai.com' and request.password == 'NeuzenAI@2026':
-        return {"role": "super_admin", "name": "Super Admin", "email": request.email}
+    if request.email == SUPER_ADMIN_EMAIL and request.password == SUPER_ADMIN_PASSWORD:
+        return {
+            "role": "super_admin",
+            "name": "Super Admin",
+            "email": request.email,
+            "company_key": "all",
+            "company_name": "All Companies",
+            "accessible_companies": []
+        }
     
     # 2. Check for Employee credentials
     user = mongo_db.users.find_one({"email": request.email, "password": request.password})
     if not user:
         return {"error": "Invalid email or password"}
+    user = enrich_user_company_fields(user)
     
     # Return user details with their stored role
     return {
@@ -322,7 +504,10 @@ def login(request: LoginRequest):
         "name": user["name"],
         "email": user["email"],
         "employee_id": user["employee_id"],
-        "status": user["status"]
+        "status": user["status"],
+        "company_key": user.get("company_key"),
+        "company_name": user.get("company_name"),
+        "accessible_companies": user.get("accessible_companies", [])
     }
 
 @router.post("/auth/complete-profile")
@@ -373,11 +558,18 @@ def complete_profile(request: ProfileUpdateRequest):
     
     # Update Record
     is_experienced_full_time = request.is_experienced and request.employment_type == "Full-Time"
+    company_meta = derive_company_metadata(
+        email=user.get("email"),
+        company_key=user.get("company_key"),
+        company_name=user.get("company_name")
+    )
     
     update_data = {
         "dob": request.dob,
         "is_experienced": request.is_experienced,
         "employment_type": request.employment_type,
+        "company_key": company_meta["company_key"],
+        "company_name": company_meta["company_name"],
         "bank_details": {
             "bank_name": request.bank_name,
             "account_number": request.bank_account,
@@ -410,19 +602,27 @@ def complete_profile(request: ProfileUpdateRequest):
     return {"message": "Profile completed. Pending Admin approval.", "status": "pending_approval"}
 
 @router.get("/auth/admin/pending")
-def get_pending_employees():
+def get_pending_employees(admin_email: Optional[str] = None, company: Optional[str] = "all"):
     if mongo_db.users is None:
         return {"employees": []}
-        
-    pending = list(mongo_db.users.find({"status": {"$in": ["pending_approval", "onboarding_pending"]}}, {"_id": 0, "password": 0}))
+
+    pending = list_scoped_users(
+        admin_email=admin_email,
+        company=company,
+        statuses=["pending_approval", "onboarding_pending"]
+    )
     return {"employees": pending}
 
 @router.get("/auth/admin/employees")
-def get_approved_employees():
+def get_approved_employees(admin_email: Optional[str] = None, company: Optional[str] = "all"):
     if mongo_db.users is None:
         return {"employees": []}
-        
-    employees = list(mongo_db.users.find({"status": "approved"}, {"_id": 0, "password": 0}))
+
+    employees = list_scoped_users(
+        admin_email=admin_email,
+        company=company,
+        statuses=["approved"]
+    )
     return {"employees": employees}
 
 @router.get("/employee/directory")
@@ -459,6 +659,7 @@ class AdminApprovalRequest(BaseModel):
     in_hand_salary: Optional[int] = 0
     internship_end_date: Optional[str] = None
     role: Optional[str] = "employee"
+    accessible_companies: Optional[List[str]] = None
     tax_deduction_rate: Optional[float] = None
     pf_deduction_rate: Optional[float] = None
 
@@ -467,6 +668,7 @@ class EmployeeUpdate(BaseModel):
     employment_type: Optional[str] = None
     position: Optional[str] = None
     department: Optional[str] = None
+    accessible_companies: Optional[List[str]] = None
     joining_date: Optional[str] = None
     monthly_salary: Optional[int] = None
     privilege_leave_rate: Optional[float] = None
@@ -500,6 +702,11 @@ def admin_approve_employee(request: AdminApprovalRequest):
         
     if request.action == "approve":
         status_to_set = "approved"
+        company_meta = derive_company_metadata(
+            email=user.get("email"),
+            company_key=user.get("company_key"),
+            company_name=user.get("company_name")
+        )
         update_fields = {
             "status": status_to_set,
             "employment_type": request.employment_type,
@@ -513,8 +720,12 @@ def admin_approve_employee(request: AdminApprovalRequest):
             "role": request.role,
             "tax_deduction_rate": request.tax_deduction_rate,
             "pf_deduction_rate": request.pf_deduction_rate,
+            "company_key": company_meta["company_key"],
+            "company_name": company_meta["company_name"],
             "joining_date": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
+        if request.role in ["admin", "hr", "hr_responsible"] and company_meta["company_key"]:
+            update_fields["accessible_companies"] = normalize_company_list(request.accessible_companies) or [company_meta["company_key"]]
     else:
         status_to_set = "rejected"
         update_fields = {"status": status_to_set}
@@ -551,8 +762,23 @@ def update_employee_details(employee_id: str, update: EmployeeUpdate):
         elif k == "internship_end_date" or k == "internship_completed":
 
             set_ops[k] = v
+        elif k == "accessible_companies":
+            set_ops[k] = normalize_company_list(v)
         else:
             set_ops[k] = v
+
+    existing_user = mongo_db.users.find_one(
+        {"employee_id": employee_id},
+        {"_id": 0, "email": 1, "company_key": 1, "company_name": 1}
+    )
+    company_meta = derive_company_metadata(
+        email=(existing_user or {}).get("email"),
+        company_key=(existing_user or {}).get("company_key"),
+        company_name=(existing_user or {}).get("company_name")
+    )
+    if company_meta["company_key"]:
+        set_ops.setdefault("company_key", company_meta["company_key"])
+        set_ops.setdefault("company_name", company_meta["company_name"])
 
     # Special handling for payroll_settings if provided
     if "payroll_settings" in update_data:
@@ -591,6 +817,7 @@ def admin_create_employee(request: AdminEmployeeCreate):
         return {"error": "Email already exists"}
         
     emp_id = f"EMP{uuid.uuid4().hex[:6].upper()}"
+    company_meta = derive_company_metadata(email=request.email)
     
     user_record = {
         "employee_id": emp_id,
@@ -599,6 +826,9 @@ def admin_create_employee(request: AdminEmployeeCreate):
         "password": request.password,
         "role": "employee",
         "status": "onboarding_pending",
+        "company_key": company_meta["company_key"],
+        "company_name": company_meta["company_name"],
+        "accessible_companies": [company_meta["company_key"]] if company_meta["company_key"] else [],
         "employment_type": request.employment_type,
         "position": request.position,
         "monthly_salary": request.monthly_salary,
@@ -620,6 +850,7 @@ def admin_add_employee(request: AdminAddEmployeeRequest):
     
     # Generate Employee ID
     emp_id = f"EMP{uuid.uuid4().hex[:6].upper()}"
+    company_meta = derive_company_metadata(email=request.email)
     
     try:
         # Process and save documents to S3
@@ -665,6 +896,9 @@ def admin_add_employee(request: AdminAddEmployeeRequest):
             "password": request.password,  # Plain text for MVP
             "role": request.role,
             "status": "approved",
+            "company_key": company_meta["company_key"],
+            "company_name": company_meta["company_name"],
+            "accessible_companies": [company_meta["company_key"]] if company_meta["company_key"] else [],
             "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "onboarding_completed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             
@@ -776,17 +1010,32 @@ def assign_role(request: RoleAssignment):
     if mongo_db.users is None:
         return {"error": "Database error"}
     
-    valid_roles = ["admin", "hr_responsible", "employee"]
+    valid_roles = ["admin", "hr", "hr_responsible", "employee"]
     if request.role not in valid_roles:
         return {"error": "Invalid role"}
+
+    user_doc = mongo_db.users.find_one({"employee_id": request.employee_id}, {"_id": 0})
+    if not user_doc:
+        return {"error": "Employee not found"}
+
+    updates = {"role": request.role}
+    company_meta = derive_company_metadata(
+        email=user_doc.get("email"),
+        company_key=user_doc.get("company_key"),
+        company_name=user_doc.get("company_name")
+    )
+    if company_meta["company_key"]:
+        updates["company_key"] = company_meta["company_key"]
+        updates["company_name"] = company_meta["company_name"]
+        if request.role in ["admin", "hr_responsible"]:
+            updates["accessible_companies"] = normalize_company_list(
+                user_doc.get("accessible_companies") or [company_meta["company_key"]]
+            )
         
     result = mongo_db.users.update_one(
         {"employee_id": request.employee_id},
-        {"$set": {"role": request.role}}
+        {"$set": updates}
     )
-    
-    if result.matched_count == 0:
-        return {"error": "Employee not found"}
         
     return {"message": f"Role updated to {request.role} for {request.employee_id}"}
 
@@ -1161,11 +1410,16 @@ def apply_leave(request: LeaveRequest):
     return {"message": "Leave submitted pending approval", "record": record}
 
 @router.get("/admin/leaves")
-def get_all_leaves():
+def get_all_leaves(admin_email: Optional[str] = None, company: Optional[str] = "all"):
     if mongo_db.db is None:
         return {"leaves": []}
-    
-    leaves = list(mongo_db.leaves.find({}, {"_id": 0}).sort("applied_on", -1))
+
+    scoped_context = get_scoped_employee_context(admin_email=admin_email, company=company)
+    employee_ids = scoped_context["employee_ids"]
+    if not employee_ids:
+        return {"leaves": []}
+
+    leaves = list(mongo_db.leaves.find({"employee_id": {"$in": employee_ids}}, {"_id": 0}).sort("applied_on", -1))
     
     # Enrich with employee balance to help admin decide
     enriched_leaves = []
@@ -1177,9 +1431,12 @@ def get_all_leaves():
             leaf["employee_balance"] = balance
             
             # 2. Fetch Name
-            user_doc = mongo_db.users.find_one({"employee_id": emp_id}, {"name": 1, "_id": 0})
+            user_doc = scoped_context["user_map"].get(emp_id) or mongo_db.users.find_one({"employee_id": emp_id}, {"name": 1, "_id": 0, "company_name": 1, "company_key": 1, "email": 1})
+            user_doc = enrich_user_company_fields(user_doc)
             if user_doc:
                 leaf["employee_name"] = user_doc.get("name")
+                leaf["company_name"] = user_doc.get("company_name")
+                leaf["company_key"] = user_doc.get("company_key")
         enriched_leaves.append(leaf)
         
     return {"leaves": enriched_leaves}
@@ -1323,10 +1580,16 @@ def request_item(request: ItemRequest):
     return {"message": "Item request submitted", "record": record}
 
 @router.get("/admin/items/all")
-def get_all_item_requests():
+def get_all_item_requests(admin_email: Optional[str] = None, company: Optional[str] = "all"):
     if mongo_db.item_requests is None:
         return {"requests": []}
-    requests = list(mongo_db.item_requests.find({}, {"_id": 0}))
+
+    scoped_context = get_scoped_employee_context(admin_email=admin_email, company=company)
+    employee_ids = scoped_context["employee_ids"]
+    if not employee_ids:
+        return {"requests": []}
+
+    requests = list(mongo_db.item_requests.find({"employee_id": {"$in": employee_ids}}, {"_id": 0}))
     return {"requests": requests}
 
 @router.get("/items/my-requests")
@@ -1530,9 +1793,29 @@ def get_employee_holidays():
     return get_holidays()
 
 @router.get("/admin/analytics/trend")
-def get_analytics_trend():
+def get_analytics_trend(admin_email: Optional[str] = None, company: Optional[str] = "all"):
     if mongo_db.db is None:
         return {"trend": []}
+
+    scoped_users = list_scoped_users(
+        admin_email=admin_email,
+        company=company,
+        statuses=["approved", "separated", "inactive"],
+        projection={
+            "_id": 0,
+            "employee_id": 1,
+            "status": 1,
+            "joining_date": 1,
+            "onboarding_completed_at": 1,
+            "separation_date": 1,
+            "deactivated_at": 1,
+            "email": 1,
+            "company_key": 1,
+            "company_name": 1,
+        }
+    )
+    scoped_employee_ids = [user["employee_id"] for user in scoped_users if user.get("employee_id")]
+    approved_user_ids = {user["employee_id"] for user in scoped_users if user.get("status") == "approved" and user.get("employee_id")}
     
     # Calculate last 6 months
     now = datetime.datetime.utcnow()
@@ -1551,29 +1834,29 @@ def get_analytics_trend():
             next_m = f"{yr}-{mn+1:02d}"
 
         # 1. Joins
-        joins = mongo_db.users.count_documents({
-            "status": "approved",
-            "$or": [
-                {"joining_date": {"$regex": f"^{m_prefix}"}},
-                {"onboarding_completed_at": {"$regex": f"^{m_prefix}"}}
-            ]
-        })
+        joins = sum(
+            1 for user in scoped_users
+            if user.get("status") == "approved" and (
+                str(user.get("joining_date", "")).startswith(m_prefix)
+                or str(user.get("onboarding_completed_at", "")).startswith(m_prefix)
+            )
+        )
         
         # 2. Exits
-        exits = mongo_db.users.count_documents({
-            "status": {"$in": ["separated", "inactive"]},
-            "$or": [
-                {"separation_date": {"$regex": f"^{m_prefix}"}},
-                {"deactivated_at": {"$regex": f"^{m_prefix}"}}
-            ]
-        })
+        exits = sum(
+            1 for user in scoped_users
+            if user.get("status") in ["separated", "inactive"] and (
+                str(user.get("separation_date", "")).startswith(m_prefix)
+                or str(user.get("deactivated_at", "")).startswith(m_prefix)
+            )
+        )
 
         # 3. Aggregation Data (Historical Context)
         # Use point-in-time total: those joined before the end of this month
-        total_emps = mongo_db.users.count_documents({
-            "status": "approved",
-            "joining_date": {"$lt": next_m}
-        })
+        total_emps = sum(
+            1 for user in scoped_users
+            if user.get("status") == "approved" and str(user.get("joining_date", "")) < next_m
+        )
         
         avg_attendance = 0
         avg_absentees = 0
@@ -1582,6 +1865,7 @@ def get_analytics_trend():
         if total_emps > 0:
             # Group all sign-ins by day
             punches = list(mongo_db.attendance.find({
+                "employee_id": {"$in": list(approved_user_ids)},
                 "timestamp": {"$regex": f"^{m_prefix}"},
                 "action": "sign_in"
             }))
@@ -1598,6 +1882,7 @@ def get_analytics_trend():
                 for d, emps_present in days.items():
                     # count unique people on leave this specific day
                     on_leave_distinct = mongo_db.leaves.distinct("employee_id", {
+                        "employee_id": {"$in": list(approved_user_ids)},
                         "status": {"$regex": "Approved"},
                         "start_date": {"$lte": d},
                         "end_date": {"$gte": d}
@@ -1616,6 +1901,7 @@ def get_analytics_trend():
 
         # 4. Total Approved Leaves
         leaves_vol = mongo_db.leaves.count_documents({
+            "employee_id": {"$in": scoped_employee_ids},
             "status": {"$regex": "Approved"},
             "start_date": {"$regex": f"^{m_prefix}"}
         })
@@ -1634,7 +1920,7 @@ def get_analytics_trend():
     return {"trend": trend_data}
 
 @router.get("/admin/reports")
-def get_reports_summary():
+def get_reports_summary(admin_email: Optional[str] = None, company: Optional[str] = "all"):
     if mongo_db.users is None:
         return {
             "total_employees": 0,
@@ -1647,14 +1933,29 @@ def get_reports_summary():
     # Use local time for "Today" to match user expectation
     today_dt = datetime.datetime.now() # This will use server local time
     today_str = today_dt.strftime('%Y-%m-%d')
+    scoped_context = get_scoped_employee_context(
+        admin_email=admin_email,
+        company=company,
+        statuses=["approved"]
+    )
+    employee_ids = scoped_context["employee_ids"]
+    if not employee_ids:
+        return {
+            "total_employees": 0,
+            "present_today": 0,
+            "on_leave": 0,
+            "open_tickets": 12,
+            "average_engagement_score": 88
+        }
     
-    total_employees = mongo_db.users.count_documents({"status": "approved"})
+    total_employees = len(employee_ids)
     
     # Count distinct sign-ins today
     present_today = 0
     if mongo_db.attendance is not None:
         # Crucial: distinct employee IDs who have signed in today
         present_today_list = mongo_db.attendance.distinct("employee_id", {
+            "employee_id": {"$in": employee_ids},
             "timestamp": {"$regex": f"^{today_str}"},
             "action": "sign_in"
         })
@@ -1663,6 +1964,7 @@ def get_reports_summary():
     on_leave = 0
     if mongo_db.db is not None:
         on_leave_list = mongo_db.leaves.distinct("employee_id", {
+            "employee_id": {"$in": employee_ids},
             "status": {"$regex": "Approved"},
             "start_date": {"$lte": today_str},
             "end_date": {"$gte": today_str}
@@ -1678,7 +1980,7 @@ def get_reports_summary():
     }
 
 @router.get("/admin/salary-report/{month_year}")
-def get_monthly_salary_report(month_year: str):
+def get_monthly_salary_report(month_year: str, admin_email: Optional[str] = None, company: Optional[str] = "all"):
     if mongo_db.users is None or mongo_db.attendance is None:
         return {"report": []}
     
@@ -1700,7 +2002,11 @@ def get_monthly_salary_report(month_year: str):
     num_days = (next_month - start_date).days
     
     # 2. Fetch all necessary data
-    employees = list(mongo_db.users.find({"status": "approved"}, {"_id": 0, "password": 0}))
+    employees = list_scoped_users(
+        admin_email=admin_email,
+        company=company,
+        statuses=["approved"]
+    )
     all_holidays = list(mongo_db.holidays.find({}, {"_id": 0}))
     all_overrides = list(mongo_db.workday_overrides.find({}, {"_id": 0}))
     
@@ -2489,9 +2795,13 @@ def delete_workday_override(date: str):
     return {"message": "Override deleted"}
 
 @router.get("/admin/comp-off-requests")
-def get_comp_off_requests():
+def get_comp_off_requests(admin_email: Optional[str] = None, company: Optional[str] = "all"):
     if mongo_db.db is None: return {"requests": []}
-    requests = list(mongo_db.comp_off_requests.find({"status": "Pending"}, {"_id": 0}))
+    scoped_context = get_scoped_employee_context(admin_email=admin_email, company=company)
+    employee_ids = scoped_context["employee_ids"]
+    if not employee_ids:
+        return {"requests": []}
+    requests = list(mongo_db.comp_off_requests.find({"status": "Pending", "employee_id": {"$in": employee_ids}}, {"_id": 0}))
     return {"requests": requests}
 
 @router.post("/admin/comp-off-requests/action")
@@ -2539,9 +2849,13 @@ def request_weekend_work(req: WeekendWorkRequest):
     return {"message": "Weekend work request submitted successfully", "record": record}
 
 @router.get("/admin/weekend-work/requests")
-def get_admin_weekend_work_requests():
+def get_admin_weekend_work_requests(admin_email: Optional[str] = None, company: Optional[str] = "all"):
     if mongo_db.db is None: return {"requests": []}
-    reqs = list(mongo_db.weekend_work_requests.find({"status": "Pending"}, {"_id": 0}))
+    scoped_context = get_scoped_employee_context(admin_email=admin_email, company=company)
+    employee_ids = scoped_context["employee_ids"]
+    if not employee_ids:
+        return {"requests": []}
+    reqs = list(mongo_db.weekend_work_requests.find({"status": "Pending", "employee_id": {"$in": employee_ids}}, {"_id": 0}))
     return {"requests": reqs}
 
 @router.post("/admin/weekend-work/requests/action")
@@ -3743,10 +4057,20 @@ def update_announcement(request: AnnouncementRequest):
     return {"message": "Announcement updated successfully", "record": {"title": record["title"], "content": record["content"]}}
 
 @router.get("/admin/notifications")
-def get_admin_notifications():
+def get_admin_notifications(admin_email: Optional[str] = None, company: Optional[str] = "all"):
     if mongo_db.db is None:
         return {"notifications": []}
-    notes = list(mongo_db.db.notifications.find({}, {"_id": 0}).sort("created_at", -1).limit(50))
+
+    scoped_context = get_scoped_employee_context(admin_email=admin_email, company=company)
+    employee_ids = scoped_context["employee_ids"]
+    company_key = normalize_company_key(company)
+    note_query: Dict[str, Any] = {}
+    if employee_ids and company_key and company_key != "all":
+        note_query = {"employee_id": {"$in": employee_ids}}
+    elif employee_ids and admin_email and normalize_company_key(admin_email) != normalize_company_key(company):
+        note_query = {"employee_id": {"$in": employee_ids}}
+
+    notes = list(mongo_db.db.notifications.find(note_query, {"_id": 0}).sort("created_at", -1).limit(50))
     return {"notifications": notes}
 
 @router.delete("/admin/notifications")
@@ -3774,37 +4098,52 @@ def request_document(request: DocumentRequest):
     return {"message": "Request submitted to HR successfully."}
 
 @router.get("/admin/attendance")
-def get_all_attendance_logs():
+def get_all_attendance_logs(admin_email: Optional[str] = None, company: Optional[str] = "all"):
     if mongo_db.attendance is None:
         return {"logs": []}
-    logs = list(mongo_db.attendance.find({}, {"_id": 0}).sort("timestamp", -1).limit(100))
+
+    scoped_context = get_scoped_employee_context(admin_email=admin_email, company=company)
+    employee_ids = scoped_context["employee_ids"]
+    if not employee_ids:
+        return {"logs": []}
+
+    logs = list(mongo_db.attendance.find({"employee_id": {"$in": employee_ids}}, {"_id": 0}).sort("timestamp", -1).limit(100))
     return {"logs": logs}
 
 @router.get("/admin/overview")
-def get_admin_overview():
+def get_admin_overview(admin_email: Optional[str] = None, company: Optional[str] = "all"):
     """Aggregates key metrics for the landing dashboard."""
     if mongo_db.db is None or mongo_db.users is None:
         return {"error": "Database error"}
+
+    scoped_users = list_scoped_users(
+        admin_email=admin_email,
+        company=company,
+        statuses=["approved", "pending", "pending_approval", "onboarding_pending"],
+        projection={"_id": 0, "password": 0, "name": 1, "employee_id": 1, "status": 1, "created_at": 1, "email": 1, "company_key": 1, "company_name": 1}
+    )
+    scoped_employee_ids = [user["employee_id"] for user in scoped_users if user.get("employee_id")]
     
     # Staffing
-    total_employees = mongo_db.users.count_documents({"status": "approved"})
-    pending_approvals = mongo_db.users.count_documents({"status": "pending"})
+    total_employees = sum(1 for user in scoped_users if user.get("status") == "approved")
+    pending_approvals = sum(1 for user in scoped_users if user.get("status") in ["pending", "pending_approval", "onboarding_pending"])
     
     # Leaves (Today)
     today_str = datetime.date.today().strftime("%Y-%m-%d")
     active_leaves = mongo_db.leaves.count_documents({
+        "employee_id": {"$in": scoped_employee_ids},
         "status": "Approved",
         "start_date": {"$lte": today_str},
         "end_date": {"$gte": today_str}
     })
-    pending_leaves = mongo_db.leaves.count_documents({"status": "Pending"})
+    pending_leaves = mongo_db.leaves.count_documents({"employee_id": {"$in": scoped_employee_ids}, "status": {"$regex": "Pending", "$options": "i"}})
 
     # Requests
-    item_requests = mongo_db.item_requests.count_documents({"status": "Pending"})
+    item_requests = mongo_db.item_requests.count_documents({"employee_id": {"$in": scoped_employee_ids}, "status": "Pending"})
     
     # Recent Activity (Last 5)
     # We'll pull from notifications or last few users
-    recent_users = list(mongo_db.users.find({}, {"_id": 0, "name": 1, "employee_id": 1, "status": 1, "created_at": 1}).sort("created_at", -1).limit(5))
+    recent_users = sorted(scoped_users, key=lambda user: str(user.get("created_at", "")), reverse=True)[:5]
     
     # Announcement
     announcement = mongo_db.announcements.find_one({}, {"_id": 0})

@@ -200,7 +200,6 @@ function AppContent() {
           {isAdmin ? (
             <>
               <NavItem path="/admin/overview" icon={Layout} title="Insight" subtitle="OVERVIEW" />
-              <NavItem path="/admin/dashboard" icon={Users} title="Workforce" subtitle="DIRECTORY" />
               
               <NavGroup 
                 id="management" 
@@ -210,7 +209,7 @@ function AppContent() {
                 isExpanded={isManagementExpanded}
                 setIsExpanded={setIsManagementExpanded}
               >
-                <NavItem path="/admin/onboarding" icon={UserPlus} title="Onboarding" subtitle="CANDIDATE SETUP" isSub />
+                <NavItem path="/admin/dashboard" icon={Users} title="Workforce" subtitle="DIRECTORY" isSub />
                 <NavItem path="/admin/leaves" icon={Palmtree} title="Leave Mgmt" subtitle="TIME OFF" isSub />
                 <NavItem path="/admin/items" icon={Package} title="Item Requests" subtitle="REQUISITIONS" isSub />
               </NavGroup>
@@ -303,7 +302,11 @@ function AppContent() {
               </div>
               <div className="user-details">
                  <div className="user-name-bold">{user.name}</div>
-                 <div className="user-company-sub" style={{ color: 'var(--primary)' }}>NEUZENAI</div>
+                  <div className="user-company-sub" style={{ color: 'var(--primary)' }}>
+                   {user.role === 'super_admin'
+                    ? 'ALL COMPANIES'
+                    : (user.accessible_companies?.length > 1 ? 'MULTI-COMPANY ACCESS' : (user.company_name || 'COMPANY ACCESS')).toUpperCase()}
+                  </div>
               </div>
               <div className="logout-btn-wrapper" onClick={handleLogout}>
                  <LogOut size={20} className="logout-icon-gray" />
@@ -319,7 +322,7 @@ function AppContent() {
             <Route path="/admin/overview" element={<AdminDashboard activeTab="overview" user={user} />} />
             <Route path="/admin/dashboard" element={<AdminDashboard activeTab="employees" user={user} />} />
             <Route path="/admin/add-employee" element={<Navigate to="/admin/onboarding" replace />} />
-            <Route path="/admin/onboarding" element={<AdminDashboard activeTab="onboarding" user={user} />} />
+            <Route path="/admin/onboarding" element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="/admin/approvals" element={<Navigate to="/admin/onboarding" replace />} />
             <Route path="/admin/leaves" element={<AdminDashboard activeTab="leaves" user={user} />} />
             <Route path="/admin/items" element={<AdminDashboard activeTab="items" user={user} />} />
