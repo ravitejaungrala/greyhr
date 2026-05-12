@@ -670,6 +670,13 @@ label {
   gap: 1.5rem;
 }
 
+.nz-holidays-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.7fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
 /* Holidays tab — Add card + Calendar always side by side on desktop, stack on tablet */
 @media (max-width: 900px) {
   .nz-holidays-grid {

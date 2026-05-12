@@ -4,10 +4,23 @@ import {
     CheckCircle2, Calendar, Clock, BarChart3,
     History, Users, Sparkles, Eye
 } from 'lucide-react';
+import {
+    ResponsiveContainer,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend
+} from 'recharts';
 import { API_URL } from '../config';
 import LeaveDetailsView from './LeaveDetailsView';
 
-const Leaves = ({ userId, user }) => {
+const Leaves = ({ userId, user, mode = 'all' }) => {
+    const isApplyView = mode === 'apply';
+    const isBalanceView = mode === 'balance';
+    const pageTitle = isApplyView ? 'Leave Apply' : (isBalanceView ? 'Leave Balances' : 'Leave Management');
     const [status, setStatus] = useState('');
     const [selectedLeaveId, setSelectedLeaveId] = useState(null);
     const [leaveData, setLeaveData] = useState({ total: 0, used: 0, remaining: 0, types: [], is_intern: false });
@@ -29,6 +42,10 @@ const Leaves = ({ userId, user }) => {
     const [employeeDirectory, setEmployeeDirectory] = useState([]);
     const [approvers, setApprovers] = useState([]);
     const [ccSearch, setCcSearch] = useState('');
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [selectedTypeName, setSelectedTypeName] = useState('');
+    const [showAvailedTable, setShowAvailedTable] = useState(false);
+    const [showGrantedTable, setShowGrantedTable] = useState(false);
 
     const apiUrl = API_URL;
 
@@ -39,6 +56,112 @@ const Leaves = ({ userId, user }) => {
         fetchDirectory();
         fetchApprovers();
     }, [userId]);
+
+    useEffect(() => {
+        if (!selectedTypeName && Array.isArray(leaveData?.types) && leaveData.types.length > 0) {
+            setSelectedTypeName(leaveData.types[0].name);
+        }
+    }, [leaveData, selectedTypeName]);
+
+    const normalizeLeaveName = (value) => String(value || '').toLowerCase().replace(/[^a-z]/g, '');
+    const sameLeaveType = (a, b) => {
+        const left = normalizeLeaveName(a);
+        const right = normalizeLeaveName(b);
+        if (!left || !right) return false;
+        return left.includes(right) || right.includes(left);
+    };
+
+    const calculateLeaveDays = (leave) => {
+        try {
+            const start = new Date(leave.start_date);
+            const end = new Date(leave.end_date);
+            if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+
+            let days = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+            const startSession = String(leave.start_session || 'Full Day');
+            const endSession = String(leave.end_session || 'Full Day');
+
+            if (days <= 1) {
+                if (startSession !== 'Full Day' || endSession !== 'Full Day') {
+                    if (startSession === endSession) return 0.5;
+                    return 1;
+                }
+                return 1;
+            }
+
+            if (startSession !== 'Full Day') days -= 0.5;
+            if (endSession !== 'Full Day') days -= 0.5;
+            return Math.max(0.5, days);
+        } catch {
+            return 0;
+        }
+    };
+
+    const selectedType = (leaveData?.types || []).find((type) => type.name === selectedTypeName) || (leaveData?.types || [])[0] || null;
+    const selectedTypeRecords = recentLeaves.filter((leave) => {
+        if (!selectedType) return false;
+        if (!sameLeaveType(leave.leave_type, selectedType.name)) return false;
+        const start = new Date(leave.start_date);
+        return !Number.isNaN(start.getTime()) && start.getFullYear() === selectedYear;
+    });
+
+    const approvedTypeRecords = selectedTypeRecords.filter((leave) => {
+        const status = String(leave.status || '').toLowerCase();
+        return !status.includes('rejected') && !status.includes('withdrawn');
+    });
+
+    const totalConsumedForType = approvedTypeRecords.reduce((sum, leave) => sum + calculateLeaveDays(leave), 0);
+    const availableBalance = Number(selectedType?.remaining || 0);
+    const grantedForType = Math.max(0, availableBalance + totalConsumedForType);
+    const openingBalance = 0;
+
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlyConsumed = Array.from({ length: 12 }, (_, i) => ({ monthIndex: i, consumed: 0 }));
+    approvedTypeRecords.forEach((leave) => {
+        const start = new Date(leave.start_date);
+        const idx = start.getMonth();
+        monthlyConsumed[idx].consumed += calculateLeaveDays(leave);
+    });
+
+    const monthLimit = selectedYear < new Date().getFullYear() ? 12 : (selectedYear > new Date().getFullYear() ? 0 : (new Date().getMonth() + 1));
+    const monthlyGrantRate = monthLimit > 0 ? (grantedForType / monthLimit) : 0;
+
+    let runningBalance = openingBalance;
+    const monthlyDetailData = months.slice(0, monthLimit).map((m, idx) => {
+        const granted = monthlyGrantRate;
+        const consumed = Number(monthlyConsumed[idx].consumed.toFixed(2));
+        runningBalance = runningBalance + granted - consumed;
+        return {
+            month: `${m} ${String(selectedYear).slice(-2)}`,
+            balance: Number(Math.max(0, runningBalance).toFixed(2)),
+            consumed,
+            granted: Number(granted.toFixed(2)),
+            opening: idx === 0 ? openingBalance : undefined
+            let runningBalance = openingBalance;
+            const monthlyDetailData = months.slice(0, monthLimit).map((m, idx) => {
+                const granted = monthlyGrantRate;
+                const consumed = Number(monthlyConsumed[idx].consumed.toFixed(2));
+                runningBalance = runningBalance + granted - consumed;
+                // Clamp here so negative does NOT carry into future months (matches backend logic)
+                runningBalance = Math.max(0, runningBalance);
+                return {
+                    month: `${m} ${String(selectedYear).slice(-2)}`,
+                    balance: Number(runningBalance.toFixed(2)),
+                    consumed,
+                    granted: Number(granted.toFixed(2)),
+                    opening: idx === 0 ? openingBalance : undefined
+                };
+            });
+        };
+    });
+
+    const availableYears = Array.from(new Set(
+        recentLeaves
+            .map((leave) => new Date(leave.start_date))
+            .filter((d) => !Number.isNaN(d.getTime()))
+            .map((d) => d.getFullYear())
+            .concat([new Date().getFullYear()])
+    )).sort((a, b) => b - a);
 
     const fetchApprovers = async () => {
         try {
@@ -157,7 +280,7 @@ const Leaves = ({ userId, user }) => {
         <div className="leaves-page">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Plane size={32} color="var(--primary)" /> Leave Management</h1>
+                    <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Plane size={32} color="var(--primary)" /> {pageTitle}</h1>
                     <button 
                         onClick={() => { fetchBalance(); fetchRecentLeaves(); }}
                         className="btn-icon" 
@@ -183,18 +306,57 @@ const Leaves = ({ userId, user }) => {
                         </span>
                     )}
                 </div>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    {Array.isArray(leaveData?.types) && leaveData.types.map((type, idx) => (
-                        <div key={idx} className="card shadow-sm" style={{ padding: '0.5rem 1rem', borderRadius: '8px', textAlign: 'center', minWidth: '100px', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{type.name}</div>
-                            <div style={{ fontWeight: 'bold', color: 'var(--primary)' }}>
-                                {type.remaining} Days
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {isBalanceView && (
+                        <select
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
+                            style={{ padding: '0.55rem 0.7rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: '#ffffff', color: '#0f172a', fontWeight: 700, minWidth: '110px' }}
+                        >
+                            {availableYears.map((year) => (
+                                <option key={year} value={year}>{year}</option>
+                            ))}
+                        </select>
+                    )}
+                    {Array.isArray(leaveData?.types) && leaveData.types.map((type, idx) => {
+                        const isSelected = selectedTypeName === type.name;
+                        return (
+                            <div
+                                key={idx}
+                                className="card shadow-sm"
+                                style={{
+                                    padding: '0.55rem 0.9rem',
+                                    borderRadius: '10px',
+                                    textAlign: 'center',
+                                    minWidth: '120px',
+                                    background: isSelected ? '#eff6ff' : '#ffffff',
+                                    border: isSelected ? '1px solid #93c5fd' : '1px solid var(--border-color)',
+                                    cursor: isBalanceView ? 'pointer' : 'default'
+                                }}
+                                onClick={() => {
+                                    if (isBalanceView) setSelectedTypeName(type.name);
+                                }}
+                            >
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{type.name}</div>
+                                <div style={{ fontWeight: 'bold', color: '#0f172a', marginTop: '0.2rem' }}>
+                                    {type.remaining} Days
+                                </div>
+                                {isBalanceView && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedTypeName(type.name)}
+                                        style={{ marginTop: '0.4rem', border: 'none', background: 'transparent', color: '#1d4ed8', fontWeight: 700, cursor: 'pointer', fontSize: '0.78rem' }}
+                                    >
+                                        View Details
+                                    </button>
+                                )}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 
+            {!isBalanceView && (
             <div className="grid-3">
                 {/* Leave Application Form */}
                 <div className="card" style={{ gridColumn: 'span 2', opacity: leaveData.is_intern ? 0.7 : 1 }}>
@@ -399,8 +561,214 @@ const Leaves = ({ userId, user }) => {
                     </ul>
                 </div>
             </div>
+            )}
+
+            {isBalanceView && selectedType && (
+            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.85rem' }}>
+                    {[
+                        { label: 'Available Balance', value: availableBalance, key: 'avail' },
+                        { label: 'Opening Balance', value: openingBalance, key: 'open' },
+                        { label: 'Granted', value: Number(grantedForType.toFixed(2)), key: 'granted' },
+                        { label: 'Availed', value: Number(totalConsumedForType.toFixed(2)), key: 'availed' }
+                    ].map((item) => {
+                        const isActive = item.key === 'granted' ? showGrantedTable : item.key === 'availed' ? showAvailedTable : false;
+                        const isClickable = item.key === 'granted' || item.key === 'availed';
+                        const handleClick = () => {
+                            if (item.key === 'granted') setShowGrantedTable((prev) => !prev);
+                            else if (item.key === 'availed') setShowAvailedTable((prev) => !prev);
+                        };
+                        return (
+                        <div
+                            key={item.label}
+                            className="card shadow-sm"
+                            onClick={isClickable ? handleClick : undefined}
+                            style={{
+                                background: isActive ? '#eff6ff' : '#ffffff',
+                                border: isActive ? '1px solid #93c5fd' : '1px solid var(--border-color)',
+                                padding: '0.85rem 1rem',
+                                cursor: isClickable ? 'pointer' : 'default',
+                                userSelect: 'none'
+                            }}
+                        >
+                            <div style={{ color: '#64748b', fontSize: '0.78rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                {item.label}
+                                {isClickable && (
+                                    <span style={{ fontSize: '0.7rem', color: '#1d4ed8', fontWeight: 600 }}>
+                                        {isActive ? '▲ Hide' : '▼ Details'}
+                                    </span>
+                                )}
+                            </div>
+                            <div style={{ color: '#0f172a', fontSize: '1.6rem', fontWeight: 800, marginTop: '0.25rem' }}>{item.value}</div>
+                        </div>
+                        );
+                    })}
+                </div>
+
+                {showGrantedTable && (
+                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid #93c5fd' }}>
+                    <h2 className="card-title" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ color: '#1d4ed8' }}>▼</span> Granted — {selectedType.name} ({selectedYear})
+                        <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: '#64748b', fontWeight: 400 }}>{monthlyDetailData.length} month{monthlyDetailData.length !== 1 ? 's' : ''}</span>
+                    </h2>
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left', background: '#f8fafc' }}>
+                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Month</th>
+                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Granted (Days)</th>
+                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Consumed (Days)</th>
+                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Running Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {monthlyDetailData.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="4" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                            No grant data for {selectedType.name} in {selectedYear}.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    monthlyDetailData.map((row, idx) => (
+                                        <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                                            <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>{row.month}</td>
+                                            <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#15803d' }}>{row.granted > 0 ? `+${row.granted}` : row.granted}</td>
+                                            <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: row.consumed > 0 ? '#dc2626' : '#64748b' }}>{row.consumed > 0 ? `-${row.consumed}` : row.consumed}</td>
+                                            <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: row.balance <= 0 ? '#dc2626' : '#0f172a' }}>{row.balance}</td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                            {monthlyDetailData.length > 0 && (
+                            <tfoot>
+                                <tr style={{ borderTop: '2px solid var(--border-color)', background: '#f0f9ff' }}>
+                                    <td style={{ padding: '0.75rem 1rem', fontWeight: 700 }}>Total</td>
+                                    <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#15803d' }}>+{Number(grantedForType.toFixed(2))}</td>
+                                    <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: totalConsumedForType > 0 ? '#dc2626' : '#64748b' }}>{totalConsumedForType > 0 ? `-${Number(totalConsumedForType.toFixed(2))}` : 0}</td>
+                                    <td style={{ padding: '0.75rem 1rem', fontWeight: 700 }}>{availableBalance}</td>
+                                </tr>
+                            </tfoot>
+                            )}
+                        </table>
+                    </div>
+                </div>
+                )}
+
+                {showAvailedTable && (
+                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid #93c5fd' }}>
+                    <h2 className="card-title" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ color: '#1d4ed8' }}>▼</span> Availed — {selectedType.name} ({selectedYear})
+                        <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: '#64748b', fontWeight: 400 }}>{approvedTypeRecords.length} record{approvedTypeRecords.length !== 1 ? 's' : ''}</span>
+                    </h2>
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left', background: '#f8fafc' }}>
+                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Leave Type</th>
+                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Applied On</th>
+                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>From</th>
+                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>To</th>
+                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Days</th>
+                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Status</th>
+                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {approvedTypeRecords.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="7" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                            No availed records for {selectedType.name} in {selectedYear}.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    approvedTypeRecords.map((leaf, idx) => (
+                                        <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                                            <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>{leaf.leave_type || selectedType.name}</td>
+                                            <td style={{ padding: '0.75rem 1rem' }}>{leaf.applied_on ? new Date(leaf.applied_on).toLocaleDateString() : '-'}</td>
+                                            <td style={{ padding: '0.75rem 1rem' }}>{leaf.start_date ? new Date(leaf.start_date).toLocaleDateString() : '-'}</td>
+                                            <td style={{ padding: '0.75rem 1rem' }}>{leaf.end_date ? new Date(leaf.end_date).toLocaleDateString() : '-'}</td>
+                                            <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#1d4ed8' }}>{calculateLeaveDays(leaf)}</td>
+                                            <td style={{ padding: '0.75rem 1rem' }}>
+                                                <span style={{
+                                                    padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.78rem', fontWeight: 600,
+                                                    background: String(leaf.status || '').toLowerCase().includes('approved') ? '#dcfce7' : '#fef9c3',
+                                                    color: String(leaf.status || '').toLowerCase().includes('approved') ? '#15803d' : '#92400e'
+                                                }}>{leaf.status || '-'}</span>
+                                            </td>
+                                            <td style={{ padding: '0.75rem 1rem', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#64748b' }} title={leaf.reason || ''}>{leaf.reason || '-'}</td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                )}
+
+                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
+                    <h2 className="card-title" style={{ marginBottom: '1rem' }}>{selectedType.name}: {selectedYear}</h2>
+                    <div style={{ width: '100%', height: '320px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={monthlyDetailData} margin={{ top: 10, right: 20, left: 10, bottom: 18 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                                <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 12 }} />
+                                <YAxis tick={{ fill: '#64748b', fontSize: 12 }} allowDecimals />
+                                <Tooltip
+                                    contentStyle={{ borderRadius: '10px', border: '1px solid #dbe4f0', boxShadow: '0 8px 25px rgba(15,23,42,0.1)' }}
+                                    formatter={(value, name) => [value, name === 'balance' ? 'Balance' : 'Consumed']}
+                                />
+                                <Legend formatter={(value) => (value === 'balance' ? 'Balance' : 'Consumed')} />
+                                <Bar dataKey="balance" fill="#7ec1ec" radius={[4, 4, 0, 0]} maxBarSize={34} />
+                                <Bar dataKey="consumed" fill="#f28b82" radius={[4, 4, 0, 0]} maxBarSize={34} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
+                    <h2 className="card-title" style={{ marginBottom: '1rem' }}>Transactions</h2>
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
+                                    <th style={{ padding: '0.85rem', color: 'var(--text-muted)' }}>Transaction Type</th>
+                                    <th style={{ padding: '0.85rem', color: 'var(--text-muted)' }}>Posted On</th>
+                                    <th style={{ padding: '0.85rem', color: 'var(--text-muted)' }}>From</th>
+                                    <th style={{ padding: '0.85rem', color: 'var(--text-muted)' }}>To</th>
+                                    <th style={{ padding: '0.85rem', color: 'var(--text-muted)' }}>Days</th>
+                                    <th style={{ padding: '0.85rem', color: 'var(--text-muted)' }}>Reason</th>
+                                    <th style={{ padding: '0.85rem', color: 'var(--text-muted)' }}>Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {selectedTypeRecords.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="7" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                            No detailed records for {selectedType.name} in {selectedYear}.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    selectedTypeRecords.map((leaf, idx) => (
+                                        <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                            <td style={{ padding: '0.85rem', fontWeight: 600 }}>{leaf.leave_type || selectedType.name}</td>
+                                            <td style={{ padding: '0.85rem' }}>{leaf.applied_on ? new Date(leaf.applied_on).toLocaleDateString() : '-'}</td>
+                                            <td style={{ padding: '0.85rem' }}>{leaf.start_date ? new Date(leaf.start_date).toLocaleDateString() : '-'}</td>
+                                            <td style={{ padding: '0.85rem' }}>{leaf.end_date ? new Date(leaf.end_date).toLocaleDateString() : '-'}</td>
+                                            <td style={{ padding: '0.85rem', fontWeight: 600 }}>{calculateLeaveDays(leaf)}</td>
+                                            <td style={{ padding: '0.85rem', maxWidth: '320px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={leaf.reason || ''}>{leaf.reason || '-'}</td>
+                                            <td style={{ padding: '0.85rem', color: '#64748b' }}>{leaf.status || '-'}</td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            )}
 
             {/* Monthly Summary & History */}
+            {!isApplyView && !isBalanceView && (
             <div style={{ marginTop: '2.5rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 
                 <div className="grid-3" style={{ gap: '1.5rem' }}>
@@ -560,6 +928,7 @@ const Leaves = ({ userId, user }) => {
                     </div>
                 </div>
             </div>
+            )}
         </div>
     );
 };

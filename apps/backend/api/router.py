@@ -149,6 +149,21 @@ class LeaveRequest(BaseModel):
     approver_id: Optional[str] = None
     cc_ids: List[str] = []
 
+class ManualLeaveRequest(BaseModel):
+    employee_id: str
+    leave_type: str
+    start_date: str
+    end_date: str
+    start_session: Optional[str] = "Full Day"
+    end_session: Optional[str] = "Full Day"
+    reason: str
+    remarks: Optional[str] = ""
+
+class LeavePolicyDefaults(BaseModel):
+    privilege_leave_rate: float = 1.5
+    sick_leave_rate: float = 1.0
+    casual_leave_rate: float = 1.0
+
 class EducationDetail(BaseModel):
     institution_name: str
     department: str
@@ -1544,6 +1559,90 @@ def approve_leave_direct(id: str, status: str):
     </html>
     """
     return HTMLResponse(content=html_content, status_code=200)
+
+# --- Manual Leave Entry (Admin) ---
+@router.post("/admin/manual-leave")
+def post_manual_leave(request: ManualLeaveRequest):
+    """Admin manually posts an approved leave record for an employee."""
+    record = request.dict()
+    record["status"] = "Approved (Manual Post)"
+    record["leave_type_short"] = get_leave_type_short(record.get("leave_type", ""))
+    record["applied_on"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    record["id"] = uuid.uuid4().hex[:8]
+    record["is_manual"] = True
+    record["subject"] = f"Manual leave entry by admin"
+    if mongo_db.db is not None:
+        mongo_db.leaves.insert_one(record)
+        try:
+            sync_leave_request_to_vector_db(record, mongo_db)
+        except Exception as ve:
+            print(f"Vector sync warning: {ve}")
+    if "_id" in record:
+        del record["_id"]
+    return {"message": "Manual leave posted successfully", "record": record}
+
+# --- Leave Policy Defaults ---
+@router.get("/admin/leave-policy/defaults")
+def get_leave_policy_defaults():
+    """Return company-wide default leave accrual rates."""
+    if mongo_db.db is None:
+        return {"privilege_leave_rate": 1.5, "sick_leave_rate": 1.0, "casual_leave_rate": 1.0}
+    settings = mongo_db.db["leave_policy"].find_one({"_id": "defaults"})
+    if not settings:
+        return {"privilege_leave_rate": 1.5, "sick_leave_rate": 1.0, "casual_leave_rate": 1.0}
+    return {
+        "privilege_leave_rate": float(settings.get("privilege_leave_rate", 1.5)),
+        "sick_leave_rate": float(settings.get("sick_leave_rate", 1.0)),
+        "casual_leave_rate": float(settings.get("casual_leave_rate", 1.0))
+    }
+
+@router.post("/admin/leave-policy/defaults")
+def save_leave_policy_defaults(policy: LeavePolicyDefaults):
+    """Save company-wide default leave rates and apply to all full-time employees."""
+    if mongo_db.db is None:
+        return {"error": "DB not connected"}
+    mongo_db.db["leave_policy"].update_one(
+        {"_id": "defaults"},
+        {"$set": {
+            "privilege_leave_rate": policy.privilege_leave_rate,
+            "sick_leave_rate": policy.sick_leave_rate,
+            "casual_leave_rate": policy.casual_leave_rate,
+            "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    updated_count = 0
+    if mongo_db.users is not None:
+        result = mongo_db.users.update_many(
+            {"employment_type": {"$ne": "Intern"}},
+            {"$set": {
+                "privilege_leave_rate": policy.privilege_leave_rate,
+                "sick_leave_rate": policy.sick_leave_rate,
+                "casual_leave_rate": policy.casual_leave_rate
+            }}
+        )
+        updated_count = result.modified_count
+    return {"message": f"Policy saved and applied to {updated_count} full-time employee(s)"}
+
+class LeaveRatesUpdate(BaseModel):
+    privilege_leave_rate: float
+    sick_leave_rate: float
+    casual_leave_rate: float
+
+@router.put("/admin/employee/{employee_id}/leave-rates")
+def update_employee_leave_rates(employee_id: str, rates: LeaveRatesUpdate):
+    """Override leave accrual rates for a specific employee."""
+    if mongo_db.users is None:
+        return {"error": "DB not connected"}
+    mongo_db.users.update_one(
+        {"employee_id": employee_id},
+        {"$set": {
+            "privilege_leave_rate": rates.privilege_leave_rate,
+            "sick_leave_rate": rates.sick_leave_rate,
+            "casual_leave_rate": rates.casual_leave_rate
+        }}
+    )
+    return {"message": f"Leave rates updated for employee {employee_id}"}
 
 # --- Item Requests ---
 class ItemRequest(BaseModel):

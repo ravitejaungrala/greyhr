@@ -22,6 +22,7 @@ import DocumentCenter from './pages/DocumentCenter';
 import ItemRequests from './pages/ItemRequests';
 import EmployeeAssistant from './pages/EmployeeAssistant';
 import LandingPage from './pages/LandingPage';
+import LeavePolicy from './pages/LeavePolicy';
 
 // Helper component for dynamic document titles
 const DynamicTitle = () => {
@@ -36,7 +37,7 @@ const DynamicTitle = () => {
     else if (path === '/employee/pulse') title = 'Pulse Dashboard | NeuzenAI';
     else if (path === '/employee/attendance') title = 'Attendance | NeuzenAI';
     else if (path === '/employee/salary') title = 'Salary | NeuzenAI';
-    else if (path === '/employee/leaves') title = 'Leaves | NeuzenAI';
+    else if (path === '/employee/leaves' || path === '/employee/leaves/apply' || path === '/employee/leaves/balance') title = 'Leaves | NeuzenAI';
     else if (path === '/admin/intelligence') title = 'HR Intelligence | NeuzenAI';
     else if (path.includes('admin/')) title = 'Admin | NeuzenAI';
     
@@ -211,6 +212,7 @@ function AppContent() {
               >
                 <NavItem path="/admin/dashboard" icon={Users} title="Workforce" subtitle="DIRECTORY" isSub />
                 <NavItem path="/admin/leaves" icon={Palmtree} title="Leave Mgmt" subtitle="TIME OFF" isSub />
+                                <NavItem path="/admin/leave-policy" icon={ClipboardCheck} title="Leave Policy" subtitle="DEFAULTS" isSub />
                 <NavItem path="/admin/items" icon={Package} title="Item Requests" subtitle="REQUISITIONS" isSub />
               </NavGroup>
               
@@ -285,7 +287,8 @@ function AppContent() {
                 isExpanded={isReqExpanded}
                 setIsExpanded={setIsReqExpanded}
               >
-                <NavItem path="/employee/leaves" icon={Palmtree} title="Time Off" subtitle="LEAVES" isSub />
+                <NavItem path="/employee/leaves/apply" icon={UserPlus} title="Leave Apply" subtitle="LEAVES" isSub />
+                <NavItem path="/employee/leaves/balance" icon={Palmtree} title="Leave Balances" subtitle="LEAVES" isSub />
                 <NavItem path="/employee/items" icon={Package} title="Equipment" subtitle="REQUESTS" isSub />
               </NavGroup>
 
@@ -336,11 +339,14 @@ function AppContent() {
             <Route path="/admin/templates" element={<AdminDashboard activeTab="templates" user={user} />} />
             <Route path="/admin/payroll" element={<AdminDashboard activeTab="payroll" user={user} />} />
             <Route path="/admin/intelligence" element={<AdminDashboard activeTab="intelligence" user={user} />} />
+                        <Route path="/admin/leave-policy" element={<LeavePolicy user={user} />} />
             
             <Route path="/employee/pulse" element={<HomeDashboard user={user} setUser={setUser} />} />
             <Route path="/employee/attendance" element={<AttendanceScan userId={user.employee_id} user={user} />} />
             <Route path="/employee/activity" element={<AttendanceInfo userId={user.employee_id} user={user} />} />
-            <Route path="/employee/leaves" element={<Leaves userId={user.employee_id} user={user} />} />
+            <Route path="/employee/leaves" element={<Navigate to="/employee/leaves/balance" replace />} />
+            <Route path="/employee/leaves/apply" element={<Leaves userId={user.employee_id} user={user} mode="apply" />} />
+            <Route path="/employee/leaves/balance" element={<Leaves userId={user.employee_id} user={user} mode="balance" />} />
             <Route path="/employee/engage" element={<EngageModule />} />
             <Route path="/employee/wellbeing" element={<MyWorkLife userId={user.employee_id} user={user} setActiveMenu={navigateTo} />} />
             <Route path="/employee/salary" element={<SalaryModule userId={user.employee_id} user={user} />} />

@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv("c:/Raviteja/NeuZen AI/grey-hr/apps/backend/.env")
-api_url = "http://localhost:8000/api"
+api_url = "http://localhost:8081/api"
 
 try:
     res = requests.get(f"{api_url}/employee/approvers")

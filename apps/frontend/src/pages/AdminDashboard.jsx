@@ -186,6 +186,9 @@ const AdminDashboard = ({ activeTab, user }) => {
     const [leaveFilterType, setLeaveFilterType] = useState('All');
     const [leaveFilterDate, setLeaveFilterDate] = useState('');
     const [inspectingLeave, setInspectingLeave] = useState(null);
+        const [showManualLeavePanel, setShowManualLeavePanel] = useState(false);
+        const [manualLeaveForm, setManualLeaveForm] = useState({ employee_id: '', leave_type: 'Casual Leave', start_date: '', end_date: '', start_session: 'Full Day', end_session: 'Full Day', reason: '', remarks: '' });
+        const [manualLeaveStatus, setManualLeaveStatus] = useState('');
     const [inspectingEmpHistory, setInspectingEmpHistory] = useState(null);
     const [analyticsTrend, setAnalyticsTrend] = useState([]);
     const [employeeSearch, setEmployeeSearch] = useState('');
@@ -281,8 +284,21 @@ const AdminDashboard = ({ activeTab, user }) => {
             };
 
             if (activeTab === 'overview') {
-                const data = await fetchWithCheck(buildAdminUrl('/admin/overview'));
-                if (data) setOverviewData(data);
+                const [overviewRes, trendRes, employeesRes, pendingRes, leavesRes, salaryRes] = await Promise.all([
+                    fetchWithCheck(buildAdminUrl('/admin/overview')),
+                    fetchWithCheck(buildAdminUrl('/admin/analytics/trend')),
+                    fetchWithCheck(buildAdminUrl('/auth/admin/employees')),
+                    fetchWithCheck(buildAdminUrl('/auth/admin/pending')),
+                    fetchWithCheck(buildAdminUrl('/admin/leaves')),
+                    fetchWithCheck(buildAdminUrl(`/admin/salary-report/${salaryReportMonth}`))
+                ]);
+
+                if (overviewRes) setOverviewData(overviewRes);
+                if (trendRes) setAnalyticsTrend(trendRes.trend || []);
+                if (employeesRes) setApprovedEmployees(employeesRes.employees || []);
+                if (pendingRes) setPendingEmployees(pendingRes.employees || []);
+                if (leavesRes) setLeaves(leavesRes.leaves || []);
+                if (salaryRes) setSalaryReport(salaryRes.report || []);
             } else if (activeTab === 'employees') {
                 const data = await fetchWithCheck(buildAdminUrl('/auth/admin/employees'));
                 if (data) setApprovedEmployees(data.employees || []);
@@ -643,6 +659,142 @@ const AdminDashboard = ({ activeTab, user }) => {
         emp.employee_id.toLowerCase().includes(employeeSearch.toLowerCase()) ||
         (emp.email || '').toLowerCase().includes(employeeSearch.toLowerCase())
     );
+
+    const toSafeDate = (value) => {
+        if (!value) return null;
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
+    };
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const approvedLeavesCount = leaves.filter((leave) => String(leave?.status || '').toLowerCase().includes('approved')).length;
+    const leaveApprovalRate = leaves.length ? Math.round((approvedLeavesCount / leaves.length) * 100) : 0;
+    const leavesTodayFallback = leaves.filter((leave) => {
+        const status = String(leave?.status || '').toLowerCase();
+        if (!status.includes('approved')) return false;
+        const startDate = toSafeDate(leave?.start_date || leave?.from_date || leave?.leave_start || leave?.date);
+        const endDate = toSafeDate(leave?.end_date || leave?.to_date || leave?.leave_end || leave?.date);
+        if (!startDate || !endDate) return false;
+        const today = new Date(currentYear, currentMonth, now.getDate()).getTime();
+        const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()).getTime();
+        const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()).getTime();
+        return today >= start && today <= end;
+    }).length;
+    const totalEmployeesKpi = Number(overviewData?.metrics?.total_employees ?? approvedEmployees.length ?? 0);
+    const pendingApprovalsKpi = Number(overviewData?.metrics?.pending_approvals ?? pendingEmployees.length ?? 0);
+    const activeLeavesTodayKpi = Number(overviewData?.metrics?.active_leaves_today ?? leavesTodayFallback ?? 0);
+    const companiesKpi = (() => {
+        const companyCount = new Set(approvedEmployees.map(getEmployeeCompanyKey).filter(Boolean)).size;
+        if (companyCount > 0) return companyCount;
+        return companyFilter && companyFilter !== 'all' ? 1 : 0;
+    })();
+    const newJoineesThisMonth = approvedEmployees.filter((employee) => {
+        const joinDate = toSafeDate(employee?.joining_date || employee?.date_of_joining || employee?.created_at);
+        return joinDate && joinDate.getMonth() === currentMonth && joinDate.getFullYear() === currentYear;
+    }).length;
+    const salaryNetPayout = salaryReport.reduce((sum, row) => sum + Number(row?.net_salary || 0), 0)
+        || approvedEmployees.reduce((sum, emp) => sum + Number(emp?.in_hand_salary || emp?.monthly_salary || 0), 0);
+    const averageSalary = totalEmployeesKpi > 0 ? Math.round(salaryNetPayout / totalEmployeesKpi) : 0;
+    const formatInr = (value) => `Rs ${Math.round(Number(value) || 0).toLocaleString('en-IN')}`;
+    const hasLeftCompany = (employee) => {
+        const status = String(employee?.status || '').toLowerCase();
+        if (['left', 'resigned', 'terminated', 'inactive', 'exited', 'relieved'].some((token) => status.includes(token))) {
+            return true;
+        }
+        return Boolean(employee?.relieving_date || employee?.last_working_day || employee?.exit_date);
+    };
+
+    const monthLabel = (monthIndex, yearValue) => {
+        const d = new Date(yearValue, monthIndex, 1);
+        return d.toLocaleString('default', { month: 'short' });
+    };
+    const fallbackTrendData = (() => {
+        const months = [];
+        for (let i = 5; i >= 0; i -= 1) {
+            const d = new Date(currentYear, currentMonth - i, 1);
+            months.push({
+                key: `${d.getFullYear()}-${d.getMonth()}`,
+                month: monthLabel(d.getMonth(), d.getFullYear()),
+                joins: 0,
+                leaves: 0,
+                exits: 0,
+                salary: 0
+            });
+        }
+        const indexByKey = Object.fromEntries(months.map((m, idx) => [m.key, idx]));
+
+        approvedEmployees.forEach((employee) => {
+            const joinDate = toSafeDate(employee?.joining_date || employee?.date_of_joining || employee?.created_at);
+            if (!joinDate) return;
+            const key = `${joinDate.getFullYear()}-${joinDate.getMonth()}`;
+            if (indexByKey[key] !== undefined) months[indexByKey[key]].joins += 1;
+        });
+
+        approvedEmployees.forEach((employee) => {
+            if (!hasLeftCompany(employee)) return;
+            const exitDate = toSafeDate(employee?.relieving_date || employee?.last_working_day || employee?.exit_date);
+            if (!exitDate) return;
+            const key = `${exitDate.getFullYear()}-${exitDate.getMonth()}`;
+            if (indexByKey[key] !== undefined) months[indexByKey[key]].exits += 1;
+        });
+
+        leaves.forEach((leave) => {
+            const leaveDate = toSafeDate(leave?.start_date || leave?.from_date || leave?.date || leave?.created_at);
+            if (!leaveDate) return;
+            const key = `${leaveDate.getFullYear()}-${leaveDate.getMonth()}`;
+            if (indexByKey[key] !== undefined) months[indexByKey[key]].leaves += 1;
+        });
+
+        if (months.length > 0) {
+            months[months.length - 1].salary = salaryNetPayout;
+        }
+
+        return months;
+    })();
+
+    const overviewTrendData = analyticsTrend.length > 0
+        ? analyticsTrend.map((row, index) => ({
+            month: row?.month || row?.label || row?.month_name || `M${index + 1}`,
+            joins: Number(row?.joins || row?.new_joins || row?.new_joiners || 0),
+            exits: Number(row?.exits || row?.left || row?.leaving || row?.attrition || 0),
+            leaves: Number(row?.leaves || row?.approved_leaves || row?.leave_count || 0),
+            salary: Number(row?.salary || row?.net_salary || row?.net_payout || 0)
+        }))
+        : fallbackTrendData;
+
+    const companyGrowthData = (() => {
+        const grouped = approvedEmployees.reduce((acc, employee) => {
+            const key = getEmployeeCompanyName(employee);
+            if (!acc[key]) {
+                acc[key] = { company: key, joinees: 0, leaving: 0 };
+            }
+            acc[key].joinees += 1;
+            if (hasLeftCompany(employee)) {
+                acc[key].leaving += 1;
+            }
+            return acc;
+        }, {});
+        return Object.values(grouped)
+            .sort((a, b) => (b.joinees + b.leaving) - (a.joinees + a.leaving))
+            .slice(0, 7);
+    })();
+
+    const leavesTrendData = overviewTrendData.map((row) => ({ month: row.month, leaves: Number(row.leaves || 0) }));
+    const salaryTrendData = overviewTrendData.map((row) => ({ month: row.month, salary: Number(row.salary || 0) }));
+    const employeeGrowthData = (() => {
+        const totalNetChange = overviewTrendData.reduce((sum, row) => sum + Number(row.joins || 0) - Number(row.exits || 0), 0);
+        let headcount = Math.max(0, totalEmployeesKpi - totalNetChange);
+        return overviewTrendData.map((row) => {
+            headcount += Number(row.joins || 0) - Number(row.exits || 0);
+            return {
+                month: row.month,
+                employees: Math.max(0, headcount),
+                joins: Number(row.joins || 0),
+                exits: Number(row.exits || 0)
+            };
+        });
+    })();
 
     const handleGenerateOfferLetter = async (empId) => {
         setIsGeneratingOL(true);
@@ -1336,21 +1488,55 @@ const AdminDashboard = ({ activeTab, user }) => {
             </h1>
 
             {canFilterCompanies && (
-                <div className="card shadow-sm" style={{ marginBottom: '1.5rem', background: '#ffffff', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                    <div>
-                        <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Company Scope</div>
-                        <div style={{ color: '#0f172a', fontWeight: 700, marginTop: '0.25rem' }}>Switch between one company or all accessible companies.</div>
+                <div
+                    className="card shadow-sm"
+                    style={{
+                        marginBottom: '1rem',
+                        background: '#ffffff',
+                        border: '1px solid var(--border-color)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '0.8rem',
+                        flexWrap: 'wrap',
+                        padding: '0.85rem 1rem',
+                        borderRadius: '16px',
+                        minHeight: '68px',
+                        overflow: 'visible',
+                        position: 'relative',
+                        zIndex: 30
+                    }}
+                >
+                    <div style={{ paddingRight: '0.5rem' }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Company Scope</div>
+                        <div style={{ color: '#0f172a', fontWeight: 700, marginTop: '0.2rem', fontSize: '0.9rem', lineHeight: 1.2 }}>Switch between one company or all accessible companies.</div>
                     </div>
-                    <select
-                        value={companyFilter}
-                        onChange={(e) => setCompanyFilter(e.target.value)}
-                        style={{ minWidth: '240px', padding: '0.85rem 1rem', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#0f172a', fontWeight: 700 }}
-                    >
-                        <option value="all">All Accessible Companies</option>
-                        {availableCompanyKeys.map((companyKey) => (
-                            <option key={companyKey} value={companyKey}>{companyLabel(companyKey)}</option>
-                        ))}
-                    </select>
+                    <div style={{ position: 'relative', zIndex: 40 }}>
+                        <select
+                            value={companyFilter}
+                            onChange={(e) => setCompanyFilter(e.target.value)}
+                            style={{
+                                minWidth: '220px',
+                                height: '42px',
+                                padding: '0.4rem 0.8rem',
+                                borderRadius: '12px',
+                                border: '1px solid #dbe4f0',
+                                background: '#ffffff',
+                                color: '#0f172a',
+                                fontWeight: 700,
+                                fontSize: '0.85rem',
+                                lineHeight: 1.2,
+                                position: 'relative',
+                                zIndex: 50,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <option value="all">All Accessible Companies</option>
+                            {availableCompanyKeys.map((companyKey) => (
+                                <option key={companyKey} value={companyKey}>{companyLabel(companyKey)}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
             )}
 
@@ -1360,72 +1546,153 @@ const AdminDashboard = ({ activeTab, user }) => {
                     <div className="grid-3">
                         {/* TAB: OVERVIEW */}
 
-                        {activeTab === 'overview' && overviewData && (
+                        {activeTab === 'overview' && (
                             <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                                <div className="grid-3" style={{ gap: '1rem' }}>
-                                    {/* Stat Cards */}
-                                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', borderLeft: '4px solid #6366f1', padding: '1rem', cursor: 'pointer' }}>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Employees</div>
-                                        <div style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0.25rem 0', color: '#1f2937' }}>{overviewData.metrics.total_employees}</div>
-                                        <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Active workforce</div>
-                                    </div>
-
-                                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', borderLeft: '4px solid #f59e0b', padding: '1rem', cursor: 'pointer' }}>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Pending Approvals</div>
-                                        <div style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0.25rem 0', color: '#1f2937' }}>{overviewData.metrics.pending_approvals}</div>
-                                        <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Onboarding candidates</div>
-                                    </div>
-
-                                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', borderLeft: '4px solid #ef4444', padding: '1rem', cursor: 'pointer' }}>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Leaves (Today)</div>
-                                        <div style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0.25rem 0', color: '#1f2937' }}>{overviewData.metrics.active_leaves_today}</div>
-                                        <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Out of office</div>
-                                    </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                                    {[
+                                        { label: 'Total Employees', value: totalEmployeesKpi, note: 'Active workforce', icon: <Users size={18} />, accent: '#6366f1' },
+                                        { label: 'Companies', value: companiesKpi, note: 'Within selected scope', icon: <Building2 size={18} />, accent: '#0ea5e9' },
+                                        { label: 'New Joinees', value: newJoineesThisMonth, note: 'Joined this month', icon: <UserPlus size={18} />, accent: '#10b981' },
+                                        { label: 'Active Leaves', value: activeLeavesTodayKpi, note: 'On leave today', icon: <CalendarDays size={18} />, accent: '#f59e0b' },
+                                        { label: 'Net Salary Payout', value: formatInr(salaryNetPayout), note: 'Current month', icon: <Banknote size={18} />, accent: '#ff4500' },
+                                        { label: 'Leave Approval Rate', value: `${leaveApprovalRate}%`, note: `Pending approvals: ${pendingApprovalsKpi}`, icon: <ClipboardCheck size={18} />, accent: '#ef4444' }
+                                    ].map((metric) => (
+                                        <div key={metric.label} className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', borderLeft: `4px solid ${metric.accent}`, padding: '1rem' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>{metric.label}</div>
+                                                <div style={{ color: metric.accent, background: `${metric.accent}18`, padding: '0.3rem', borderRadius: '8px', display: 'flex', alignItems: 'center' }}>{metric.icon}</div>
+                                            </div>
+                                            <div style={{ fontSize: '1.45rem', fontWeight: 800, margin: '0.1rem 0', color: '#1f2937', lineHeight: 1.2 }}>{metric.value}</div>
+                                            <div style={{ fontSize: '0.72rem', color: '#6b7280' }}>{metric.note}</div>
+                                        </div>
+                                    ))}
                                 </div>
 
-                                <div className="grid-2" style={{ gap: '1.5rem' }}>
-                                    {/* Recent Activity */}
-                                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
-                                        <h2 className="card-title" style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <Bell size={20} /> Recent Activity
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '1.5rem' }}>
+                                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.25rem' }}>
+                                        <h2 className="card-title" style={{ fontSize: '1.05rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <TreePalm size={18} /> Leaves Trend
                                         </h2>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-                                            {overviewData.recent_activity.map((act, i) => (
-                                                <div key={i} style={{ padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border-color)' }}>
-                                                    <div>
-                                                        <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{act.name}</div>
-                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>ID: {act.employee_id}</div>
-                                                    </div>
-                                                    <span style={{
-                                                        fontSize: '0.65rem',
-                                                        padding: '0.15rem 0.4rem',
-                                                        borderRadius: '4px',
-                                                        background: act.status === 'approved' ? '#dcfce7' : '#fef3c7',
-                                                        color: act.status === 'approved' ? '#166534' : '#92400e',
-                                                        fontWeight: 600,
-                                                        textTransform: 'uppercase'
-                                                    }}>
-                                                        {act.status}
-                                                    </span>
-                                                </div>
-                                            ))}
+                                        <div style={{ height: '290px', width: '100%' }}>
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <LineChart data={leavesTrendData}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                                                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                                                    <Line type="monotone" dataKey="leaves" name="Leaves" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4, fill: '#f59e0b' }} />
+                                                </LineChart>
+                                            </ResponsiveContainer>
                                         </div>
                                     </div>
 
-                                    {/* Active Announcement */}
-                                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                                        <h2 className="card-title" style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <Megaphone size={20} /> Current Announcement
+                                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.25rem' }}>
+                                        <h2 className="card-title" style={{ fontSize: '1.05rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Users size={18} /> Employee Growth
                                         </h2>
-                                        {overviewData.announcement ? (
-                                            <div style={{ padding: '1rem', background: '#eff6ff', borderRadius: '12px', border: '1px solid #bfdbfe', borderLeft: '4px solid var(--primary)' }}>
-                                                <div style={{ fontWeight: 700, marginBottom: '0.5rem' }}>{overviewData.announcement.title}</div>
-                                                <p style={{ fontSize: '0.85rem', margin: 0 }}>{overviewData.announcement.content}</p>
+                                        <div style={{ height: '290px', width: '100%' }}>
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <LineChart data={employeeGrowthData}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                                                    <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                                                    <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                                                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                                                    <Legend iconType="circle" />
+                                                    <Line yAxisId="left" type="monotone" dataKey="employees" name="Total Employees" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 3 }} />
+                                                    <Line yAxisId="right" type="monotone" dataKey="joins" name="Joinees" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
+                                                    <Line yAxisId="right" type="monotone" dataKey="exits" name="Leaving" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
+                                                </LineChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+
+                                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.25rem' }}>
+                                        <h2 className="card-title" style={{ fontSize: '1.05rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Banknote size={18} /> Salary Trend
+                                        </h2>
+                                        <div style={{ height: '290px', width: '100%' }}>
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <AreaChart data={salaryTrendData}>
+                                                    <defs>
+                                                        <linearGradient id="salaryTrendFill" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.22} />
+                                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0.02} />
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                                                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                                                    <Area type="monotone" dataKey="salary" name="Net Salary" stroke="#6366f1" fill="url(#salaryTrendFill)" strokeWidth={3} />
+                                                </AreaChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                        <div style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: '#64748b' }}>
+                                            Average salary per employee: <span style={{ fontWeight: 700, color: '#0f172a' }}>{formatInr(averageSalary)}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.25rem' }}>
+                                        <h2 className="card-title" style={{ fontSize: '1.05rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Building2 size={18} /> Company Growth (Joinees vs Leaving)
+                                        </h2>
+                                        <div style={{ height: '290px', width: '100%' }}>
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={companyGrowthData}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                    <XAxis dataKey="company" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} interval={0} angle={-12} textAnchor="end" height={60} />
+                                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                                                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                                                    <Legend iconType="circle" />
+                                                    <Bar dataKey="joinees" name="Joinees" fill="#10b981" radius={[6, 6, 0, 0]} barSize={18} />
+                                                    <Bar dataKey="leaving" name="Leaving" fill="#ef4444" radius={[6, 6, 0, 0]} barSize={18} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
+                                        <h2 className="card-title" style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Bell size={18} /> Recent Activity & Announcement
+                                        </h2>
+                                        {overviewData?.announcement ? (
+                                            <div style={{ marginBottom: '1rem', padding: '0.85rem', background: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe' }}>
+                                                <div style={{ fontWeight: 700, marginBottom: '0.25rem', color: '#1e3a8a' }}>{overviewData.announcement.title}</div>
+                                                <p style={{ margin: 0, fontSize: '0.82rem', color: '#1e293b' }}>{overviewData.announcement.content}</p>
                                             </div>
                                         ) : (
-                                            <p style={{ color: '#000000', fontSize: '0.85rem' }}>No active announcement.</p>
+                                            <div style={{ marginBottom: '1rem', padding: '0.85rem', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1', color: '#64748b', fontSize: '0.82rem' }}>
+                                                No active announcement.
+                                            </div>
                                         )}
-                                    </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', maxHeight: '260px', overflowY: 'auto', paddingRight: '0.25rem' }}>
+                                            {(overviewData?.recent_activity || []).slice(0, 8).map((act, i) => (
+                                                <div key={i} style={{ padding: '0.55rem 0.7rem', background: '#f8fafc', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border-color)' }}>
+                                                    <div>
+                                                        <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#0f172a' }}>{act?.name || 'Employee'}</div>
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>ID: {act?.employee_id || 'N/A'}</div>
+                                                    </div>
+                                                    <span style={{
+                                                        fontSize: '0.65rem',
+                                                        padding: '0.2rem 0.45rem',
+                                                        borderRadius: '999px',
+                                                        background: String(act?.status || '').toLowerCase().includes('approved') ? '#dcfce7' : '#fef3c7',
+                                                        color: String(act?.status || '').toLowerCase().includes('approved') ? '#166534' : '#92400e',
+                                                        fontWeight: 700,
+                                                        textTransform: 'uppercase'
+                                                    }}>
+                                                        {act?.status || 'Update'}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                            {(overviewData?.recent_activity || []).length === 0 && (
+                                                <div style={{ padding: '0.9rem', borderRadius: '10px', border: '1px dashed #cbd5e1', fontSize: '0.82rem', color: '#64748b' }}>
+                                                    No recent activity found for the selected company scope.
+                                                </div>
+                                            )}
+                                        </div>
                                 </div>
                             </div>
                         )}
@@ -2199,7 +2466,13 @@ const AdminDashboard = ({ activeTab, user }) => {
                         <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
                                 <h2 className="card-title" style={{ margin: 0 }}>Leave Management</h2>
-                                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                    <button
+                                        onClick={() => { setShowManualLeavePanel(p => !p); setManualLeaveStatus(''); }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.9rem', borderRadius: '8px', border: 'none', background: showManualLeavePanel ? '#e0f2fe' : '#ff4500', color: showManualLeavePanel ? '#0369a1' : 'white', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}
+                                    >
+                                        <Plus size={14} /> Post Manual Leave
+                                    </button>
                                     <div style={{ position: 'relative' }}>
                                         <input
                                             type="text"
@@ -2235,6 +2508,102 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     </button>
                                 </div>
                             </div>
+
+                            {/* Manual Leave Entry Panel */}
+                            {showManualLeavePanel && (
+                            <div style={{ background: '#f0f9ff', border: '1px solid #93c5fd', borderRadius: '10px', padding: '1.25rem', marginBottom: '1.25rem' }}>
+                                <h3 style={{ margin: '0 0 1rem', fontSize: '0.95rem', fontWeight: 700, color: '#0369a1', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Plus size={16} /> Manual Leave Entry
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#64748b', marginLeft: '0.5rem' }}>— Posted as Approved immediately</span>
+                                </h3>
+                                {manualLeaveStatus && (
+                                    <div style={{ padding: '0.6rem 0.9rem', marginBottom: '1rem', borderRadius: '6px', background: manualLeaveStatus.startsWith('✓') ? '#dcfce7' : '#fee2e2', color: manualLeaveStatus.startsWith('✓') ? '#15803d' : '#991b1b', fontSize: '0.85rem', fontWeight: 600 }}>
+                                        {manualLeaveStatus}
+                                    </div>
+                                )}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', color: '#475569', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Employee</label>
+                                        <select value={manualLeaveForm.employee_id} onChange={e => setManualLeaveForm(f => ({ ...f, employee_id: e.target.value }))} style={{ width: '100%', padding: '0.55rem 0.7rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem', background: '#ffffff' }}>
+                                            <option value="">Select Employee</option>
+                                            {approvedEmployees.map(emp => (<option key={emp.employee_id} value={emp.employee_id}>{emp.name} ({emp.employee_id})</option>))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', color: '#475569', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Leave Type</label>
+                                        <select value={manualLeaveForm.leave_type} onChange={e => setManualLeaveForm(f => ({ ...f, leave_type: e.target.value }))} style={{ width: '100%', padding: '0.55rem 0.7rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem', background: '#ffffff' }}>
+                                            <option>Casual Leave</option>
+                                            <option>Sick Leave</option>
+                                            <option>Privilege Leave</option>
+                                            <option>Compensatory Off</option>
+                                            <option>Paid Leave</option>
+                                            <option>Unpaid Leave</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', color: '#475569', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Reason</label>
+                                        <input type="text" placeholder="e.g. Medical emergency" value={manualLeaveForm.reason} onChange={e => setManualLeaveForm(f => ({ ...f, reason: e.target.value }))} style={{ width: '100%', padding: '0.55rem 0.7rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }} />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', color: '#475569', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>From Date</label>
+                                        <input type="date" value={manualLeaveForm.start_date} onChange={e => setManualLeaveForm(f => ({ ...f, start_date: e.target.value }))} style={{ width: '100%', padding: '0.55rem 0.7rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }} />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', color: '#475569', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>To Date</label>
+                                        <input type="date" value={manualLeaveForm.end_date} onChange={e => setManualLeaveForm(f => ({ ...f, end_date: e.target.value }))} style={{ width: '100%', padding: '0.55rem 0.7rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }} />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', color: '#475569', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Session</label>
+                                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                            <select value={manualLeaveForm.start_session} onChange={e => setManualLeaveForm(f => ({ ...f, start_session: e.target.value }))} style={{ flex: 1, padding: '0.55rem 0.4rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', background: '#ffffff' }}>
+                                                <option value="Full Day">Full Day</option>
+                                                <option value="Session 1">Session 1</option>
+                                                <option value="Session 2">Session 2</option>
+                                            </select>
+                                            <select value={manualLeaveForm.end_session} onChange={e => setManualLeaveForm(f => ({ ...f, end_session: e.target.value }))} style={{ flex: 1, padding: '0.55rem 0.4rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', background: '#ffffff' }}>
+                                                <option value="Full Day">Full Day</option>
+                                                <option value="Session 1">Session 1</option>
+                                                <option value="Session 2">Session 2</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style={{ marginTop: '0.75rem' }}>
+                                    <label style={{ fontSize: '0.75rem', color: '#475569', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Remarks (optional)</label>
+                                    <input type="text" placeholder="Any admin notes..." value={manualLeaveForm.remarks} onChange={e => setManualLeaveForm(f => ({ ...f, remarks: e.target.value }))} style={{ width: '100%', padding: '0.55rem 0.7rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }} />
+                                </div>
+                                <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem' }}>
+                                    <button
+                                        onClick={async () => {
+                                            if (!manualLeaveForm.employee_id || !manualLeaveForm.start_date || !manualLeaveForm.end_date || !manualLeaveForm.reason) {
+                                                setManualLeaveStatus('Please fill all required fields.');
+                                                return;
+                                            }
+                                            setManualLeaveStatus('Posting...');
+                                            try {
+                                                const res = await fetch(`${apiUrl}/admin/manual-leave`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(manualLeaveForm) });
+                                                const data = await res.json();
+                                                if (data.message) {
+                                                    setManualLeaveStatus('✓ ' + data.message);
+                                                    setManualLeaveForm({ employee_id: '', leave_type: 'Casual Leave', start_date: '', end_date: '', start_session: 'Full Day', end_session: 'Full Day', reason: '', remarks: '' });
+                                                    const refreshed = await fetch(buildAdminUrl('/admin/leaves'));
+                                                    const refreshedData = await refreshed.json();
+                                                    if (refreshedData) setLeaves(refreshedData.leaves || []);
+                                                } else {
+                                                    setManualLeaveStatus('Error: ' + (data.error || 'Failed to post leave.'));
+                                                }
+                                            } catch {
+                                                setManualLeaveStatus('Network error. Please try again.');
+                                            }
+                                        }}
+                                        style={{ padding: '0.55rem 1.5rem', borderRadius: '8px', border: 'none', background: '#ff4500', color: 'white', fontWeight: 700, cursor: 'pointer', fontSize: '0.875rem' }}
+                                    >
+                                        Post Leave
+                                    </button>
+                                    <button onClick={() => { setShowManualLeavePanel(false); setManualLeaveStatus(''); }} style={{ padding: '0.55rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', cursor: 'pointer', fontSize: '0.875rem' }}>Cancel</button>
+                                </div>
+                            </div>
+                            )}
 
                             {leaves.length === 0 ? <p style={{ color: '#000000', padding: '1rem' }}>No leave requests found.</p> : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -2319,10 +2688,10 @@ const AdminDashboard = ({ activeTab, user }) => {
                         </div>
                     )}
 
-                    {/* TAB: HOLIDAYS */}
+                                        {/* TAB: HOLIDAYS */}
                     {activeTab === 'holidays' && (
-                        <>
-                            <div className="card shadow-sm" style={{ gridColumn: 'span 1', background: '#ffffff', border: '1px solid var(--border-color)', height: 'fit-content', padding: '1.5rem' }}>
+                        <div className="nz-holidays-grid" style={{ gridColumn: 'span 3' }}>
+                            <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', height: 'fit-content', padding: '1.5rem' }}>
                                 <h2 className="card-title" style={{ fontSize: '1.25rem', marginBottom: '1.25rem' }}>{editingHoliday ? "Edit Holiday" : "Add Holiday"}</h2>
                                 <form onSubmit={submitHoliday} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     <div>
@@ -2358,7 +2727,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     </div>
                                 </form>
                             </div>
-                            <div className="card shadow-sm" style={{ gridColumn: 'span 2', background: '#ffffff', border: '1px solid var(--border-color)' }}>
+                            <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                     <h2 className="card-title" style={{ margin: 0 }}>Holiday Calendar</h2>
                                     <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -2544,7 +2913,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     ))}
                                 </div>
                             </div>
-                        </>
+                        </div>
                     )}
 
                     {/* TAB: REPORTS */}

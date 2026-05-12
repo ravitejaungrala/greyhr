@@ -115,7 +115,7 @@ def render_doc_to_html_bytes(data, doc_type):
     
     # Data Injection
     # Use the correct filenames as provided by the user
-    backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8081")
     base_url = backend_url.replace('/api', '').rstrip('/')
     data['logo_path'] = f'{base_url}/static/company-logo.png' 
     data['signature_path'] = f'{base_url}/static/signature.png'
