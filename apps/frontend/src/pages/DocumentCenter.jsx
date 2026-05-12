@@ -211,7 +211,7 @@ const DocumentCenter = ({ user }) => {
     });
 
     const renderDocRow = (icon, title, subtitle, action, statusInfo) => (
-        <div style={docRowStyle}>
+        <div className="doc-row-layout" style={docRowStyle}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
                 <div style={{
                     width: '36px', height: '36px', borderRadius: '9px',

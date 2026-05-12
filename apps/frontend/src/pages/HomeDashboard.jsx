@@ -1040,7 +1040,7 @@ const HomeDashboard = ({ user, setUser }) => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
                     {/* Row 1: Sign In/Out + AI Insight + Quick Stats */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr 1fr', gap: '1rem', alignItems: 'start' }}>
+                    <div className="grid-row-3">
 
                         {/* Sign In/Out Box */}
                         <div style={{
@@ -1256,7 +1256,7 @@ const HomeDashboard = ({ user, setUser }) => {
                     </div>
 
                     {/* Row 3: Leave Balance + Salary Trend */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '1rem' }}>
+                    <div className="grid-row-2-wide">
 
                         {/* Leave Balance Donut */}
                         <div style={{
@@ -1338,7 +1338,7 @@ const HomeDashboard = ({ user, setUser }) => {
                     </div>
 
                     {/* Row 4: Quick Actions + Company Policy */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="grid-row-2">
                         {/* Quick Actions */}
                         <div style={{
                             background: '#ffffff', borderRadius: '14px', border: '1px solid var(--border-color)',
@@ -1347,7 +1347,7 @@ const HomeDashboard = ({ user, setUser }) => {
                             <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '0.75rem' }}>
                                 Quick Actions
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                            <div className="grid-row-2-actions">
                                 {[
                                     { icon: <TreePalm size={15} />, label: 'Apply Leave', tab: 'leave', color: '#16a34a', bg: '#f0fdf4' },
                                     { icon: <FileText size={15} />, label: 'View Payslip', tab: 'payslips', color: '#2563eb', bg: '#eff6ff' },

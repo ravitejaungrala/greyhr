@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import './index.css';
+import './responsive.css';
 import { 
   ClipboardCheck, Users, Settings, Calendar, BarChart3, Bell, Megaphone, 
   Camera, CreditCard, PieChart, FileText, History, Layout, Timer, 
   MessageSquare, Heart, Wallet, Palmtree, Folder, Package, LogOut,
-  ChevronDown, ChevronRight, Activity, BrainCircuit, UserPlus
+  ChevronDown, ChevronRight, Activity, BrainCircuit, UserPlus, Menu, X
 } from 'lucide-react';
 
 // Pages
@@ -79,6 +80,8 @@ function AppContent() {
     return sessionStorage.getItem('isReqExpanded') === 'true';
   });
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   // Sync state changes to sessionStorage
   useEffect(() => {
     if (user) {
@@ -120,6 +123,7 @@ function AppContent() {
 
   const navigateTo = (path) => {
     navigate(path);
+    setSidebarOpen(false);
   };
 
   const NavItem = ({ path, icon: Icon, title, subtitle, isSub = false }) => {
@@ -181,17 +185,24 @@ function AppContent() {
   return (
     <div className="app-container">
       <DynamicTitle />
+      {/* Mobile Sidebar Overlay */}
+      <div className={`sidebar-overlay ${sidebarOpen ? 'visible' : ''}`} onClick={() => setSidebarOpen(false)} />
       {/* Sidebar */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
         <div className="sidebar-header">
-          <div className="brand-logo-container">
-             <div className="brand-logo-icon">
-                <img src="/icon (2).png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <div className="brand-logo-container" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+               <div className="brand-logo-icon">
+                  <img src="/icon (2).png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+               </div>
+               <div className="brand-text-group">
+                  <div className="brand-main">NeuzenAI</div>
+                  <div className="brand-sub" style={{ color: 'var(--primary)' }}>HRMS SOLUTIONS</div>
+               </div>
              </div>
-             <div className="brand-text-group">
-                <div className="brand-main">NeuzenAI</div>
-                <div className="brand-sub" style={{ color: 'var(--primary)' }}>HRMS SOLUTIONS</div>
-             </div>
+             <button className="hamburger-btn" onClick={() => setSidebarOpen(false)} aria-label="Close menu">
+               <X size={22} />
+             </button>
           </div>
         </div>
         
@@ -317,6 +328,14 @@ function AppContent() {
 
       {/* Main Content Area */}
       <main className="main-content">
+        {/* Mobile Top Bar */}
+        <div className="mobile-topbar">
+          <button className="hamburger-btn" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+            <Menu size={24} />
+          </button>
+          <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-strong)' }}>NeuzenAI</span>
+          <div style={{ width: 24 }} />
+        </div>
         <div className="page-container">
           <Routes>
             <Route path="/admin/overview" element={<AdminDashboard activeTab="overview" user={user} />} />
