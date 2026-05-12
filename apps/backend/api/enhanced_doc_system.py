@@ -12,6 +12,31 @@ from database.s3_client import s3_db
 import datetime
 import base64
 import os
+import io
+from xhtml2pdf import pisa
+
+def html_to_pdf(html_bytes):
+    """Convert HTML bytes to PDF bytes using xhtml2pdf. Returns PDF bytes or None on failure."""
+    if isinstance(html_bytes, bytes):
+        html_string = html_bytes.decode('utf-8', errors='replace')
+    else:
+        html_string = str(html_bytes)
+    
+    # Ensure proper encoding meta tag exists
+    if '<meta' not in html_string.lower() or 'charset' not in html_string.lower():
+        html_string = '<meta charset="UTF-8">' + html_string
+    
+    result_buffer = io.BytesIO()
+    pisa_status = pisa.CreatePDF(io.StringIO(html_string), dest=result_buffer, encoding='utf-8')
+    
+    if pisa_status.err:
+        print(f"PDF conversion warning: {pisa_status.err} errors occurred")
+        # Still return what was generated - partial PDF is better than nothing
+    
+    pdf_bytes = result_buffer.getvalue()
+    if not pdf_bytes or len(pdf_bytes) < 100:
+        return None
+    return pdf_bytes
 
 enhanced_router = APIRouter()
 
@@ -335,7 +360,7 @@ def get_employee_documents(employee_id: str):
 
 @enhanced_router.get("/enhanced-docs/download/{employee_id}/{doc_type}")
 def download_employee_document(employee_id: str, doc_type: str):
-    """Download generated document for employee"""
+    """Download generated document for employee as PDF"""
     if mongo_db.users is None:
         return {"error": "Database error"}
     
@@ -355,9 +380,19 @@ def download_employee_document(employee_id: str, doc_type: str):
     
     from fastapi import Response
     doc_name = DOCUMENT_CONFIGS.get(doc_type, {}).get("name", "Document")
-    # All files are HTML now
-    filename = f"{doc_name}_{employee_id}.html".replace(" ", "_")
     
+    # Convert HTML to PDF
+    pdf_bytes = html_to_pdf(file_bytes)
+    if pdf_bytes:
+        filename = f"{doc_name}_{employee_id}.pdf".replace(" ", "_")
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    
+    # Fallback to HTML if PDF conversion fails
+    filename = f"{doc_name}_{employee_id}.html".replace(" ", "_")
     return Response(
         content=file_bytes,
         media_type="text/html",
@@ -443,7 +478,7 @@ def list_historical_documents():
 
 @enhanced_router.get("/historical-docs/download/{filename}")
 def download_historical_document(filename: str):
-    """Download a historical document by its filename (part of S3 key)"""
+    """Download a historical document by its filename (part of S3 key) as PDF"""
     s3_key = f"historical_docs/{filename}"
     file_bytes = s3_db.get_image(s3_key)
     
@@ -451,6 +486,18 @@ def download_historical_document(filename: str):
         raise HTTPException(status_code=404, detail="Document not found")
     
     from fastapi import Response
+    
+    # Convert HTML to PDF
+    pdf_bytes = html_to_pdf(file_bytes)
+    if pdf_bytes:
+        pdf_filename = filename.rsplit('.', 1)[0] + '.pdf' if '.' in filename else filename + '.pdf'
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={pdf_filename}"}
+        )
+    
+    # Fallback to HTML
     return Response(
         content=file_bytes,
         media_type="text/html",

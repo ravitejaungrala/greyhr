@@ -131,27 +131,14 @@ const Leaves = ({ userId, user, mode = 'all' }) => {
         const granted = monthlyGrantRate;
         const consumed = Number(monthlyConsumed[idx].consumed.toFixed(2));
         runningBalance = runningBalance + granted - consumed;
+        // Clamp here so negative does NOT carry into future months (matches backend logic)
+        runningBalance = Math.max(0, runningBalance);
         return {
             month: `${m} ${String(selectedYear).slice(-2)}`,
-            balance: Number(Math.max(0, runningBalance).toFixed(2)),
+            balance: Number(runningBalance.toFixed(2)),
             consumed,
             granted: Number(granted.toFixed(2)),
             opening: idx === 0 ? openingBalance : undefined
-            let runningBalance = openingBalance;
-            const monthlyDetailData = months.slice(0, monthLimit).map((m, idx) => {
-                const granted = monthlyGrantRate;
-                const consumed = Number(monthlyConsumed[idx].consumed.toFixed(2));
-                runningBalance = runningBalance + granted - consumed;
-                // Clamp here so negative does NOT carry into future months (matches backend logic)
-                runningBalance = Math.max(0, runningBalance);
-                return {
-                    month: `${m} ${String(selectedYear).slice(-2)}`,
-                    balance: Number(runningBalance.toFixed(2)),
-                    consumed,
-                    granted: Number(granted.toFixed(2)),
-                    opening: idx === 0 ? openingBalance : undefined
-                };
-            });
         };
     });
 

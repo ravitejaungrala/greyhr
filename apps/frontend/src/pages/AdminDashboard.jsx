@@ -5,11 +5,12 @@ import {
     ChevronLeft, ChevronRight, ShieldCheck, TrendingUp, ClipboardList, Users,
     TreePalm, Bell, Camera, Brain, Gift, CalendarDays, Settings, Rocket,
     Banknote, LogOut, FolderOpen, Sparkles, Building2, Package, BrainCircuit, Tag,
-    GraduationCap, ClipboardCheck, MoreVertical, UserMinus, Activity, Mail
+    GraduationCap, ClipboardCheck, MoreVertical, UserMinus, Activity, Mail, History
 } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-    ResponsiveContainer, LineChart, Line, AreaChart, Area, Legend
+    ResponsiveContainer, LineChart, Line, AreaChart, Area, Legend,
+    PieChart, Pie, Cell
 } from 'recharts';
 import { API_URL } from '../config';
 import DocumentGeneratorModal from '../components/DocumentGeneratorModal';
@@ -57,6 +58,10 @@ const AdminDashboard = ({ activeTab, user }) => {
     const [selectedApprovedEmp, setSelectedApprovedEmp] = useState(null);
     const [notifications, setNotifications] = useState([]);
     const [attendanceLogs, setAttendanceLogs] = useState([]);
+    const [attSearchTerm, setAttSearchTerm] = useState('');
+    const [attActionFilter, setAttActionFilter] = useState('all');
+    const [attDateFilter, setAttDateFilter] = useState('');
+    const [attViewMode, setAttViewMode] = useState('dashboard');
     const [payrollStatus, setPayrollStatus] = useState([]);
     const [isReportsLoading, setIsReportsLoading] = useState(false);
     const [announcementMsg, setAnnouncementMsg] = useState({ title: '', content: '' });
@@ -1489,46 +1494,51 @@ const AdminDashboard = ({ activeTab, user }) => {
 
             {canFilterCompanies && (
                 <div
-                    className="card shadow-sm"
                     style={{
-                        marginBottom: '1rem',
+                        marginBottom: '0.75rem',
                         background: '#ffffff',
                         border: '1px solid var(--border-color)',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        gap: '0.8rem',
+                        gap: '0.5rem',
                         flexWrap: 'wrap',
-                        padding: '0.85rem 1rem',
-                        borderRadius: '16px',
-                        minHeight: '68px',
-                        overflow: 'visible',
+                        padding: '0.45rem 0.85rem',
+                        borderRadius: '10px',
                         position: 'relative',
-                        zIndex: 30
+                        zIndex: 100,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
                     }}
                 >
-                    <div style={{ paddingRight: '0.5rem' }}>
-                        <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Company Scope</div>
-                        <div style={{ color: '#0f172a', fontWeight: 700, marginTop: '0.2rem', fontSize: '0.9rem', lineHeight: 1.2 }}>Switch between one company or all accessible companies.</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ background: '#f1f5f9', borderRadius: '8px', padding: '0.35rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Building2 size={14} color="#64748b" />
+                        </div>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#334155' }}>Company</span>
                     </div>
                     <div style={{ position: 'relative', zIndex: 40 }}>
                         <select
                             value={companyFilter}
                             onChange={(e) => setCompanyFilter(e.target.value)}
                             style={{
-                                minWidth: '220px',
-                                height: '42px',
-                                padding: '0.4rem 0.8rem',
-                                borderRadius: '12px',
-                                border: '1px solid #dbe4f0',
-                                background: '#ffffff',
+                                minWidth: '180px',
+                                height: '30px',
+                                padding: '0 2rem 0 0.6rem',
+                                borderRadius: '8px',
+                                border: '1px solid #e2e8f0',
+                                background: '#f8fafc',
                                 color: '#0f172a',
-                                fontWeight: 700,
-                                fontSize: '0.85rem',
-                                lineHeight: 1.2,
+                                fontWeight: 600,
+                                fontSize: '0.78rem',
+                                lineHeight: 1,
                                 position: 'relative',
                                 zIndex: 50,
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                appearance: 'none',
+                                WebkitAppearance: 'none',
+                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
+                                backgroundRepeat: 'no-repeat',
+                                backgroundPosition: 'right 0.5rem center'
                             }}
                         >
                             <option value="all">All Accessible Companies</option>
@@ -2872,22 +2882,37 @@ const AdminDashboard = ({ activeTab, user }) => {
                             </div>
 
                             {/* Workday Overrides / Holiday Swapping */}
-                            <div className="card shadow-sm" style={{ marginTop: '2rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                                <h2 className="card-title">🔄 Holiday Swapping & Workday Overrides</h2>
-                                <p style={{ color: '#000000', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-                                    Force a specific date to be a **Working Day** (e.g., for deadlines) or a **Holiday** (e.g., as a substitute for a worked holiday).
+                            <div style={{ marginTop: '2rem', background: '#ffffff', border: '1px solid var(--border-color)', borderRadius: '14px', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
+                                    <div style={{ background: '#eff6ff', borderRadius: '8px', padding: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <RefreshCw size={16} color="#3b82f6" />
+                                    </div>
+                                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Day Overrides</h3>
+                                </div>
+                                <p style={{ color: '#64748b', fontSize: '0.78rem', marginBottom: '1.25rem', marginLeft: '2.1rem' }}>
+                                    Force a date as a working day or holiday — useful for swaps and deadline adjustments.
                                 </p>
 
-                                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                                    <input type="date" id="override-date" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', width: '200px' }} />
-                                    <select id="override-type" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', width: '200px' }}>
-                                        <option value="forced_working">Mark as Working Day</option>
-                                        <option value="forced_holiday">Mark as Holiday</option>
-                                    </select>
-                                    <input type="text" id="override-reason" placeholder="Reason (e.g., Ugadi Swap)" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', flex: 1 }} />
+                                {/* Input Row */}
+                                <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                        <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date</label>
+                                        <input type="date" id="override-date" style={{ padding: '0.45rem 0.6rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.8rem', width: '150px', background: '#f8fafc', color: '#0f172a' }} />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                        <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Type</label>
+                                        <select id="override-type" style={{ padding: '0.45rem 0.6rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.8rem', width: '160px', background: '#f8fafc', color: '#0f172a', cursor: 'pointer' }}>
+                                            <option value="forced_working">Working Day</option>
+                                            <option value="forced_holiday">Holiday</option>
+                                        </select>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1, minWidth: '160px' }}>
+                                        <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Reason</label>
+                                        <input type="text" id="override-reason" placeholder="e.g., Ugadi swap" style={{ padding: '0.45rem 0.6rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.8rem', background: '#f8fafc', color: '#0f172a' }} />
+                                    </div>
                                     <button
                                         className="btn btn-primary"
-                                        style={{ backgroundColor: 'var(--primary)' }}
+                                        style={{ padding: '0.45rem 1rem', fontSize: '0.8rem', fontWeight: 600, borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.35rem', height: 'fit-content' }}
                                         onClick={() => {
                                             const d = document.getElementById('override-date').value;
                                             const t = document.getElementById('override-type').value;
@@ -2895,23 +2920,64 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             if (d) handleSetOverride(d, t, r);
                                         }}
                                     >
-                                        Add Override
+                                        <Plus size={14} /> Add
                                     </button>
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-                                    {workdayOverrides.map((ov, i) => (
-                                        <div key={i} style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div>
-                                                <div style={{ fontWeight: '600', color: ov.type === 'forced_working' ? '#ff4500' : '#ff7a00' }}>
-                                                    {ov.type === 'forced_working' ? '💼 Forced Working' : '🎉 Forced Holiday'}
+                                {/* Override List */}
+                                {workdayOverrides.length > 0 && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        {workdayOverrides.map((ov, i) => {
+                                            const isWorking = ov.type === 'forced_working';
+                                            return (
+                                                <div key={i} style={{
+                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                    padding: '0.65rem 0.85rem', borderRadius: '10px',
+                                                    background: isWorking ? '#fef3c7' : '#ecfdf5',
+                                                    border: `1px solid ${isWorking ? '#fde68a' : '#a7f3d0'}`
+                                                }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                        <div style={{
+                                                            width: '28px', height: '28px', borderRadius: '50%',
+                                                            background: isWorking ? '#fbbf24' : '#34d399',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                                                        }}>
+                                                            {isWorking
+                                                                ? <ClipboardCheck size={13} color="#78350f" />
+                                                                : <TreePalm size={13} color="#064e3b" />
+                                                            }
+                                                        </div>
+                                                        <div>
+                                                            <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a' }}>
+                                                                {ov.date}
+                                                                <span style={{
+                                                                    marginLeft: '0.5rem', fontSize: '0.65rem', fontWeight: 700,
+                                                                    padding: '0.1rem 0.45rem', borderRadius: '999px',
+                                                                    background: isWorking ? '#fbbf24' : '#6ee7b7',
+                                                                    color: isWorking ? '#78350f' : '#064e3b',
+                                                                    textTransform: 'uppercase', letterSpacing: '0.3px'
+                                                                }}>
+                                                                    {isWorking ? 'Working' : 'Holiday'}
+                                                                </span>
+                                                            </div>
+                                                            {ov.reason && <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.1rem' }}>{ov.reason}</div>}
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => handleDeleteOverride(ov.date)}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                        title="Remove override"
+                                                    >
+                                                        <X size={14} color="#94a3b8" />
+                                                    </button>
                                                 </div>
-                                                <div style={{ fontSize: '0.875rem' }}>{ov.date} {ov.reason && `(${ov.reason})`}</div>
-                                            </div>
-                                            <button onClick={() => handleDeleteOverride(ov.date)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}>✕</button>
-                                        </div>
-                                    ))}
-                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                {workdayOverrides.length === 0 && (
+                                    <p style={{ color: '#94a3b8', fontSize: '0.78rem', fontStyle: 'italic', margin: 0 }}>No overrides configured yet.</p>
+                                )}
                             </div>
                         </div>
                     )}
@@ -3112,84 +3178,315 @@ const AdminDashboard = ({ activeTab, user }) => {
                         </div>
                     )}
 
-                    {/* TAB: ATTENDANCE LOGS */}
-                    {activeTab === 'attendance' && (
-                        <div className="card shadow-sm" style={{ gridColumn: 'span 3', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                            <h2 className="card-title">Global Attendance History</h2>
-                            {/* ... existing table code ... */}
-                            <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
-                                {/* TABLE REMOVED FOR BREVITY IN CHUNK BUT IT SHOULD BE THERE */}
-                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                    <thead>
-                                        <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#000000', fontSize: '0.875rem' }}>
-                                            <th style={{ padding: '1rem' }}>Employee</th>
-                                            <th style={{ padding: '1rem' }}>Action</th>
-                                            <th style={{ padding: '1rem' }}>Time</th>
-                                            <th style={{ padding: '1rem' }}>Location</th>
-                                            <th style={{ padding: '1rem' }}>Verification Photo</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {attendanceLogs.map((log, i) => (
-                                            <tr key={i} style={{ borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem' }}>
-                                                <td style={{ padding: '1rem' }}>{log.employee_id}</td>
-                                                <td style={{ padding: '1rem' }}>{log.action}</td>
-                                                <td style={{ padding: '1rem' }}>{(() => {
-                                                    let iso = log.timestamp;
-                                                    if (!iso.includes('Z') && !/[+-]\d{2}(:?\d{2})?$/.test(iso)) {
-                                                        iso += 'Z';
-                                                    }
-                                                    return new Date(iso).toLocaleString();
-                                                })()}</td>
-                                                <td style={{ padding: '1rem' }}>{log.location}</td>
-                                                <td style={{ padding: '1rem' }}>
-                                                    <img
-                                                        src={`${apiUrl}/admin/photos/${log.s3_image_key}`}
-                                                        alt="Capture"
-                                                        style={{ width: '60px', borderRadius: '4px', border: '1px solid #e2e8f0' }}
-                                                    />
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                    {/* TAB: ATTENDANCE MONITORING DASHBOARD */}
+                    {activeTab === 'attendance' && (() => {
+                        const parseLogTime = (ts) => {
+                            let iso = ts;
+                            if (!iso.includes('Z') && !/[+-]\d{2}(:?\d{2})?$/.test(iso)) iso += 'Z';
+                            return new Date(iso);
+                        };
+                        const todayStr = new Date().toLocaleDateString();
+                        const todayLogs = attendanceLogs.filter(l => parseLogTime(l.timestamp).toLocaleDateString() === todayStr);
+                        const uniqueEmployeesToday = new Set(todayLogs.map(l => l.employee_id)).size;
+                        const signInsToday = todayLogs.filter(l => l.action === 'sign_in').length;
+                        const signOutsToday = todayLogs.filter(l => l.action === 'sign_out').length;
+
+                        // Daily activity chart data (last 7 days)
+                        const dailyMap = {};
+                        attendanceLogs.forEach(l => {
+                            const d = parseLogTime(l.timestamp);
+                            const key = `${d.getMonth()+1}/${d.getDate()}`;
+                            if (!dailyMap[key]) dailyMap[key] = { date: key, sign_in: 0, sign_out: 0 };
+                            if (l.action === 'sign_in') dailyMap[key].sign_in++;
+                            else if (l.action === 'sign_out') dailyMap[key].sign_out++;
+                        });
+                        const dailyChartData = Object.values(dailyMap).reverse().slice(-7);
+
+                        // Employee breakdown
+                        const empMap = {};
+                        attendanceLogs.forEach(l => {
+                            empMap[l.employee_id] = (empMap[l.employee_id] || 0) + 1;
+                        });
+                        const PIE_COLORS = ['#ff4500', '#1e40af', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+                        const empPieData = Object.entries(empMap)
+                            .sort((a, b) => b[1] - a[1])
+                            .slice(0, 8)
+                            .map(([id, count]) => ({ name: id, value: count }));
+
+                        // Filter logs
+                        const filteredLogs = attendanceLogs.filter(l => {
+                            if (attSearchTerm && !l.employee_id.toLowerCase().includes(attSearchTerm.toLowerCase())) return false;
+                            if (attActionFilter !== 'all' && l.action !== attActionFilter) return false;
+                            if (attDateFilter) {
+                                const logDate = parseLogTime(l.timestamp).toISOString().split('T')[0];
+                                if (logDate !== attDateFilter) return false;
+                            }
+                            return true;
+                        });
+
+                        return (
+                        <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {/* HEADER */}
+                            <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.25rem 1.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <div style={{ background: 'linear-gradient(135deg, #ff4500, #ff6b35)', borderRadius: '12px', padding: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Activity size={22} color="#fff" />
+                                        </div>
+                                        <div>
+                                            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}>Attendance Monitoring</h2>
+                                            <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Real-time attendance tracking & analytics</p>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <button
+                                            onClick={() => setAttViewMode('dashboard')}
+                                            className={attViewMode === 'dashboard' ? 'btn btn-primary' : 'btn btn-secondary'}
+                                            style={{ fontSize: '0.8rem', padding: '0.4rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                        >
+                                            <BarChart3 size={15} /> Dashboard
+                                        </button>
+                                        <button
+                                            onClick={() => setAttViewMode('table')}
+                                            className={attViewMode === 'table' ? 'btn btn-primary' : 'btn btn-secondary'}
+                                            style={{ fontSize: '0.8rem', padding: '0.4rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                        >
+                                            <ClipboardList size={15} /> Log Table
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* NEW: Comp-Off Requests Section */}
-                            <div style={{ marginTop: '2.5rem', borderTop: '2px solid var(--primary)', paddingTop: '2rem' }}>
-                                <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Gift size={24} /> Pending Comp-Off Requests
-                                </h2>
-                                <p style={{ color: '#000000', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-                                    Employees who worked on weekends or holidays for more than 9 hours. Approve to credit 1 day to their balance.
-                                </p>
+                            {/* STAT CARDS */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                {[
+                                    { label: "Today's Logs", value: todayLogs.length, icon: <Clock size={20} />, color: '#1e40af', bg: '#eff6ff' },
+                                    { label: 'Active Employees', value: uniqueEmployeesToday, icon: <Users size={20} />, color: '#059669', bg: '#ecfdf5' },
+                                    { label: 'Sign Ins', value: signInsToday, icon: <CheckCircle2 size={20} />, color: '#ff4500', bg: '#fff7ed' },
+                                    { label: 'Sign Outs', value: signOutsToday, icon: <LogOut size={20} />, color: '#7c3aed', bg: '#f5f3ff' },
+                                ].map((stat, i) => (
+                                    <div key={i} className="card shadow-sm" style={{ background: '#fff', border: '1px solid var(--border-color)', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                        <div style={{ background: stat.bg, borderRadius: '12px', padding: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: stat.color }}>
+                                            {stat.icon}
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{stat.value}</div>
+                                            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem' }}>{stat.label}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
 
-                                {compOffRequests.length === 0 ? <p style={{ color: '#000000' }}>No pending requests.</p> : (
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem' }}>
+                            {/* DASHBOARD VIEW: CHARTS */}
+                            {attViewMode === 'dashboard' && (
+                                <>
+                                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
+                                    {/* Daily Activity Bar Chart */}
+                                    <div className="card shadow-sm" style={{ background: '#fff', border: '1px solid var(--border-color)', padding: '1.5rem' }}>
+                                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <TrendingUp size={18} color="#ff4500" /> Daily Sign-In / Sign-Out Activity
+                                        </h3>
+                                        {dailyChartData.length > 0 ? (
+                                            <ResponsiveContainer width="100%" height={260}>
+                                                <BarChart data={dailyChartData} barGap={4}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                                    <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#64748b' }} />
+                                                    <YAxis tick={{ fontSize: 12, fill: '#64748b' }} allowDecimals={false} />
+                                                    <Tooltip
+                                                        contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}
+                                                    />
+                                                    <Legend wrapperStyle={{ fontSize: '0.8rem' }} />
+                                                    <Bar dataKey="sign_in" name="Sign In" fill="#ff4500" radius={[6,6,0,0]} />
+                                                    <Bar dataKey="sign_out" name="Sign Out" fill="#1e40af" radius={[6,6,0,0]} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        ) : (
+                                            <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>No data</div>
+                                        )}
+                                    </div>
+
+                                    {/* Employee Breakdown Pie */}
+                                    <div className="card shadow-sm" style={{ background: '#fff', border: '1px solid var(--border-color)', padding: '1.5rem' }}>
+                                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Users size={18} color="#ff4500" /> Top Employees by Activity
+                                        </h3>
+                                        {empPieData.length > 0 ? (
+                                            <ResponsiveContainer width="100%" height={260}>
+                                                <PieChart>
+                                                    <Pie data={empPieData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={3} dataKey="value">
+                                                        {empPieData.map((_, idx) => <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />)}
+                                                    </Pie>
+                                                    <Tooltip formatter={(value, name) => [`${value} logs`, name]} contentStyle={{ borderRadius: '10px', fontSize: '0.8rem' }} />
+                                                    <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        ) : (
+                                            <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>No data</div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Recent Activity Feed */}
+                                <div className="card shadow-sm" style={{ background: '#fff', border: '1px solid var(--border-color)', padding: '1.5rem' }}>
+                                    <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <History size={18} color="#ff4500" /> Recent Activity
+                                    </h3>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem', maxHeight: '320px', overflowY: 'auto' }}>
+                                        {attendanceLogs.slice(0, 12).map((log, i) => {
+                                            const t = parseLogTime(log.timestamp);
+                                            const isIn = log.action === 'sign_in';
+                                            return (
+                                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '10px', border: '1px solid #f1f5f9', background: isIn ? '#f0fdf4' : '#fef2f2', transition: 'box-shadow 0.2s' }}>
+                                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: isIn ? '#dcfce7' : '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                        {isIn ? <CheckCircle2 size={18} color="#16a34a" /> : <LogOut size={18} color="#dc2626" />}
+                                                    </div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.employee_id}</div>
+                                                        <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{isIn ? 'Signed In' : 'Signed Out'} &middot; {t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                                    </div>
+                                                    {log.s3_image_key && (
+                                                        <img src={`${apiUrl}/admin/photos/${log.s3_image_key}`} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #e2e8f0' }} />
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                                </>
+                            )}
+
+                            {/* TABLE VIEW */}
+                            {attViewMode === 'table' && (
+                                <div className="card shadow-sm" style={{ background: '#fff', border: '1px solid var(--border-color)', padding: '1.5rem' }}>
+                                    {/* Filters */}
+                                    <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                        <div style={{ position: 'relative', flex: '1 1 220px' }}>
+                                            <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                                            <input
+                                                type="text"
+                                                placeholder="Search employee ID..."
+                                                value={attSearchTerm}
+                                                onChange={e => setAttSearchTerm(e.target.value)}
+                                                style={{ width: '100%', padding: '0.55rem 0.75rem 0.55rem 2.25rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none' }}
+                                            />
+                                        </div>
+                                        <select
+                                            value={attActionFilter}
+                                            onChange={e => setAttActionFilter(e.target.value)}
+                                            style={{ padding: '0.55rem 0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.85rem', background: '#fff', cursor: 'pointer' }}
+                                        >
+                                            <option value="all">All Actions</option>
+                                            <option value="sign_in">Sign In</option>
+                                            <option value="sign_out">Sign Out</option>
+                                        </select>
+                                        <input
+                                            type="date"
+                                            value={attDateFilter}
+                                            onChange={e => setAttDateFilter(e.target.value)}
+                                            style={{ padding: '0.55rem 0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}
+                                        />
+                                        {(attSearchTerm || attActionFilter !== 'all' || attDateFilter) && (
+                                            <button onClick={() => { setAttSearchTerm(''); setAttActionFilter('all'); setAttDateFilter(''); }} className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}>
+                                                Clear
+                                            </button>
+                                        )}
+                                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: 'auto' }}>{filteredLogs.length} records</div>
+                                    </div>
+                                    {/* Table */}
+                                    <div style={{ maxHeight: '500px', overflowY: 'auto', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                            <thead>
+                                                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                                                    <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Employee</th>
+                                                    <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Action</th>
+                                                    <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Date & Time</th>
+                                                    <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Location</th>
+                                                    <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Photo</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {filteredLogs.map((log, i) => {
+                                                    const t = parseLogTime(log.timestamp);
+                                                    const isIn = log.action === 'sign_in';
+                                                    return (
+                                                        <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s' }}
+                                                            onMouseEnter={e => e.currentTarget.style.background = '#fafbfc'}
+                                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                        >
+                                                            <td style={{ padding: '0.75rem 1rem' }}>
+                                                                <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#0f172a' }}>{log.employee_id}</span>
+                                                            </td>
+                                                            <td style={{ padding: '0.75rem 1rem' }}>
+                                                                <span style={{
+                                                                    display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+                                                                    padding: '0.25rem 0.65rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 600,
+                                                                    background: isIn ? '#dcfce7' : '#fee2e2', color: isIn ? '#166534' : '#991b1b'
+                                                                }}>
+                                                                    {isIn ? <CheckCircle2 size={12} /> : <LogOut size={12} />}
+                                                                    {isIn ? 'Sign In' : 'Sign Out'}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ padding: '0.75rem 1rem', fontSize: '0.85rem', color: '#334155' }}>
+                                                                <div>{t.toLocaleDateString()}</div>
+                                                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+                                                            </td>
+                                                            <td style={{ padding: '0.75rem 1rem', fontSize: '0.85rem', color: '#334155' }}>{log.location}</td>
+                                                            <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                                                                {log.s3_image_key ? (
+                                                                    <img
+                                                                        src={`${apiUrl}/admin/photos/${log.s3_image_key}`}
+                                                                        alt="Capture"
+                                                                        style={{ width: '42px', height: '42px', borderRadius: '8px', objectFit: 'cover', border: '2px solid #e2e8f0' }}
+                                                                    />
+                                                                ) : <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>N/A</span>}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                                {filteredLogs.length === 0 && (
+                                                    <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No attendance records found</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* COMP-OFF REQUESTS */}
+                            <div className="card shadow-sm" style={{ background: '#fff', border: '1px solid var(--border-color)', padding: '1.5rem' }}>
+                                <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Gift size={20} color="#ff4500" /> Pending Comp-Off Requests
+                                    {compOffRequests.length > 0 && <span style={{ background: '#ff4500', color: '#fff', fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '999px', fontWeight: 700 }}>{compOffRequests.length}</span>}
+                                </h3>
+                                <p style={{ color: '#64748b', fontSize: '0.8rem', marginBottom: '1.25rem' }}>
+                                    Employees who worked on weekends/holidays for 9+ hours. Approve to credit 1 day.
+                                </p>
+                                {compOffRequests.length === 0 ? <p style={{ color: '#94a3b8', fontStyle: 'italic' }}>No pending requests.</p> : (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
                                         {compOffRequests.map((req, i) => (
-                                            <div key={i} className="card shadow-sm" style={{ padding: '1.5rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
+                                            <div key={i} style={{ padding: '1.25rem', background: '#fffbeb', borderRadius: '12px', border: '1px solid #fde68a' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                                                     <div>
-                                                        <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{req.employee_id}</div>
-                                                        <div style={{ color: '#000000', fontSize: '0.875rem' }}>{new Date(req.date).toDateString()}</div>
+                                                        <div style={{ fontWeight: 700, fontSize: '1rem', color: '#0f172a' }}>{req.employee_id}</div>
+                                                        <div style={{ color: '#64748b', fontSize: '0.8rem' }}>{new Date(req.date).toDateString()}</div>
                                                     </div>
                                                     <div style={{ textAlign: 'right' }}>
-                                                        <div style={{ color: '#ff4500', fontWeight: 'bold' }}>{req.hours} hrs</div>
-                                                        <div style={{ fontSize: '0.75rem', color: '#ff4500' }}>Worked on Holiday</div>
+                                                        <div style={{ color: '#ff4500', fontWeight: 800, fontSize: '1.1rem' }}>{req.hours}h</div>
+                                                        <div style={{ fontSize: '0.7rem', color: '#f59e0b' }}>Holiday Work</div>
                                                     </div>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                     <button
                                                         disabled={isProcessingCompOff}
                                                         onClick={() => handleCompOffAction(req.request_id, 'Approved')}
-                                                        className="btn btn-primary" style={{ flex: 1, backgroundColor: '#ff4500', color: 'white' }}
+                                                        className="btn btn-primary" style={{ flex: 1, background: '#ff4500', border: 'none', color: '#fff', borderRadius: '8px', padding: '0.5rem', fontSize: '0.8rem', fontWeight: 600 }}
                                                     >
-                                                        {isProcessingCompOff ? '...' : 'Approve Credit'}
+                                                        {isProcessingCompOff ? '...' : 'Approve'}
                                                     </button>
                                                     <button
                                                         disabled={isProcessingCompOff}
                                                         onClick={() => handleCompOffAction(req.request_id, 'Rejected')}
-                                                        className="btn btn-secondary" style={{ flex: 1, color: '#EF4444', borderColor: '#EF4444' }}
+                                                        className="btn btn-secondary" style={{ flex: 1, color: '#dc2626', borderColor: '#fca5a5', borderRadius: '8px', padding: '0.5rem', fontSize: '0.8rem', fontWeight: 600 }}
                                                     >
                                                         Reject
                                                     </button>
@@ -3199,39 +3496,40 @@ const AdminDashboard = ({ activeTab, user }) => {
                                     </div>
                                 )}
                             </div>
-                            {/* Weekend/Holiday Work Requests Section (Moved here) */}
-                            <div style={{ marginTop: '2.5rem', borderTop: '2px solid #ff4500', paddingTop: '2rem' }}>
-                                <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <CalendarDays size={24} /> Weekend/Holiday Work Requests
-                                </h2>
-                                <p style={{ color: '#000000', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+
+                            {/* WEEKEND WORK REQUESTS */}
+                            <div className="card shadow-sm" style={{ background: '#fff', border: '1px solid var(--border-color)', padding: '1.5rem' }}>
+                                <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <CalendarDays size={20} color="#1e40af" /> Weekend/Holiday Work Requests
+                                    {weekendWorkRequests.length > 0 && <span style={{ background: '#1e40af', color: '#fff', fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '999px', fontWeight: 700 }}>{weekendWorkRequests.length}</span>}
+                                </h3>
+                                <p style={{ color: '#64748b', fontSize: '0.8rem', marginBottom: '1.25rem' }}>
                                     Pre-emptive requests from employees to work on non-working days.
                                 </p>
-
-                                {weekendWorkRequests.length === 0 ? <p style={{ color: '#000000' }}>No pending work requests.</p> : (
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem' }}>
+                                {weekendWorkRequests.length === 0 ? <p style={{ color: '#94a3b8', fontStyle: 'italic' }}>No pending work requests.</p> : (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
                                         {weekendWorkRequests.map((req, i) => (
-                                            <div key={i} className="card shadow-sm" style={{ padding: '1.5rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
+                                            <div key={i} style={{ padding: '1.25rem', background: '#eff6ff', borderRadius: '12px', border: '1px solid #bfdbfe' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                                                     <div>
-                                                        <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{req.employee_id}</div>
-                                                        <div style={{ color: '#000000', fontSize: '0.875rem' }}>{new Date(req.date).toDateString()}</div>
+                                                        <div style={{ fontWeight: 700, fontSize: '1rem', color: '#0f172a' }}>{req.employee_id}</div>
+                                                        <div style={{ color: '#64748b', fontSize: '0.8rem' }}>{new Date(req.date).toDateString()}</div>
                                                     </div>
                                                     <div style={{ textAlign: 'right' }}>
-                                                        <div style={{ color: '#ff4500', fontWeight: 'bold' }}>Request to Work</div>
-                                                        <div style={{ fontSize: '0.75rem', color: '#000000' }}>Reason: {req.reason || "None"}</div>
+                                                        <div style={{ color: '#1e40af', fontWeight: 700 }}>Work Request</div>
+                                                        <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{req.reason || 'No reason'}</div>
                                                     </div>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                     <button
                                                         onClick={() => handleWeekendWorkAction(req.request_id, 'Approved')}
-                                                        className="btn btn-primary" style={{ flex: 1, backgroundColor: '#ff4500' }}
+                                                        className="btn btn-primary" style={{ flex: 1, background: '#1e40af', border: 'none', color: '#fff', borderRadius: '8px', padding: '0.5rem', fontSize: '0.8rem', fontWeight: 600 }}
                                                     >
                                                         Approve
                                                     </button>
                                                     <button
                                                         onClick={() => handleWeekendWorkAction(req.request_id, 'Rejected')}
-                                                        className="btn btn-secondary" style={{ flex: 1 }}
+                                                        className="btn btn-secondary" style={{ flex: 1, borderRadius: '8px', padding: '0.5rem', fontSize: '0.8rem', fontWeight: 600 }}
                                                     >
                                                         Reject
                                                     </button>
@@ -3242,7 +3540,8 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 )}
                             </div>
                         </div>
-                    )}
+                        );
+                    })()}
 
                     {/* TAB: PAYROLL */}
                     {activeTab === 'payroll' && (

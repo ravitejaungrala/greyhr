@@ -1886,6 +1886,96 @@ def get_attendance_history(employee_id: str):
     
     return {"history": history}
 
+@router.get("/employee/attendance/chart")
+def get_attendance_chart(employee_id: str, mode: str = "daily"):
+    """Return attendance hours data for charts. mode: daily | monthly | yearly"""
+    if mongo_db.attendance is None:
+        return {"data": []}
+
+    now = datetime.datetime.utcnow()
+
+    if mode == "daily":
+        # Last 30 days
+        start = now - datetime.timedelta(days=30)
+        records = list(mongo_db.attendance.find({
+            "employee_id": employee_id,
+            "timestamp": {"$gte": start.strftime('%Y-%m-%d')}
+        }, {"_id": 0}).sort("timestamp", 1))
+
+        # Group by date, compute hours worked per day
+        from collections import defaultdict
+        day_swipes = defaultdict(list)
+        for r in records:
+            day = r["timestamp"][:10]
+            day_swipes[day].append(r)
+
+        data = []
+        for d in range(30):
+            date = (start + datetime.timedelta(days=d)).strftime('%Y-%m-%d')
+            swipes = sorted(day_swipes.get(date, []), key=lambda x: x["timestamp"])
+            hours = 0
+            in_time = None
+            for s in swipes:
+                if s["action"] == "sign_in":
+                    in_time = datetime.datetime.fromisoformat(s["timestamp"].replace('Z', '+00:00'))
+                elif s["action"] == "sign_out" and in_time:
+                    out_time = datetime.datetime.fromisoformat(s["timestamp"].replace('Z', '+00:00'))
+                    hours += (out_time - in_time).total_seconds() / 3600
+                    in_time = None
+            # Label: "May 01"
+            dt = datetime.datetime.strptime(date, '%Y-%m-%d')
+            label = dt.strftime('%b %d')
+            data.append({"label": label, "hours": round(hours, 1), "date": date})
+
+        return {"data": data}
+
+    elif mode == "monthly":
+        # Last 12 months
+        records = list(mongo_db.attendance.find({
+            "employee_id": employee_id,
+        }, {"_id": 0, "timestamp": 1, "action": 1}).sort("timestamp", 1))
+
+        from collections import defaultdict
+        month_swipes = defaultdict(list)
+        for r in records:
+            month_key = r["timestamp"][:7]  # "2026-05"
+            month_swipes[month_key].append(r)
+
+        data = []
+        for m in range(11, -1, -1):
+            dt = now - datetime.timedelta(days=m * 30)
+            key = dt.strftime('%Y-%m')
+            swipes = sorted(month_swipes.get(key, []), key=lambda x: x["timestamp"])
+            # Count unique days present
+            days_present = len(set(s["timestamp"][:10] for s in swipes if s["action"] == "sign_in"))
+            label = dt.strftime('%b %y')
+            data.append({"label": label, "days": days_present, "month": key})
+
+        return {"data": data}
+
+    elif mode == "yearly":
+        records = list(mongo_db.attendance.find({
+            "employee_id": employee_id,
+            "action": "sign_in"
+        }, {"_id": 0, "timestamp": 1}).sort("timestamp", 1))
+
+        from collections import defaultdict
+        year_days = defaultdict(set)
+        for r in records:
+            year = r["timestamp"][:4]
+            day = r["timestamp"][:10]
+            year_days[year].add(day)
+
+        data = []
+        current_year = now.year
+        for y in range(current_year - 2, current_year + 1):
+            yr = str(y)
+            data.append({"label": yr, "days": len(year_days.get(yr, set())), "year": yr})
+
+        return {"data": data}
+
+    return {"data": []}
+
 @router.get("/employee/holidays")
 def get_employee_holidays():
     # Employees see the same holidays as admin
@@ -3613,6 +3703,12 @@ def generate_payslip_pdf(employee, salary, month_year, format_info):
 
 @router.get("/employee/payslip/download/{month_year}")
 def download_payslip(month_year: str, employee_id: str):
+    # Verify admin has released this month
+    if mongo_db.db is not None:
+        release = mongo_db.payslip_releases.find_one({"month_year": month_year, "released": True})
+        if not release:
+            return Response(status_code=403, content="Payslip for this month has not been released yet.")
+
     # Retrieve from MongoDB users or a specific payslip collection
     user = mongo_db.users.find_one({"employee_id": employee_id})
     if not user:
@@ -3625,7 +3721,19 @@ def download_payslip(month_year: str, employee_id: str):
     html_bytes = s3_db.get_image(s3_key)
     if not html_bytes:
         return Response(status_code=404, content="Payslip file not found in storage")
-        
+    
+    # Convert HTML to PDF
+    from api.enhanced_doc_system import html_to_pdf
+    pdf_bytes = html_to_pdf(html_bytes)
+    if pdf_bytes:
+        safe_month = month_year.replace(" ", "_")
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=NeuzenAI_Payslip_{safe_month}.pdf"}
+        )
+    
+    # Fallback to HTML if conversion fails
     return Response(
         content=html_bytes, 
         media_type="text/html",
@@ -3921,7 +4029,8 @@ def get_employee_payslips(employee_id: str):
             "id": f"ps_{curr.strftime('%b%y').lower()}",
             "month": month_name,
             "date": last_day.strftime("%Y-%m-%d"),
-            "amount": f"₹{salary:,}"
+            "amount": f"₹{salary:,}",
+            "released": True
         })
         
         # Move to previous month

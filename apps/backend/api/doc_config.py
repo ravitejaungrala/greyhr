@@ -30,13 +30,13 @@ DOCUMENT_CONFIGS = {
             "emp_name": {"type": "text", "label": "Employee Name", "required": True},
             "current_date": {"type": "date", "label": "Current Date", "required": True},
             "designation": {"type": "text", "label": "Designation", "required": True},
-            "internship_description": {"type": "textarea", "label": "Internship Description", "required": True},
             "stipend": {"type": "text", "label": "Stipend Amount", "required": True},
             "duration": {"type": "text", "label": "Duration", "required": True},
             "doj": {"type": "date", "label": "Date of Joining", "required": True},
             "acceptance_deadline": {"type": "date", "label": "Acceptance Deadline", "required": True},
-            "your_name": {"type": "text", "label": "Signatory Name", "required": True, "default": "B. Subba Rami Reddy"},
-            "your_designation": {"type": "text", "label": "Signatory Designation", "required": True, "default": "Founder & CEO"}
+            "internship_description": {"type": "textarea", "label": "Internship Description", "required": False, "default": "As part of the internship program at NeuzenAI Pvt. Ltd."},
+            "your_name": {"type": "text", "label": "Signatory Name", "required": False, "default": "B. Subba Rami Reddy"},
+            "your_designation": {"type": "text", "label": "Signatory Designation", "required": False, "default": "Founder & CEO"}
         }
     },
     "internship_completion": {

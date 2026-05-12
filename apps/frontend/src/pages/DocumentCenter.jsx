@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    FolderOpen, Building2, FileText, CheckCircle2, 
-    Banknote, History, PenLine, Info, Download, Eye 
+    FolderOpen, FileText, CheckCircle2, 
+    Banknote, History, PenLine, Info, Download, Eye,
+    Clock, AlertCircle, ChevronRight, Shield, ExternalLink
 } from 'lucide-react';
 import { API_URL } from '../config';
 
@@ -115,178 +116,362 @@ const DocumentCenter = ({ user }) => {
 
     const findDoc = (type) => documents.find(d => d.type === type);
 
-    return (
-        <div className="docs-page">
-            <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}><FolderOpen size={32} color="var(--primary)" /> Document Center</h1>
+    // Shared styles
+    const sectionStyle = {
+        background: '#ffffff',
+        borderRadius: '14px',
+        border: '1px solid var(--border-color)',
+        padding: '1.5rem',
+        marginBottom: '1.25rem',
+    };
 
-            <div className="grid-2">
-                {/* Official Documents */}
-                <div className="card glass-panel" style={{ gridColumn: 'span 2', marginBottom: '2rem' }}>
-                    <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Building2 size={24} color="var(--primary)" /> Official Employment Documents</h2>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+    const sectionHeaderStyle = {
+        fontSize: '0.95rem',
+        fontWeight: '600',
+        color: 'var(--text-strong)',
+        marginBottom: '1rem',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+        letterSpacing: '-0.01em',
+    };
 
-                        {/* Offer Letter */}
-                        <div className="card" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                     <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><FileText size={16} /> Offer Letter</div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                         {user.offer_letter_status === 'signed' ? <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><CheckCircle2 size={12} /> Signed</span> : 'Official appointment document'}
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    {(findDoc('full_time_offer') || findDoc('internship_offer')) && (
-                                        <button className="btn btn-secondary" onClick={() => handleDownloadDocument(findDoc('full_time_offer') ? 'full_time_offer' : 'internship_offer')}>View</button>
-                                    )}
-                                    {user.offer_letter_status === 'final' && (
-                                        <button className="btn btn-primary" onClick={() => setShowSignModal(true)}>Sign Now</button>
-                                    )}
-                                    {!findDoc('full_time_offer') && !findDoc('internship_offer') && user.offer_letter_status !== 'final' && (
-                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Not Available</span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+    const docRowStyle = {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '0.875rem 1rem',
+        borderRadius: '10px',
+        border: '1px solid var(--border-color)',
+        background: '#fafafa',
+        transition: 'all 0.15s ease',
+    };
 
-                        {/* Relieving / Internship Completion */}
-                        <div className="card shadow-sm-premium" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.25rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                     <div style={{ fontWeight: 'bold', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><FileText size={16} /> {user.employment_type === 'Intern' ? 'Intern' : 'Relieving'} Letter</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Official service certificate</div>
-                                </div>
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    {findDoc(user.employment_type === 'Intern' ? 'internship_completion' : 'relieving') ? (
-                                        <button className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => handleDownloadDocument(user.employment_type === 'Intern' ? 'internship_completion' : 'relieving')}>Download</button>
-                                    ) : (
-                                        <button 
-                                            className="btn btn-secondary" 
-                                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', color: 'var(--primary)', borderColor: 'var(--primary)' }}
-                                            onClick={() => handleRequestDocument(user.employment_type === 'Intern' ? 'internship_completion' : 'relieving')}
-                                            disabled={requestLoading[user.employment_type === 'Intern' ? 'internship_completion' : 'relieving'] === 'sent'}
-                                        >
-                                             {requestLoading[user.employment_type === 'Intern' ? 'internship_completion' : 'relieving'] === 'sent' ? <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><CheckCircle2 size={14} /> Requested</span> : 'Request'}
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+    const docLabelStyle = {
+        fontWeight: '500',
+        fontSize: '0.875rem',
+        color: 'var(--text-strong)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+    };
 
-                        {/* Experience Certificate */}
-                        <div className="card shadow-sm-premium" style={{ background: '#ffffff', border: '1px solid var(--border-color)', padding: '1.25rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                     <div style={{ fontWeight: 'bold', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><FileText size={16} /> Experience Certificate</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Proof of service & performance</div>
-                                </div>
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    {findDoc('experience') ? (
-                                        <button className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => handleDownloadDocument('experience')}>Download</button>
-                                    ) : (
-                                        <button 
-                                            className="btn btn-secondary" 
-                                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', color: 'var(--primary)', borderColor: 'var(--primary)' }}
-                                            onClick={() => handleRequestDocument('experience')}
-                                            disabled={requestLoading['experience'] === 'sent'}
-                                        >
-                                             {requestLoading['experience'] === 'sent' ? <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><CheckCircle2 size={14} /> Requested</span> : 'Request'}
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+    const docSubStyle = {
+        fontSize: '0.75rem',
+        color: 'var(--text-muted)',
+        marginTop: '2px',
+    };
 
-                        {/* Recent Payslip */}
-                        {payslips.length > 0 && (
-                            <div className="card" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div>
-                                         <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Banknote size={16} /> Latest Payslip</div>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{payslips[0].month}</div>
-                                    </div>
-                                    <button className="btn btn-secondary" onClick={() => handleDownloadPayslip(payslips[0].month)}>Download</button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+    const pillBtn = (variant = 'primary') => ({
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.35rem',
+        padding: '0.4rem 0.85rem',
+        borderRadius: '8px',
+        fontSize: '0.78rem',
+        fontWeight: '500',
+        cursor: 'pointer',
+        border: 'none',
+        transition: 'all 0.15s ease',
+        ...(variant === 'primary' ? {
+            background: 'var(--primary)',
+            color: '#fff',
+        } : variant === 'outline' ? {
+            background: 'transparent',
+            color: 'var(--primary)',
+            border: '1px solid var(--primary)',
+        } : variant === 'muted' ? {
+            background: '#f1f5f9',
+            color: '#64748b',
+            cursor: 'default',
+        } : {}),
+    });
+
+    const statusBadge = (type) => ({
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.3rem',
+        padding: '0.25rem 0.6rem',
+        borderRadius: '20px',
+        fontSize: '0.7rem',
+        fontWeight: '500',
+        ...(type === 'signed' ? {
+            background: '#ecfdf5',
+            color: '#059669',
+        } : type === 'pending' ? {
+            background: '#fef3c7',
+            color: '#b45309',
+        } : type === 'available' ? {
+            background: '#eff6ff',
+            color: '#2563eb',
+        } : {
+            background: '#f1f5f9',
+            color: '#64748b',
+        }),
+    });
+
+    const renderDocRow = (icon, title, subtitle, action, statusInfo) => (
+        <div style={docRowStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
+                <div style={{
+                    width: '36px', height: '36px', borderRadius: '9px',
+                    background: 'var(--primary-soft)', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                    {icon}
                 </div>
+                <div>
+                    <div style={docLabelStyle}>{title}</div>
+                    <div style={docSubStyle}>{subtitle}</div>
+                </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {statusInfo}
+                {action}
+            </div>
+        </div>
+    );
 
-                {/* Payslip History */}
-                <div className="card glass-panel">
-                    <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><History size={24} color="var(--secondary)" /> Payslip History</h2>
-                    {loading ? (
-                        <p>Loading payslips...</p>
-                    ) : payslips.length === 0 ? (
-                        <p style={{ color: 'var(--text-muted)' }}>No payslips released yet or not available during internship.</p>
-                    ) : (
-                        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            {payslips.map((ps, idx) => (
-                                <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                                    <div>
-                                        <div style={{ fontWeight: '600' }}>{ps.month}</div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Released on {ps.date}</div>
-                                    </div>
-                                    <button className="btn btn-secondary" style={{ fontSize: '0.75rem' }} onClick={() => handleDownloadPayslip(ps.month)}>
-                                        Download PDF
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
+    return (
+        <div style={{ padding: '0.5rem 0' }}>
+            {/* Page Header */}
+            <div style={{ marginBottom: '1.5rem' }}>
+                <h1 style={{
+                    fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-strong)',
+                    display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.25rem',
+                    letterSpacing: '-0.02em',
+                }}>
+                    <FolderOpen size={26} color="var(--primary)" /> Document Center
+                </h1>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0, paddingLeft: '2.35rem' }}>
+                    Access your employment documents & payslips
+                </p>
+            </div>
+
+            {/* Employment Documents Section */}
+            <div style={sectionStyle}>
+                <div style={sectionHeaderStyle}>
+                    <FileText size={18} color="var(--primary)" /> Employment Documents
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+
+                    {/* Offer Letter */}
+                    {renderDocRow(
+                        <FileText size={18} color="var(--primary)" />,
+                        'Offer Letter',
+                        user.offer_letter_status === 'signed' ? 'Accepted & signed' : 'Official appointment letter',
+                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                            {(findDoc('full_time_offer') || findDoc('internship_offer')) && (
+                                <button
+                                    style={pillBtn('outline')}
+                                    onClick={() => handleDownloadDocument(findDoc('full_time_offer') ? 'full_time_offer' : 'internship_offer')}
+                                >
+                                    <Eye size={13} /> View
+                                </button>
+                            )}
+                            {user.offer_letter_status === 'final' && (
+                                <button style={pillBtn('primary')} onClick={() => setShowSignModal(true)}>
+                                    <PenLine size={13} /> Sign
+                                </button>
+                            )}
+                        </div>,
+                        user.offer_letter_status === 'signed'
+                            ? <span style={statusBadge('signed')}><CheckCircle2 size={12} /> Signed</span>
+                            : !findDoc('full_time_offer') && !findDoc('internship_offer') && user.offer_letter_status !== 'final'
+                            ? <span style={statusBadge('default')}>Not available</span>
+                            : null
+                    )}
+
+                    {/* Relieving / Internship Completion */}
+                    {(() => {
+                        const isIntern = user.employment_type === 'Intern';
+                        const docType = isIntern ? 'internship_completion' : 'relieving';
+                        const title = isIntern ? 'Internship Letter' : 'Relieving Letter';
+                        const hasDoc = findDoc(docType);
+                        return renderDocRow(
+                            <FileText size={18} color="var(--primary)" />,
+                            title,
+                            'Official service certificate',
+                            hasDoc ? (
+                                <button style={pillBtn('primary')} onClick={() => handleDownloadDocument(docType)}>
+                                    <Download size={13} /> Download
+                                </button>
+                            ) : (
+                                <button
+                                    style={pillBtn(requestLoading[docType] === 'sent' ? 'muted' : 'outline')}
+                                    onClick={() => handleRequestDocument(docType)}
+                                    disabled={requestLoading[docType] === 'sent'}
+                                >
+                                    {requestLoading[docType] === 'sent'
+                                        ? <><CheckCircle2 size={13} /> Requested</>
+                                        : 'Request'}
+                                </button>
+                            ),
+                            hasDoc ? <span style={statusBadge('available')}><CheckCircle2 size={12} /> Ready</span> : null
+                        );
+                    })()}
+
+                    {/* Experience Certificate */}
+                    {renderDocRow(
+                        <Shield size={18} color="var(--primary)" />,
+                        'Experience Certificate',
+                        'Proof of service & performance',
+                        findDoc('experience') ? (
+                            <button style={pillBtn('primary')} onClick={() => handleDownloadDocument('experience')}>
+                                <Download size={13} /> Download
+                            </button>
+                        ) : (
+                            <button
+                                style={pillBtn(requestLoading['experience'] === 'sent' ? 'muted' : 'outline')}
+                                onClick={() => handleRequestDocument('experience')}
+                                disabled={requestLoading['experience'] === 'sent'}
+                            >
+                                {requestLoading['experience'] === 'sent'
+                                    ? <><CheckCircle2 size={13} /> Requested</>
+                                    : 'Request'}
+                            </button>
+                        ),
+                        findDoc('experience') ? <span style={statusBadge('available')}><CheckCircle2 size={12} /> Ready</span> : null
                     )}
                 </div>
+            </div>
 
-                {/* Company Policies */}
-                <div className="card">
-                    <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Building2 size={24} color="var(--primary)" /> Company Policies</h2>
-                    <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(79, 70, 229, 0.05)', borderRadius: '6px', border: '1px solid rgba(79, 70, 229, 0.2)' }}>
-                            <span>Employee Handbook 2026.pdf</span>
-                            <button className="btn btn-primary" style={{ fontSize: '0.75rem' }}>Download</button>
-                        </li>
-                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '6px' }}>
-                            <span>Code of Conduct.pdf</span>
-                            <button className="btn btn-secondary" style={{ fontSize: '0.75rem' }}>View</button>
-                        </li>
-                    </ul>
+            {/* Latest Payslip Card */}
+            {payslips.length > 0 && (
+                <div style={{
+                    ...sectionStyle,
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    background: payslips[0].released ? '#ffffff' : '#fafbfc',
+                    opacity: payslips[0].released ? 1 : 0.75,
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{
+                            width: '40px', height: '40px', borderRadius: '10px',
+                            background: payslips[0].released ? 'var(--primary-soft)' : '#f1f5f9',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                            <Banknote size={20} color={payslips[0].released ? 'var(--primary)' : '#94a3b8'} />
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: '600', fontSize: '0.9rem', color: payslips[0].released ? 'var(--text-strong)' : '#94a3b8' }}>
+                                Latest Payslip
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: payslips[0].released ? 'var(--text-muted)' : '#94a3b8' }}>
+                                {payslips[0].released ? payslips[0].month : 'Not yet released by admin'}
+                            </div>
+                        </div>
+                    </div>
+                    {payslips[0].released ? (
+                        <button style={pillBtn('primary')} onClick={() => handleDownloadPayslip(payslips[0].month)}>
+                            <Download size={13} /> Download PDF
+                        </button>
+                    ) : (
+                        <span style={statusBadge('pending')}><Clock size={12} /> Pending</span>
+                    )}
                 </div>
+            )}
+
+            {/* Payslip History */}
+            <div style={sectionStyle}>
+                <div style={sectionHeaderStyle}>
+                    <History size={18} color="var(--secondary)" /> Payslip History
+                </div>
+                {loading ? (
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '0.5rem 0' }}>Loading payslips...</p>
+                ) : payslips.length === 0 ? (
+                    <div style={{
+                        textAlign: 'center', padding: '2rem 1rem',
+                        color: 'var(--text-muted)', fontSize: '0.85rem',
+                    }}>
+                        <Banknote size={28} color="#d1d5db" style={{ marginBottom: '0.5rem' }} />
+                        <div>No payslips available yet</div>
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        {payslips.map((ps, idx) => (
+                            <div key={idx} style={{
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                padding: '0.7rem 0.85rem', borderRadius: '9px',
+                                background: ps.released ? '#fafafa' : '#fafbfc',
+                                border: '1px solid var(--border-color)',
+                                opacity: ps.released ? 1 : 0.6,
+                                transition: 'all 0.15s ease',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                    <Banknote size={16} color={ps.released ? 'var(--primary)' : '#cbd5e1'} />
+                                    <div>
+                                        <div style={{ fontWeight: '500', fontSize: '0.84rem', color: 'var(--text-strong)' }}>{ps.month}</div>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                            {ps.released ? `Released ${ps.date}` : 'Not yet released'}
+                                        </div>
+                                    </div>
+                                </div>
+                                {ps.released ? (
+                                    <button style={pillBtn('outline')} onClick={() => handleDownloadPayslip(ps.month)}>
+                                        <Download size={12} /> PDF
+                                    </button>
+                                ) : (
+                                    <span style={statusBadge('pending')}><Clock size={11} /> Pending</span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Signature Modal */}
             {showSignModal && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-                    <div className="card shadow-lg" style={{ width: '90%', maxWidth: '500px', padding: '2rem', background: '#ffffff' }}>
-                        <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><PenLine size={24} color="var(--primary)" /> Sign Offer Letter</h2>
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                            Please provide your full name as a digital signature and the date to accept the offer.
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                    background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)',
+                    display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+                }}>
+                    <div style={{
+                        width: '90%', maxWidth: '440px', padding: '1.75rem',
+                        background: '#ffffff', borderRadius: '16px',
+                        boxShadow: 'var(--shadow-xl)',
+                    }}>
+                        <h2 style={{
+                            fontSize: '1.1rem', fontWeight: '600', margin: '0 0 0.5rem 0',
+                            display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-strong)',
+                        }}>
+                            <PenLine size={20} color="var(--primary)" /> Sign Offer Letter
+                        </h2>
+                        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                            Enter your full name as a digital signature to accept the offer.
                         </p>
-                        
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.5rem' }}>Full Name (Signature)</label>
-                            <input 
-                                type="text" 
-                                className="input-field" 
+
+                        <div style={{ marginBottom: '0.85rem' }}>
+                            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '500', marginBottom: '0.35rem', color: 'var(--text-body)' }}>
+                                Full Name (Signature)
+                            </label>
+                            <input
+                                type="text"
+                                className="input-field"
                                 value={signatureName}
                                 onChange={(e) => setSignatureName(e.target.value)}
                                 placeholder="Enter your full name"
-                                style={{ width: '100%' }}
+                                style={{ width: '100%', padding: '0.6rem 0.75rem', fontSize: '0.85rem', borderRadius: '8px' }}
                             />
                         </div>
 
-                        <div style={{ marginBottom: '2rem' }}>
-                            <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.5rem' }}>Signing Date</label>
-                            <input 
-                                type="date" 
-                                className="input-field" 
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '500', marginBottom: '0.35rem', color: 'var(--text-body)' }}>
+                                Signing Date
+                            </label>
+                            <input
+                                type="date"
+                                className="input-field"
                                 value={signingDate}
                                 onChange={(e) => setSigningDate(e.target.value)}
-                                style={{ width: '100%' }}
+                                style={{ width: '100%', padding: '0.6rem 0.75rem', fontSize: '0.85rem', borderRadius: '8px' }}
                             />
                         </div>
 
-                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                            <button className="btn btn-secondary" onClick={() => setShowSignModal(false)} disabled={submitting}>Cancel</button>
-                            <button className="btn btn-primary" onClick={handleSignOfferLetter} disabled={submitting}>
-                                {submitting ? 'Submitting...' : 'Sign & Accept Offer'}
+                        <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end' }}>
+                            <button style={pillBtn('outline')} onClick={() => setShowSignModal(false)} disabled={submitting}>Cancel</button>
+                            <button style={{ ...pillBtn('primary'), padding: '0.5rem 1rem' }} onClick={handleSignOfferLetter} disabled={submitting}>
+                                {submitting ? 'Submitting...' : 'Sign & Accept'}
                             </button>
                         </div>
                     </div>
