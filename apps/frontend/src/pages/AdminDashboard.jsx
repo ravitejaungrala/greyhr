@@ -207,12 +207,45 @@ const AdminDashboard = ({ activeTab, user }) => {
     const [isFetchingHolidays, setIsFetchingHolidays] = useState(false);
     const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
     const [selectedHolidays, setSelectedHolidays] = useState([]);
+    const [editUploads, setEditUploads] = useState({
+        reference_image_base64: '',
+        passport_photo_base64: '',
+        pan_card_base64: '',
+        bank_passbook_base64: '',
+        education_cert_base64: '',
+        inter_cert_base64: '',
+        ssc_cert_base64: ''
+    });
     const [companyFilter, setCompanyFilter] = useState(() => {
         if (isSuperAdmin) return 'all';
         return userCompanyKeys.length === 1 ? userCompanyKeys[0] : 'all';
     });
 
     const apiUrl = API_URL;
+    const fileToBase64 = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+    });
+
+    const handleEditUpload = async (event, key) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        try {
+            const base64 = await fileToBase64(file);
+            setEditUploads((prev) => ({ ...prev, [key]: base64 }));
+        } catch (error) {
+            console.error(error);
+            alert('Failed to read selected file.');
+        }
+    };
+
+    const clearEditUpload = (key) => {
+        setEditUploads((prev) => ({ ...prev, [key]: '' }));
+    };
+
+    const hasAnyEditUpload = Object.values(editUploads).some(Boolean);
     const editLabelStyle = {
         fontSize: '0.72rem',
         color: '#64748b',
@@ -456,7 +489,14 @@ const AdminDashboard = ({ activeTab, user }) => {
                     in_hand_salary: parseInt(empRoleSetup.in_hand_salary || 0),
                     accessible_companies: empRoleSetup.accessible_companies,
                     tax_deduction_rate: parseFloat(empRoleSetup.tax_deduction_rate || 0),
-                    pf_deduction_rate: parseFloat(empRoleSetup.pf_deduction_rate || 0)
+                    pf_deduction_rate: parseFloat(empRoleSetup.pf_deduction_rate || 0),
+                    reference_image_base64: editUploads.reference_image_base64 || null,
+                    passport_photo_base64: editUploads.passport_photo_base64 || null,
+                    pan_card_base64: editUploads.pan_card_base64 || null,
+                    bank_passbook_base64: editUploads.bank_passbook_base64 || null,
+                    education_cert_base64: editUploads.education_cert_base64 || null,
+                    inter_cert_base64: editUploads.inter_cert_base64 || null,
+                    ssc_cert_base64: editUploads.ssc_cert_base64 || null
                 })
             });
             if (response.ok) {
@@ -472,6 +512,15 @@ const AdminDashboard = ({ activeTab, user }) => {
                     });
                 }
                 alert("Employee profile updated successfully!");
+                setEditUploads({
+                    reference_image_base64: '',
+                    passport_photo_base64: '',
+                    pan_card_base64: '',
+                    bank_passbook_base64: '',
+                    education_cert_base64: '',
+                    inter_cert_base64: '',
+                    ssc_cert_base64: ''
+                });
                 fetchData(); // Refresh list
                 setSelectedApprovedEmp(null);
             }
@@ -482,6 +531,15 @@ const AdminDashboard = ({ activeTab, user }) => {
 
     const openEmployeeEditor = (emp) => {
         setSelectedApprovedEmp(emp);
+        setEditUploads({
+            reference_image_base64: '',
+            passport_photo_base64: '',
+            pan_card_base64: '',
+            bank_passbook_base64: '',
+            education_cert_base64: '',
+            inter_cert_base64: '',
+            ssc_cert_base64: ''
+        });
         setEmpRoleSetup({
             employment_type: emp.employment_type || 'Full-Time',
             position: emp.position || 'Software Engineer',
@@ -2369,6 +2427,51 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             <label style={editLabelStyle}>Casual Leave / Month</label>
                                             <input type="number" step="0.1" disabled={empRoleSetup.employment_type === 'Intern'} value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.casual_leave_rate} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, casual_leave_rate: e.target.value })} style={{ ...editInputStyle, opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }} />
                                         </div>
+
+                                        <div style={{ gridColumn: 'span 3', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', marginBottom: '0.25rem', borderTop: '1px solid #f1f5f9', paddingTop: '1rem' }}>
+                                            <Camera size={16} color="#ea580c" />
+                                            <h4 style={{ margin: 0, color: '#0f172a', fontSize: '0.88rem', fontWeight: 800 }}>Documents & Photo Updates</h4>
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>Profile Photo</label>
+                                            <input type="file" accept="image/*" onChange={(e) => handleEditUpload(e, 'reference_image_base64')} style={editInputStyle} />
+                                            {editUploads.reference_image_base64 && <button className="btn btn-secondary" style={{ marginTop: '0.5rem', fontSize: '0.75rem' }} onClick={() => clearEditUpload('reference_image_base64')}>Clear</button>}
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>Passport Photo</label>
+                                            <input type="file" accept="image/*" onChange={(e) => handleEditUpload(e, 'passport_photo_base64')} style={editInputStyle} />
+                                            {editUploads.passport_photo_base64 && <button className="btn btn-secondary" style={{ marginTop: '0.5rem', fontSize: '0.75rem' }} onClick={() => clearEditUpload('passport_photo_base64')}>Clear</button>}
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>PAN Card</label>
+                                            <input type="file" accept="image/*,application/pdf" onChange={(e) => handleEditUpload(e, 'pan_card_base64')} style={editInputStyle} />
+                                            {editUploads.pan_card_base64 && <button className="btn btn-secondary" style={{ marginTop: '0.5rem', fontSize: '0.75rem' }} onClick={() => clearEditUpload('pan_card_base64')}>Clear</button>}
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>Bank Passbook</label>
+                                            <input type="file" accept="image/*,application/pdf" onChange={(e) => handleEditUpload(e, 'bank_passbook_base64')} style={editInputStyle} />
+                                            {editUploads.bank_passbook_base64 && <button className="btn btn-secondary" style={{ marginTop: '0.5rem', fontSize: '0.75rem' }} onClick={() => clearEditUpload('bank_passbook_base64')}>Clear</button>}
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>UG Certificate</label>
+                                            <input type="file" accept="image/*,application/pdf" onChange={(e) => handleEditUpload(e, 'education_cert_base64')} style={editInputStyle} />
+                                            {editUploads.education_cert_base64 && <button className="btn btn-secondary" style={{ marginTop: '0.5rem', fontSize: '0.75rem' }} onClick={() => clearEditUpload('education_cert_base64')}>Clear</button>}
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>Inter Certificate</label>
+                                            <input type="file" accept="image/*,application/pdf" onChange={(e) => handleEditUpload(e, 'inter_cert_base64')} style={editInputStyle} />
+                                            {editUploads.inter_cert_base64 && <button className="btn btn-secondary" style={{ marginTop: '0.5rem', fontSize: '0.75rem' }} onClick={() => clearEditUpload('inter_cert_base64')}>Clear</button>}
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>SSC Certificate</label>
+                                            <input type="file" accept="image/*,application/pdf" onChange={(e) => handleEditUpload(e, 'ssc_cert_base64')} style={editInputStyle} />
+                                            {editUploads.ssc_cert_base64 && <button className="btn btn-secondary" style={{ marginTop: '0.5rem', fontSize: '0.75rem' }} onClick={() => clearEditUpload('ssc_cert_base64')}>Clear</button>}
+                                        </div>
+                                        {hasAnyEditUpload && (
+                                            <div style={{ gridColumn: 'span 3', fontSize: '0.78rem', color: '#475569', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '12px', padding: '0.75rem 0.9rem' }}>
+                                                New photo/document files are ready and will be uploaded when you click Save Changes.
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Footer */}

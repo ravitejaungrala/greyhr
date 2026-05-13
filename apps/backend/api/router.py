@@ -704,6 +704,13 @@ class EmployeeUpdate(BaseModel):
     tax_deduction_rate: Optional[float] = None
     pf_deduction_rate: Optional[float] = None
     payroll_settings: Optional[Dict[str, Any]] = None
+    reference_image_base64: Optional[str] = None
+    passport_photo_base64: Optional[str] = None
+    pan_card_base64: Optional[str] = None
+    bank_passbook_base64: Optional[str] = None
+    education_cert_base64: Optional[str] = None
+    inter_cert_base64: Optional[str] = None
+    ssc_cert_base64: Optional[str] = None
 
 
 @router.post("/auth/admin/approve")
@@ -768,7 +775,58 @@ def update_employee_details(employee_id: str, update: EmployeeUpdate):
         
     # Handle nested fields mapping
     set_ops: Dict[str, Any] = {}
+
+    upload_field_names = {
+        "reference_image_base64",
+        "passport_photo_base64",
+        "pan_card_base64",
+        "bank_passbook_base64",
+        "education_cert_base64",
+        "inter_cert_base64",
+        "ssc_cert_base64",
+    }
+
+    # Handle file uploads first and map them to stored document keys.
+    for upload_key in upload_field_names:
+        b64_value = update_data.get(upload_key)
+        if not b64_value:
+            continue
+        file_bytes, ext, mime = parse_base64_with_meta(b64_value)
+        if not file_bytes:
+            return {"error": f"Invalid file upload for {upload_key}"}
+
+        if upload_key == "reference_image_base64":
+            s3_key = f"reference_faces/{employee_id}_profile{ext}"
+            s3_db.save_image(s3_key, file_bytes, content_type=mime)
+            set_ops["reference_image_key"] = s3_key
+        elif upload_key == "passport_photo_base64":
+            s3_key = f"profile_photos/{employee_id}_passport{ext}"
+            s3_db.save_image(s3_key, file_bytes, content_type=mime)
+            set_ops["passport_photo_url"] = s3_key
+        elif upload_key == "pan_card_base64":
+            s3_key = f"onboarding_docs/{employee_id}_pan_card{ext}"
+            s3_db.save_image(s3_key, file_bytes, content_type=mime)
+            set_ops["pan_card_url"] = s3_key
+        elif upload_key == "bank_passbook_base64":
+            s3_key = f"onboarding_docs/{employee_id}_bank_passbook{ext}"
+            s3_db.save_image(s3_key, file_bytes, content_type=mime)
+            set_ops["bank_details.passbook_url"] = s3_key
+        elif upload_key == "education_cert_base64":
+            s3_key = f"onboarding_docs/{employee_id}_edu_cert{ext}"
+            s3_db.save_image(s3_key, file_bytes, content_type=mime)
+            set_ops["education.ug.cert_url"] = s3_key
+        elif upload_key == "inter_cert_base64":
+            s3_key = f"onboarding_docs/{employee_id}_inter_cert{ext}"
+            s3_db.save_image(s3_key, file_bytes, content_type=mime)
+            set_ops["education.intermediate.cert_url"] = s3_key
+        elif upload_key == "ssc_cert_base64":
+            s3_key = f"onboarding_docs/{employee_id}_ssc_cert{ext}"
+            s3_db.save_image(s3_key, file_bytes, content_type=mime)
+            set_ops["education.ssc.cert_url"] = s3_key
+
     for k, v in update_data.items():
+        if k in upload_field_names:
+            continue
         if k in ["bank_account", "bank_ifsc", "bank_name", "cif_number"]:
             if k == "bank_account": set_ops["bank_details.account_number"] = v
             elif k == "bank_ifsc": set_ops["bank_details.ifsc"] = v

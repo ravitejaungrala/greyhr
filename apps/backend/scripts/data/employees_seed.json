@@ -1,0 +1,23 @@
+[
+  {
+    "name": "Salman Shaik",
+    "email": "salman.s@neuzenai.com",
+    "position": "Associate Data Scientist",
+    "employment_type": "Full-Time",
+    "role": "employee"
+  },
+  {
+    "name": "Raviteja Reddy",
+    "email": "raviteja.y@neuzenai.com",
+    "position": "AI Engineering Intern",
+    "employment_type": "Intern",
+    "role": "employee"
+  },
+  {
+    "name": "Sheetal",
+    "email": "sheetal@z-ninth.com",
+    "position": "Employee",
+    "employment_type": "Full-Time",
+    "role": "employee"
+  }
+]
