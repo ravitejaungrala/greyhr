@@ -10,7 +10,6 @@ import {
 
 // Pages
 import HomeDashboard from './pages/HomeDashboard';
-import AttendanceScan from './pages/AttendanceScan';
 import AttendanceInfo from './pages/AttendanceInfo';
 import Leaves from './pages/Leaves';
 import LoginRegister from './pages/LoginRegister';
@@ -35,7 +34,6 @@ const DynamicTitle = () => {
     if (path === '/login') title = 'Login | NeuzenAI';
     else if (path === '/admin/dashboard') title = 'Admin Dashboard | NeuzenAI';
     else if (path === '/employee/pulse') title = 'Pulse Dashboard | NeuzenAI';
-    else if (path === '/employee/attendance') title = 'Attendance | NeuzenAI';
     else if (path === '/employee/salary') title = 'Salary | NeuzenAI';
     else if (path === '/employee/leaves' || path === '/employee/leaves/apply' || path === '/employee/leaves/balance') title = 'Leaves | NeuzenAI';
     else if (path === '/admin/intelligence') title = 'HR Intelligence | NeuzenAI';
@@ -271,7 +269,6 @@ function AppContent() {
                 isExpanded={isAttendExpanded}
                 setIsExpanded={setIsAttendExpanded}
               >
-                <NavItem path="/employee/attendance" icon={Timer} title="Check-in" subtitle="SCAN" isSub />
                 <NavItem path="/employee/activity" icon={Activity} title="Activity" subtitle="STATS" isSub />
               </NavGroup>
 
@@ -342,7 +339,6 @@ function AppContent() {
                         <Route path="/admin/leave-policy" element={<LeavePolicy user={user} />} />
             
             <Route path="/employee/pulse" element={<HomeDashboard user={user} setUser={setUser} />} />
-            <Route path="/employee/attendance" element={<AttendanceScan userId={user.employee_id} user={user} />} />
             <Route path="/employee/activity" element={<AttendanceInfo userId={user.employee_id} user={user} />} />
             <Route path="/employee/leaves" element={<Navigate to="/employee/leaves/balance" replace />} />
             <Route path="/employee/leaves/apply" element={<Leaves userId={user.employee_id} user={user} mode="apply" />} />

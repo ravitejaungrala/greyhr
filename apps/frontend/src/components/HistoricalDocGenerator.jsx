@@ -204,10 +204,10 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
 
             {/* Step 1: Employee Basics */}
             {currentStep === 1 && (
-                <div className="card glass-card" style={{ maxWidth: '800px', margin: '0 auto', animation: 'fadeInUp 0.5s ease-out' }}>
-                    <div style={{ padding: '0.5rem' }}>
-                        <h3 className="card-title" style={{ fontSize: '1.25rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><User size={22} color="var(--primary)" /> Let's start with employee basics</h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="card glass-card" style={{ maxWidth: '700px', margin: '0 auto', animation: 'fadeInUp 0.5s ease-out' }}>
+                    <div style={{ padding: '0.25rem' }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#0f172a' }}><User size={18} color="var(--primary)" /> Employee Basics</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                             <div className="premium-input-group">
                                 <label className="premium-label">Full Name <span style={{ color: 'var(--primary)' }}>*</span></label>
                                 <input 
@@ -259,14 +259,14 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                                 />
                             </div>
                         </div>
-                        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+                        <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
                             <button 
                                 className="btn btn-primary"
                                 disabled={!canProceedToDocType}
                                 onClick={() => setCurrentStep(2)}
-                                style={{ padding: '1rem 3rem', fontSize: '1.1rem', borderRadius: '15px' }}
+                                style={{ padding: '0.5rem 1.5rem', fontSize: '0.85rem', borderRadius: '8px' }}
                             >
-                                Continue to Type selection
+                                Continue
                             </button>
                         </div>
                     </div>
@@ -276,9 +276,9 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
             {/* Step 2: Document Selection */}
             {currentStep === 2 && (
                 <div style={{ animation: 'fadeInUp 0.5s ease-out' }}>
-                    <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                        <h3 style={{ fontSize: '1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}><FileText size={24} color="var(--primary)" /> What document would you like to create?</h3>
-                        <p style={{ color: 'var(--text-muted)' }}>Select a template to continue</p>
+                    <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: '#0f172a' }}><FileText size={18} color="var(--primary)" /> Select Document Type</h3>
+                        <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.25rem 0 0 0' }}>Choose a template to continue</p>
                     </div>
                     <div className="doc-type-grid">
                         {documentTypes.map(docType => (
@@ -288,27 +288,27 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                                 onClick={() => handleDocTypeSelect(docType.type)}
                             >
                                 <span className="doc-card-icon">
-                                    {docType.type === 'payslip' ? <Banknote size={32} /> : 
-                                     docType.type === 'relieving' ? <Mail size={32} /> : 
-                                     docType.type === 'internship_offer' ? <GraduationCap size={32} /> : 
-                                     docType.type === 'full_time_offer' ? <Building2 size={32} /> : 
-                                     docType.type === 'internship_completion' ? <ScrollText size={32} /> : <FileText size={32} />}
+                                    {docType.type === 'payslip' ? <Banknote size={18} /> : 
+                                     docType.type === 'relieving' ? <Mail size={18} /> : 
+                                     docType.type === 'internship_offer' ? <GraduationCap size={18} /> : 
+                                     docType.type === 'full_time_offer' ? <Building2 size={18} /> : 
+                                     docType.type === 'internship_completion' ? <ScrollText size={18} /> : <FileText size={18} />}
                                 </span>
                                 <div className="doc-card-title">{docType.name}</div>
                             </div>
                         ))}
                     </div>
-                    <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'space-between' }}>
-                        <button className="btn btn-secondary" onClick={() => setCurrentStep(1)} style={{ padding: '0.8rem 2rem', borderRadius: '12px' }}>
-                            <ChevronLeft size={16} /> Go Back
+                    <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between' }}>
+                        <button className="btn btn-secondary" onClick={() => setCurrentStep(1)} style={{ padding: '0.5rem 1.25rem', borderRadius: '8px', fontSize: '0.82rem' }}>
+                            <ChevronLeft size={14} /> Back
                         </button>
                         <button 
                             className="btn btn-primary"
                             disabled={!selectedDocType}
                             onClick={() => setCurrentStep(3)}
-                            style={{ padding: '0.8rem 2rem', borderRadius: '12px' }}
+                            style={{ padding: '0.5rem 1.25rem', borderRadius: '8px', fontSize: '0.82rem' }}
                         >
-                            Next: Fill Details <ChevronRight size={16} />
+                            Next <ChevronRight size={14} />
                         </button>
                     </div>
                 </div>
@@ -316,24 +316,26 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
 
             {/* Step 3: Detailed Fields */}
             {currentStep === 3 && (
-                <div className="card glass-card" style={{ padding: '2.5rem', animation: 'fadeInUp 0.5s ease-out' }}>
-                    <div style={{ borderBottom: '1px solid #eee', paddingBottom: '1rem', marginBottom: '1rem' }}>
-                        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileSignature size={24} color="var(--primary)" /> Complete Document Data</h3>
-                        <p style={{ color: '#000000', marginTop: '0.5rem' }}>Please provide the necessary values for the **{documentTypes.find(dt => dt.type === selectedDocType)?.name}**.</p>
+                <div className="card glass-card" style={{ padding: '1.5rem', animation: 'fadeInUp 0.5s ease-out' }}>
+                    <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#0f172a' }}><FileSignature size={18} color="var(--primary)" /> Document Details</h3>
+                        <p style={{ color: '#64748b', marginTop: '0.25rem', fontSize: '0.78rem' }}>Fill in the required fields for <strong>{documentTypes.find(dt => dt.type === selectedDocType)?.name}</strong></p>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
-                        {Object.entries(roiFields).map(([fieldName, fieldConfig]) => (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.75rem 1rem' }}>
+                        {Object.entries(roiFields)
+                            .filter(([fieldName, fieldConfig]) => fieldConfig.required)
+                            .map(([fieldName, fieldConfig]) => (
                             <div className="premium-input-group" key={fieldName}>
                                 <label className="premium-label">
                                     {fieldConfig.label}
-                                    {fieldConfig.required && <span style={{ color: '#ef4444' }}> *</span>}
+                                    <span style={{ color: '#ef4444' }}> *</span>
                                 </label>
                                 {fieldConfig.type === 'textarea' ? (
                                     <textarea
                                         className="premium-input"
                                         value={formData[fieldName] || ''}
                                         onChange={(e) => handleFieldChange(fieldName, e.target.value)}
-                                        rows={4}
+                                        rows={2}
                                         style={{ resize: 'none' }}
                                     />
                                 ) : (
@@ -347,17 +349,48 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                             </div>
                         ))}
                     </div>
-                    <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'space-between' }}>
-                        <button className="btn btn-secondary" onClick={() => setCurrentStep(2)} style={{ padding: '0.8rem 2rem', borderRadius: '12px' }}>
-                            <ChevronLeft size={16} /> Back
+                    {/* Optional fields collapsed */}
+                    {Object.entries(roiFields).some(([_, fc]) => !fc.required) && (
+                        <details style={{ marginTop: '1rem' }}>
+                            <summary style={{ cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, color: '#64748b', padding: '0.4rem 0' }}>Optional fields (auto-filled with defaults)</summary>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.75rem 1rem', marginTop: '0.75rem' }}>
+                                {Object.entries(roiFields)
+                                    .filter(([_, fc]) => !fc.required)
+                                    .map(([fieldName, fieldConfig]) => (
+                                    <div className="premium-input-group" key={fieldName}>
+                                        <label className="premium-label">{fieldConfig.label}</label>
+                                        {fieldConfig.type === 'textarea' ? (
+                                            <textarea
+                                                className="premium-input"
+                                                value={formData[fieldName] || ''}
+                                                onChange={(e) => handleFieldChange(fieldName, e.target.value)}
+                                                rows={2}
+                                                style={{ resize: 'none' }}
+                                            />
+                                        ) : (
+                                            <input
+                                                type={fieldConfig.type === 'number' ? 'number' : fieldConfig.type === 'date' ? 'date' : 'text'}
+                                                className="premium-input"
+                                                value={formData[fieldName] || ''}
+                                                onChange={(e) => handleFieldChange(fieldName, e.target.value)}
+                                            />
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </details>
+                    )}
+                    <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between' }}>
+                        <button className="btn btn-secondary" onClick={() => setCurrentStep(2)} style={{ padding: '0.5rem 1.25rem', borderRadius: '8px', fontSize: '0.82rem' }}>
+                            <ChevronLeft size={14} /> Back
                         </button>
                         <button 
                             className="btn btn-primary"
                             onClick={handlePreview}
                             disabled={isPreviewing}
-                            style={{ background: '#10b981', padding: '0.8rem 2rem', borderRadius: '12px' }}
+                            style={{ background: '#10b981', padding: '0.5rem 1.25rem', borderRadius: '8px', fontSize: '0.82rem' }}
                         >
-                            {isPreviewing ? 'Preparing...' : <><Eye size={18} /> Preview Document</>}
+                            {isPreviewing ? 'Preparing...' : <><Eye size={15} /> Preview</>}
                         </button>
                     </div>
                 </div>

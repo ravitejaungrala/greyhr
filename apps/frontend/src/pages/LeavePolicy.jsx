@@ -134,21 +134,21 @@ const LeavePolicy = ({ user }) => {
                     </div>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
                     {rateFields.map(({ key, label, color }) => (
-                        <div key={key} style={{ border: `1px solid ${editDefaults ? '#93c5fd' : '#e2e8f0'}`, borderRadius: '12px', padding: '1.25rem', background: editDefaults ? '#eff6ff' : '#f8fafc' }}>
-                            <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, marginBottom: '0.75rem' }}>{label}</div>
+                        <div key={key} style={{ border: `1px solid ${editDefaults ? '#93c5fd' : '#e2e8f0'}`, borderRadius: '10px', padding: '0.75rem 1rem', background: editDefaults ? '#eff6ff' : '#f8fafc' }}>
+                            <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, marginBottom: '0.35rem' }}>{label}</div>
                             {editDefaults ? (
                                 <input
                                     type="number" min="0" max="30" step="0.5"
                                     value={editDefaults[key]}
                                     onChange={(e) => setEditDefaults({ ...editDefaults, [key]: parseFloat(e.target.value) || 0 })}
-                                    style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #93c5fd', borderRadius: '8px', fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', background: '#ffffff' }}
+                                    style={{ width: '100%', padding: '0.35rem 0.6rem', border: '1px solid #93c5fd', borderRadius: '6px', fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', background: '#ffffff' }}
                                 />
                             ) : (
-                                <div style={{ fontSize: '2rem', fontWeight: 800, color }}>{defaults[key]}</div>
+                                <div style={{ fontSize: '1.35rem', fontWeight: 800, color }}>{defaults[key]}</div>
                             )}
-                            <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.3rem' }}>days / month</div>
+                            <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: '0.15rem' }}>days / month</div>
                         </div>
                     ))}
                 </div>

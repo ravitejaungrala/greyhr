@@ -78,12 +78,14 @@ def send_approval_email(recipient_emails, subject, body_html, cc_emails=None):
 
 def get_premium_template(title, employee_name, details, id_val, type_of_request="leave"):
     """Returns a clean, professional HTML email template for admin/HR approvals."""
-    c_primary = "#1d4ed8"
-    c_bg = "#f3f4f6"
+    c_primary = "#1a1a2e"
+    c_accent = "#ff4500"
+    c_bg = "#f7f7f8"
     c_card = "#ffffff"
-    c_text = "#4b5563"
-    c_heading = "#111827"
-    c_border = "#e5e7eb"
+    c_text = "#3d3d4e"
+    c_heading = "#1a1a2e"
+    c_border = "#e8e8ec"
+    c_muted = "#8b8b9e"
     
     base_ep = "leaves" if type_of_request == "leave" else "items"
     app_url = f"{BACKEND_URL}/admin/{base_ep}/approve-direct?id={id_val}&status=Approved"
@@ -98,10 +100,18 @@ def get_premium_template(title, employee_name, details, id_val, type_of_request=
         safe_v = escape(str(v))
         rows_html += f"""
         <tr>
-            <td style="padding: 11px 14px; border-bottom: 1px solid {c_border}; color: #6b7280; font-size: 13px; width: 35%;">{safe_k}</td>
-            <td style="padding: 11px 14px; border-bottom: 1px solid {c_border}; color: {c_heading}; font-size: 14px; font-weight: 600;">{safe_v}</td>
+            <td style="padding: 10px 16px; border-bottom: 1px solid {c_border}; color: {c_muted}; font-size: 13px; width: 38%; vertical-align: top;">{safe_k}</td>
+            <td style="padding: 10px 16px; border-bottom: 1px solid {c_border}; color: {c_heading}; font-size: 13px; font-weight: 600;">{safe_v}</td>
         </tr>
         """
+
+    # Contextual greeting and body based on request type
+    if type_of_request == "leave":
+        intro_line = f"{safe_employee_name} has applied for leave and it needs your approval. Please review the details below and take the necessary action."
+        action_note = "You can approve or reject this request directly from this email, or log in to the dashboard for more details."
+    else:
+        intro_line = f"{safe_employee_name} has raised a request for an item. Kindly review the details and respond at your earliest convenience."
+        action_note = "Use the buttons below to approve or reject, or visit the admin panel for the full request history."
 
     html = f"""
     <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -111,56 +121,99 @@ def get_premium_template(title, employee_name, details, id_val, type_of_request=
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{safe_title}</title>
     </head>
-    <body style="margin: 0; padding: 0; background-color: {c_bg}; font-family: 'Segoe UI', Arial, sans-serif;">
-        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: {c_bg}; padding: 32px 16px;">
+    <body style="margin: 0; padding: 0; background-color: {c_bg}; font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: {c_bg}; padding: 40px 16px;">
             <tr>
                 <td align="center">
-                    <table border="0" cellpadding="0" cellspacing="0" width="620" style="background-color: {c_card}; border-radius: 12px; overflow: hidden; border: 1px solid {c_border};">
+                    <table border="0" cellpadding="0" cellspacing="0" width="580" style="background-color: {c_card}; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+                        
+                        <!-- Header -->
                         <tr>
-                            <td align="left" style="background-color: {c_primary}; padding: 18px 24px;">
-                                <div style="color: #ffffff; font-size: 16px; font-weight: 700; letter-spacing: 0.2px;">
-                                    NeuzenAI HRMS
-                                </div>
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td style="padding: 28px 24px 20px 24px;">
-                                <h1 style="margin: 0 0 12px 0; font-size: 22px; color: {c_heading}; font-weight: 700; line-height: 1.3;">{safe_title}</h1>
-                                <p style="margin: 0 0 16px 0; font-size: 15px; color: {c_text}; line-height: 1.6;">
-                                    Hello HR Team,
-                                </p>
-                                <p style="margin: 0 0 22px 0; font-size: 15px; color: {c_text}; line-height: 1.6;">
-                                    A <strong>{request_label.lower()} request</strong> has been submitted by <strong>{safe_employee_name}</strong> and is pending your review.
-                                </p>
-
-                                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f9fafb; border-radius: 10px; border: 1px solid {c_border};">
-                                    {rows_html}
-                                </table>
-
-                                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 26px;">
+                            <td style="padding: 20px 28px; border-bottom: 1px solid {c_border};">
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%">
                                     <tr>
-                                        <td align="left">
-                                            <a href="{app_url}" style="display: inline-block; background-color: #16a34a; color: #ffffff; padding: 11px 20px; border-radius: 8px; font-size: 14px; font-weight: 700; text-decoration: none;">Approve Request</a>
-                                            &nbsp;
-                                            <a href="{rej_url}" style="display: inline-block; background-color: #dc2626; color: #ffffff; padding: 11px 20px; border-radius: 8px; font-size: 14px; font-weight: 700; text-decoration: none;">Reject Request</a>
+                                        <td>
+                                            <span style="font-size: 15px; font-weight: 700; color: {c_heading}; letter-spacing: -0.3px;">NeuzenAI</span>
+                                            <span style="font-size: 12px; color: {c_muted}; margin-left: 6px;">HR Management</span>
+                                        </td>
+                                        <td align="right">
+                                            <span style="display: inline-block; background-color: #fff3e0; color: #e65100; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Action Required</span>
                                         </td>
                                     </tr>
                                 </table>
-
-                                <div style="margin-top: 24px; border-top: 1px solid {c_border}; padding-top: 16px; text-align: left;">
-                                    <a href="https://neuzenaihr.web.app/admin" style="color: {c_primary}; font-size: 13px; font-weight: 600; text-decoration: none;">Open Admin Dashboard</a>
-                                </div>
-
-                                <p style="margin: 14px 0 0 0; font-size: 12px; color: #6b7280; line-height: 1.5;">
-                                    This is an automated email from NeuzenAI HRMS. Please do not reply to this message.
-                                </p>
                             </td>
                         </tr>
 
+                        <!-- Body -->
                         <tr>
-                            <td style="padding: 14px 24px; background-color: #f9fafb; text-align: left; border-top: 1px solid {c_border};">
-                                <p style="margin: 0; font-size: 12px; color: #9ca3af;">NeuzenAI HRMS | Internal Notification</p>
+                            <td style="padding: 28px 28px 12px 28px;">
+                                <p style="margin: 0 0 6px 0; font-size: 18px; color: {c_heading}; font-weight: 700; line-height: 1.3;">{safe_title}</p>
+                                <p style="margin: 0 0 20px 0; font-size: 13px; color: {c_muted};">Submitted just now</p>
+                                
+                                <p style="margin: 0 0 8px 0; font-size: 14px; color: {c_text}; line-height: 1.65;">
+                                    Hi there,
+                                </p>
+                                <p style="margin: 0 0 22px 0; font-size: 14px; color: {c_text}; line-height: 1.65;">
+                                    {intro_line}
+                                </p>
+
+                                <!-- Details Card -->
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fafafa; border-radius: 8px; border: 1px solid {c_border}; margin-bottom: 6px;">
+                                    <tr>
+                                        <td colspan="2" style="padding: 10px 16px; border-bottom: 1px solid {c_border};">
+                                            <span style="font-size: 11px; font-weight: 700; color: {c_muted}; text-transform: uppercase; letter-spacing: 0.8px;">{request_label} Details</span>
+                                        </td>
+                                    </tr>
+                                    {rows_html}
+                                </table>
+
+                                <p style="margin: 20px 0 22px 0; font-size: 13px; color: {c_muted}; line-height: 1.6;">
+                                    {action_note}
+                                </p>
+
+                                <!-- Action Buttons -->
+                                <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 8px;">
+                                    <tr>
+                                        <td style="padding-right: 10px;">
+                                            <a href="{app_url}" style="display: inline-block; background-color: #16a34a; color: #ffffff; padding: 10px 22px; border-radius: 6px; font-size: 13px; font-weight: 600; text-decoration: none; letter-spacing: 0.2px;">Approve</a>
+                                        </td>
+                                        <td>
+                                            <a href="{rej_url}" style="display: inline-block; background-color: #ffffff; color: #dc2626; padding: 9px 22px; border-radius: 6px; font-size: 13px; font-weight: 600; text-decoration: none; border: 1px solid #fca5a5; letter-spacing: 0.2px;">Reject</a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+
+                        <!-- Divider -->
+                        <tr>
+                            <td style="padding: 0 28px;">
+                                <div style="border-top: 1px solid {c_border};"></div>
+                            </td>
+                        </tr>
+
+                        <!-- Footer -->
+                        <tr>
+                            <td style="padding: 16px 28px 20px 28px;">
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                    <tr>
+                                        <td>
+                                            <a href="https://neuzenaihr.web.app/admin" style="color: {c_accent}; font-size: 12px; font-weight: 600; text-decoration: none;">Open Dashboard &rarr;</a>
+                                        </td>
+                                    </tr>
+                                </table>
+                                <p style="margin: 10px 0 0 0; font-size: 11px; color: #b0b0be; line-height: 1.5;">
+                                    You're receiving this because you're listed as an approver in NeuzenAI HRMS. If this doesn't look right, please contact your system administrator.
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Sub-footer -->
+                    <table border="0" cellpadding="0" cellspacing="0" width="580" style="margin-top: 16px;">
+                        <tr>
+                            <td align="center">
+                                <p style="margin: 0; font-size: 11px; color: #b0b0be;">NeuzenAI Pvt. Ltd. &middot; T-Hub Phase 2, Hyderabad</p>
                             </td>
                         </tr>
                     </table>
@@ -183,23 +236,28 @@ def send_leave_notification(employee_name, leave_details, leave_id, approver_id=
         if clean_ids:
             cursor = mongo_db.users.find({"employee_id": {"$in": clean_ids}}, {"email": 1, "_id": 0})
             cc_emails = [u["email"] for u in cursor if u.get("email")]
-        
-    subject = leave_details.get("subject") or f"Leave Request Pending Review | {employee_name}"
+    
+    leave_type = leave_details.get("leave_type", "Leave")
+    start = leave_details.get("start_date", "")
+    end = leave_details.get("end_date", "")
+    date_range = f"{start} to {end}" if start and end and start != end else (start or "TBD")
+    
+    subject = leave_details.get("subject") or f"{employee_name} – {leave_type} ({date_range})"
     
     # Extract details safely
     details = {
         "Employee": employee_name,
-        "Leave Type": leave_details.get("leave_type", "Leave"),
-        "Start Date": leave_details.get("start_date", "TBD"),
-        "End Date": leave_details.get("end_date", "TBD"),
-        "Reason": leave_details.get("reason", "No reason provided")
+        "Leave Type": leave_type,
+        "From": leave_details.get("start_date", "TBD"),
+        "To": leave_details.get("end_date", "TBD"),
+        "Reason": leave_details.get("reason", "Not specified")
     }
 
     # Add Dynamic Balance if available
     if "current_balance" in leave_details:
-        details["Remaining Balance"] = leave_details["current_balance"]
+        details["Balance After"] = leave_details["current_balance"]
     
-    html = get_premium_template("New Leave Request", employee_name, details, leave_id, "leave")
+    html = get_premium_template("Leave Request", employee_name, details, leave_id, "leave")
     return send_approval_email(recipients, subject, html, cc_emails)
 
 def send_item_notification(employee_name, item_details, request_id, approver_id=None, cc_ids=None):
@@ -210,15 +268,16 @@ def send_item_notification(employee_name, item_details, request_id, approver_id=
         cursor = mongo_db.users.find({"employee_id": {"$in": cc_ids}}, {"email": 1, "_id": 0})
         cc_emails = [u["email"] for u in cursor if "email" in u]
 
-    subject = item_details.get("subject", f"Item Request Pending Review | {employee_name}")
+    item_name = item_details.get("item_name", "Item")
+    subject = item_details.get("subject", f"{employee_name} – {item_name} Request")
     
     details = {
         "Employee": employee_name,
-        "Item": item_details.get("item_name"),
+        "Item": item_name,
         "Quantity": item_details.get("quantity"),
-        "Reason": item_details.get("reason")
+        "Reason": item_details.get("reason", "Not specified")
     }
 
-    html = get_premium_template("New Item Request", employee_name, details, request_id, "item")
+    html = get_premium_template("Item Request", employee_name, details, request_id, "item")
     return send_approval_email(recipients, subject, html, cc_emails)
     

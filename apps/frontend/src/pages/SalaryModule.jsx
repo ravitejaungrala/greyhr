@@ -55,11 +55,15 @@ const SalaryModule = ({ userId }) => {
     };
 
     const handleExport = (format) => {
-        if (selectedMonths.length === 0) {
-            alert("Please select at least one month to export.");
+        const releasedSelected = selectedMonths.filter(m => {
+            const ps = payslips.find(p => p.month === m);
+            return ps && ps.released;
+        });
+        if (releasedSelected.length === 0) {
+            alert("Please select at least one released month to export.");
             return;
         }
-        let url = `${apiUrl}/employee/salary/statement/${format}?employee_id=${userId}&selected_months=${selectedMonths.join(',')}`;
+        let url = `${apiUrl}/employee/salary/statement/${format}?employee_id=${userId}&selected_months=${releasedSelected.join(',')}`;
         window.open(url, '_blank');
     };
 
