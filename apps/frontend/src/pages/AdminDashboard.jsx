@@ -160,6 +160,7 @@ const AdminDashboard = ({ activeTab, user }) => {
         bank_name: '',
         bank_account: '',
         bank_ifsc: '',
+        cif_number: '',
         accessible_companies: [],
         tax_deduction_rate: 0,
         pf_deduction_rate: 0,
@@ -486,6 +487,12 @@ const AdminDashboard = ({ activeTab, user }) => {
                     pf_no: empRoleSetup.pf_no,
                     bank_name: empRoleSetup.bank_name,
                     bank_account: empRoleSetup.bank_account,
+                    bank_ifsc: empRoleSetup.bank_ifsc,
+                    cif_number: empRoleSetup.cif_number,
+                    tenth: empRoleSetup.tenth,
+                    inter: empRoleSetup.inter,
+                    ug: empRoleSetup.ug,
+                    pg: empRoleSetup.pg,
                     in_hand_salary: parseInt(empRoleSetup.in_hand_salary || 0),
                     accessible_companies: empRoleSetup.accessible_companies,
                     tax_deduction_rate: parseFloat(empRoleSetup.tax_deduction_rate || 0),
@@ -553,9 +560,40 @@ const AdminDashboard = ({ activeTab, user }) => {
             pf_no: emp.pf_no || '',
             bank_name: emp.bank_details?.bank_name || '',
             bank_account: emp.bank_details?.account_number || '',
+            bank_ifsc: emp.bank_details?.ifsc || emp.bank_details?.ifsc_code || '',
+            cif_number: emp.bank_details?.cif_number || '',
             accessible_companies: emp.accessible_companies || (getEmployeeCompanyKey(emp) ? [getEmployeeCompanyKey(emp)] : []),
             tax_deduction_rate: emp.tax_deduction_rate || 0,
-            pf_deduction_rate: emp.pf_deduction_rate || 0
+            pf_deduction_rate: emp.pf_deduction_rate || 0,
+            tenth: {
+                school: emp.education?.ssc?.institution || '',
+                board: emp.education?.ssc?.board || emp.education?.ssc?.university || '',
+                percentage: emp.education?.ssc?.score || '',
+                year_of_passing: emp.education?.ssc?.end_year || ''
+            },
+            inter: {
+                college: emp.education?.intermediate?.institution || '',
+                board: emp.education?.intermediate?.board || emp.education?.intermediate?.university || '',
+                stream: emp.education?.intermediate?.department || '',
+                percentage: emp.education?.intermediate?.score || '',
+                year_of_passing: emp.education?.intermediate?.end_year || ''
+            },
+            ug: {
+                college: emp.education?.ug?.institution || '',
+                university: emp.education?.ug?.university || '',
+                degree: emp.education?.ug?.degree || '',
+                branch: emp.education?.ug?.department || '',
+                cgpa: emp.education?.ug?.score || '',
+                year_of_passing: emp.education?.ug?.end_year || ''
+            },
+            pg: {
+                college: emp.education?.pg?.institution || '',
+                university: emp.education?.pg?.university || '',
+                degree: emp.education?.pg?.degree || '',
+                branch: emp.education?.pg?.department || '',
+                cgpa: emp.education?.pg?.score || '',
+                year_of_passing: emp.education?.pg?.end_year || ''
+            }
         });
     };
 
@@ -2416,6 +2454,14 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             <input type="text" value={empRoleSetup.bank_account} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_account: e.target.value })} style={editInputStyle} />
                                         </div>
                                         <div>
+                                            <label style={editLabelStyle}>Bank IFSC Code</label>
+                                            <input type="text" value={empRoleSetup.bank_ifsc} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, bank_ifsc: e.target.value })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>CIF Number</label>
+                                            <input type="text" value={empRoleSetup.cif_number} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, cif_number: e.target.value })} style={editInputStyle} />
+                                        </div>
+                                        <div>
                                             <label style={editLabelStyle}>Privilege Leave / Month</label>
                                             <input type="number" step="0.1" disabled={empRoleSetup.employment_type === 'Intern'} value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.privilege_leave_rate} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, privilege_leave_rate: e.target.value })} style={{ ...editInputStyle, opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }} />
                                         </div>
@@ -2426,6 +2472,59 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         <div>
                                             <label style={editLabelStyle}>Casual Leave / Month</label>
                                             <input type="number" step="0.1" disabled={empRoleSetup.employment_type === 'Intern'} value={empRoleSetup.employment_type === 'Intern' ? 0 : empRoleSetup.casual_leave_rate} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, casual_leave_rate: e.target.value })} style={{ ...editInputStyle, opacity: empRoleSetup.employment_type === 'Intern' ? 0.5 : 1 }} />
+                                        </div>
+
+                                        <div style={{ gridColumn: 'span 3', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', marginBottom: '0.25rem', borderTop: '1px solid #f1f5f9', paddingTop: '1rem' }}>
+                                            <GraduationCap size={16} color="#2563eb" />
+                                            <h4 style={{ margin: 0, color: '#0f172a', fontSize: '0.88rem', fontWeight: 800 }}>Education Details</h4>
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>10th School</label>
+                                            <input type="text" value={empRoleSetup.tenth.school} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, tenth: { ...empRoleSetup.tenth, school: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>10th Board</label>
+                                            <input type="text" value={empRoleSetup.tenth.board} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, tenth: { ...empRoleSetup.tenth, board: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>10th % / CGPA</label>
+                                            <input type="text" value={empRoleSetup.tenth.percentage} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, tenth: { ...empRoleSetup.tenth, percentage: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>Inter College</label>
+                                            <input type="text" value={empRoleSetup.inter.college} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, inter: { ...empRoleSetup.inter, college: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>Inter Board</label>
+                                            <input type="text" value={empRoleSetup.inter.board} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, inter: { ...empRoleSetup.inter, board: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>Inter Stream</label>
+                                            <input type="text" value={empRoleSetup.inter.stream} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, inter: { ...empRoleSetup.inter, stream: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>UG College</label>
+                                            <input type="text" value={empRoleSetup.ug.college} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, ug: { ...empRoleSetup.ug, college: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>UG University</label>
+                                            <input type="text" value={empRoleSetup.ug.university} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, ug: { ...empRoleSetup.ug, university: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>UG Degree</label>
+                                            <input type="text" value={empRoleSetup.ug.degree} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, ug: { ...empRoleSetup.ug, degree: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>UG Branch</label>
+                                            <input type="text" value={empRoleSetup.ug.branch} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, ug: { ...empRoleSetup.ug, branch: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>UG CGPA / %</label>
+                                            <input type="text" value={empRoleSetup.ug.cgpa} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, ug: { ...empRoleSetup.ug, cgpa: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>UG Passing Year</label>
+                                            <input type="text" value={empRoleSetup.ug.year_of_passing} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, ug: { ...empRoleSetup.ug, year_of_passing: e.target.value } })} style={editInputStyle} />
                                         </div>
 
                                         <div style={{ gridColumn: 'span 3', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', marginBottom: '0.25rem', borderTop: '1px solid #f1f5f9', paddingTop: '1rem' }}>

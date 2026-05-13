@@ -711,6 +711,10 @@ class EmployeeUpdate(BaseModel):
     education_cert_base64: Optional[str] = None
     inter_cert_base64: Optional[str] = None
     ssc_cert_base64: Optional[str] = None
+    tenth: Optional[Dict[str, Any]] = None
+    inter: Optional[Dict[str, Any]] = None
+    ug: Optional[Dict[str, Any]] = None
+    pg: Optional[Dict[str, Any]] = None
 
 
 @router.post("/auth/admin/approve")
@@ -829,9 +833,37 @@ def update_employee_details(employee_id: str, update: EmployeeUpdate):
             continue
         if k in ["bank_account", "bank_ifsc", "bank_name", "cif_number"]:
             if k == "bank_account": set_ops["bank_details.account_number"] = v
-            elif k == "bank_ifsc": set_ops["bank_details.ifsc"] = v
+            elif k == "bank_ifsc":
+                set_ops["bank_details.ifsc"] = v
+                set_ops["bank_details.ifsc_code"] = v
             elif k == "bank_name": set_ops["bank_details.bank_name"] = v
             elif k == "cif_number": set_ops["bank_details.cif_number"] = v
+        elif k in ["tenth", "inter", "ug", "pg"] and isinstance(v, dict):
+            if k == "tenth":
+                if v.get("school") is not None: set_ops["education.ssc.institution"] = v.get("school")
+                if v.get("board") is not None: set_ops["education.ssc.board"] = v.get("board")
+                if v.get("percentage") is not None: set_ops["education.ssc.score"] = v.get("percentage")
+                if v.get("year_of_passing") is not None: set_ops["education.ssc.end_year"] = v.get("year_of_passing")
+            elif k == "inter":
+                if v.get("college") is not None: set_ops["education.intermediate.institution"] = v.get("college")
+                if v.get("board") is not None: set_ops["education.intermediate.board"] = v.get("board")
+                if v.get("stream") is not None: set_ops["education.intermediate.department"] = v.get("stream")
+                if v.get("percentage") is not None: set_ops["education.intermediate.score"] = v.get("percentage")
+                if v.get("year_of_passing") is not None: set_ops["education.intermediate.end_year"] = v.get("year_of_passing")
+            elif k == "ug":
+                if v.get("college") is not None: set_ops["education.ug.institution"] = v.get("college")
+                if v.get("university") is not None: set_ops["education.ug.university"] = v.get("university")
+                if v.get("degree") is not None: set_ops["education.ug.degree"] = v.get("degree")
+                if v.get("branch") is not None: set_ops["education.ug.department"] = v.get("branch")
+                if v.get("cgpa") is not None: set_ops["education.ug.score"] = v.get("cgpa")
+                if v.get("year_of_passing") is not None: set_ops["education.ug.end_year"] = v.get("year_of_passing")
+            elif k == "pg":
+                if v.get("college") is not None: set_ops["education.pg.institution"] = v.get("college")
+                if v.get("university") is not None: set_ops["education.pg.university"] = v.get("university")
+                if v.get("degree") is not None: set_ops["education.pg.degree"] = v.get("degree")
+                if v.get("branch") is not None: set_ops["education.pg.department"] = v.get("branch")
+                if v.get("cgpa") is not None: set_ops["education.pg.score"] = v.get("cgpa")
+                if v.get("year_of_passing") is not None: set_ops["education.pg.end_year"] = v.get("year_of_passing")
         elif k == "internship_end_date" or k == "internship_completed":
 
             set_ops[k] = v
