@@ -557,7 +557,7 @@ const AdminDashboard = ({ activeTab, user }) => {
             role: emp.role || 'employee',
             in_hand_salary: emp.in_hand_salary || 0,
             pan_no: emp.pan_no || '',
-            pf_no: emp.pf_no || '',
+            pf_no: emp.pf_no || emp.pf_number || '',
             bank_name: emp.bank_details?.bank_name || '',
             bank_account: emp.bank_details?.account_number || '',
             bank_ifsc: emp.bank_details?.ifsc || emp.bank_details?.ifsc_code || '',
@@ -569,14 +569,14 @@ const AdminDashboard = ({ activeTab, user }) => {
                 school: emp.education?.ssc?.institution || '',
                 board: emp.education?.ssc?.board || emp.education?.ssc?.university || '',
                 percentage: emp.education?.ssc?.score || '',
-                year_of_passing: emp.education?.ssc?.end_year || ''
+                year_of_passing: emp.education?.ssc?.end_year || emp.education?.ssc?.year_of_passing || ''
             },
             inter: {
                 college: emp.education?.intermediate?.institution || '',
                 board: emp.education?.intermediate?.board || emp.education?.intermediate?.university || '',
                 stream: emp.education?.intermediate?.department || '',
                 percentage: emp.education?.intermediate?.score || '',
-                year_of_passing: emp.education?.intermediate?.end_year || ''
+                year_of_passing: emp.education?.intermediate?.end_year || emp.education?.intermediate?.year_of_passing || ''
             },
             ug: {
                 college: emp.education?.ug?.institution || '',
@@ -2491,6 +2491,10 @@ const AdminDashboard = ({ activeTab, user }) => {
                                             <input type="text" value={empRoleSetup.tenth.percentage} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, tenth: { ...empRoleSetup.tenth, percentage: e.target.value } })} style={editInputStyle} />
                                         </div>
                                         <div>
+                                            <label style={editLabelStyle}>10th Passing Year</label>
+                                            <input type="text" value={empRoleSetup.tenth.year_of_passing} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, tenth: { ...empRoleSetup.tenth, year_of_passing: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
                                             <label style={editLabelStyle}>Inter College</label>
                                             <input type="text" value={empRoleSetup.inter.college} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, inter: { ...empRoleSetup.inter, college: e.target.value } })} style={editInputStyle} />
                                         </div>
@@ -2501,6 +2505,14 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         <div>
                                             <label style={editLabelStyle}>Inter Stream</label>
                                             <input type="text" value={empRoleSetup.inter.stream} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, inter: { ...empRoleSetup.inter, stream: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>Inter % / CGPA</label>
+                                            <input type="text" value={empRoleSetup.inter.percentage} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, inter: { ...empRoleSetup.inter, percentage: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>Inter Passing Year</label>
+                                            <input type="text" value={empRoleSetup.inter.year_of_passing} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, inter: { ...empRoleSetup.inter, year_of_passing: e.target.value } })} style={editInputStyle} />
                                         </div>
                                         <div>
                                             <label style={editLabelStyle}>UG College</label>
@@ -2525,6 +2537,43 @@ const AdminDashboard = ({ activeTab, user }) => {
                                         <div>
                                             <label style={editLabelStyle}>UG Passing Year</label>
                                             <input type="text" value={empRoleSetup.ug.year_of_passing} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, ug: { ...empRoleSetup.ug, year_of_passing: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>PG College</label>
+                                            <input type="text" value={empRoleSetup.pg.college} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pg: { ...empRoleSetup.pg, college: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>PG University</label>
+                                            <input type="text" value={empRoleSetup.pg.university} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pg: { ...empRoleSetup.pg, university: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>PG Degree</label>
+                                            <input type="text" value={empRoleSetup.pg.degree} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pg: { ...empRoleSetup.pg, degree: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>PG Branch</label>
+                                            <input type="text" value={empRoleSetup.pg.branch} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pg: { ...empRoleSetup.pg, branch: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>PG CGPA / %</label>
+                                            <input type="text" value={empRoleSetup.pg.cgpa} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pg: { ...empRoleSetup.pg, cgpa: e.target.value } })} style={editInputStyle} />
+                                        </div>
+                                        <div>
+                                            <label style={editLabelStyle}>PG Passing Year</label>
+                                            <input type="text" value={empRoleSetup.pg.year_of_passing} onChange={(e) => setEmpRoleSetup({ ...empRoleSetup, pg: { ...empRoleSetup.pg, year_of_passing: e.target.value } })} style={editInputStyle} />
+                                        </div>
+
+                                        <div style={{ gridColumn: 'span 3', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', marginBottom: '0.25rem', borderTop: '1px solid #f1f5f9', paddingTop: '1rem' }}>
+                                            <FolderOpen size={16} color="#0ea5e9" />
+                                            <h4 style={{ margin: 0, color: '#0f172a', fontSize: '0.88rem', fontWeight: 800 }}>Current Saved Documents</h4>
+                                        </div>
+                                        <div style={{ gridColumn: 'span 3', display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.75rem' }}>
+                                            <a href={selectedApprovedEmp.passport_photo_url ? `${apiUrl}/admin/photos/${selectedApprovedEmp.passport_photo_url}` : '#'} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ pointerEvents: selectedApprovedEmp.passport_photo_url ? 'auto' : 'none', opacity: selectedApprovedEmp.passport_photo_url ? 1 : 0.5, justifyContent: 'center' }}>Passport Photo</a>
+                                            <a href={selectedApprovedEmp.pan_card_url ? `${apiUrl}/admin/photos/${selectedApprovedEmp.pan_card_url}` : '#'} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ pointerEvents: selectedApprovedEmp.pan_card_url ? 'auto' : 'none', opacity: selectedApprovedEmp.pan_card_url ? 1 : 0.5, justifyContent: 'center' }}>PAN Card</a>
+                                            <a href={selectedApprovedEmp.bank_details?.passbook_url ? `${apiUrl}/admin/photos/${selectedApprovedEmp.bank_details?.passbook_url}` : '#'} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ pointerEvents: selectedApprovedEmp.bank_details?.passbook_url ? 'auto' : 'none', opacity: selectedApprovedEmp.bank_details?.passbook_url ? 1 : 0.5, justifyContent: 'center' }}>Bank Passbook</a>
+                                            <a href={selectedApprovedEmp.education?.ug?.cert_url ? `${apiUrl}/admin/photos/${selectedApprovedEmp.education?.ug?.cert_url}` : '#'} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ pointerEvents: selectedApprovedEmp.education?.ug?.cert_url ? 'auto' : 'none', opacity: selectedApprovedEmp.education?.ug?.cert_url ? 1 : 0.5, justifyContent: 'center' }}>UG Certificate</a>
+                                            <a href={selectedApprovedEmp.education?.intermediate?.cert_url ? `${apiUrl}/admin/photos/${selectedApprovedEmp.education?.intermediate?.cert_url}` : '#'} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ pointerEvents: selectedApprovedEmp.education?.intermediate?.cert_url ? 'auto' : 'none', opacity: selectedApprovedEmp.education?.intermediate?.cert_url ? 1 : 0.5, justifyContent: 'center' }}>Inter Certificate</a>
+                                            <a href={selectedApprovedEmp.education?.ssc?.cert_url ? `${apiUrl}/admin/photos/${selectedApprovedEmp.education?.ssc?.cert_url}` : '#'} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ pointerEvents: selectedApprovedEmp.education?.ssc?.cert_url ? 'auto' : 'none', opacity: selectedApprovedEmp.education?.ssc?.cert_url ? 1 : 0.5, justifyContent: 'center' }}>SSC Certificate</a>
                                         </div>
 
                                         <div style={{ gridColumn: 'span 3', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', marginBottom: '0.25rem', borderTop: '1px solid #f1f5f9', paddingTop: '1rem' }}>
