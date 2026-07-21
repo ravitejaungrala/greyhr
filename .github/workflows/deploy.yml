@@ -3,7 +3,7 @@ name: Deploy Backend to AWS Lambda
 on:
   push:
     branches:
-      - main
+      - staging
     paths:
       - 'apps/backend/**'
 
