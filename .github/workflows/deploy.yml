@@ -3,14 +3,22 @@ name: Deploy Backend to AWS Lambda
 on:
   push:
     branches:
+      - main
       - staging
     paths:
       - 'apps/backend/**'
+  workflow_dispatch:
 
 env:
   AWS_REGION: ap-south-1
   ECR_REPOSITORY: hrms-dhanadurga
   LAMBDA_FUNCTION: dhanadurga-hrms
+
+# Both branches deploy the same function, so never let two runs overwrite each
+# other mid-deploy. A newer run waits for the one in flight to finish.
+concurrency:
+  group: lambda-deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -37,18 +45,29 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
-                       -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
-                       apps/backend
+          # <sha>  immutable, lets any past build be redeployed
+          # latest what the Lambda runs right now
+          docker build \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+            apps/backend
+
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Update Lambda Function Code
+      - name: Deploy to Lambda
         run: |
           FN="${{ env.LAMBDA_FUNCTION }}"
           REGION="${{ env.AWS_REGION }}"
           IMAGE="${{ steps.build-image.outputs.image }}"
+
+          echo "Branch   : ${{ github.ref_name }}"
+          echo "Commit   : ${{ github.sha }}"
+          echo "Function : $FN"
+          echo "Image    : $IMAGE"
+          echo ""
 
           if aws lambda get-function --function-name "$FN" --region "$REGION" >/dev/null 2>&1; then
             aws lambda update-function-code \
@@ -60,18 +79,15 @@ jobs:
               --function-name "$FN" \
               --region "$REGION"
 
-            echo "Lambda deployment complete."
+            echo "Deployment complete."
             aws lambda get-function \
               --function-name "$FN" \
               --region "$REGION" \
               --query 'Configuration.[FunctionName,LastModified,State,PackageType]' \
               --output table
           else
-            echo "::warning::Lambda function '$FN' does not exist in this account - skipping deploy."
+            echo "::warning::Lambda '$FN' does not exist yet - image pushed, deploy skipped."
             echo ""
-            echo "The image was pushed successfully:"
+            echo "Create it once from this image, then every push deploys automatically:"
             echo "  $IMAGE"
-            echo ""
-            echo "Create the function once from that image (Lambda -> Create function ->"
-            echo "Container image), then future pushes will deploy to it automatically."
           fi
