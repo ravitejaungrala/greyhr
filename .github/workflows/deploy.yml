@@ -9,7 +9,7 @@ on:
 
 env:
   AWS_REGION: ap-south-1
-  ECR_REPOSITORY: dhanadurga-hrms
+  ECR_REPOSITORY: hrms-dhanadurga
   LAMBDA_FUNCTION: dhanadurga-hrms
 
 jobs:
@@ -46,22 +46,32 @@ jobs:
 
       - name: Update Lambda Function Code
         run: |
-          aws lambda update-function-code \
-            --function-name ${{ env.LAMBDA_FUNCTION }} \
-            --image-uri ${{ steps.build-image.outputs.image }} \
-            --region ${{ env.AWS_REGION }}
+          FN="${{ env.LAMBDA_FUNCTION }}"
+          REGION="${{ env.AWS_REGION }}"
+          IMAGE="${{ steps.build-image.outputs.image }}"
 
-      - name: Wait for Lambda Update to Complete
-        run: |
-          aws lambda wait function-updated \
-            --function-name ${{ env.LAMBDA_FUNCTION }} \
-            --region ${{ env.AWS_REGION }}
+          if aws lambda get-function --function-name "$FN" --region "$REGION" >/dev/null 2>&1; then
+            aws lambda update-function-code \
+              --function-name "$FN" \
+              --image-uri "$IMAGE" \
+              --region "$REGION"
 
-      - name: Verify Deployment
-        run: |
-          echo "✅ Lambda deployment complete."
-          aws lambda get-function \
-            --function-name ${{ env.LAMBDA_FUNCTION }} \
-            --region ${{ env.AWS_REGION }} \
-            --query 'Configuration.[FunctionName,LastModified,State,PackageType]' \
-            --output table
+            aws lambda wait function-updated \
+              --function-name "$FN" \
+              --region "$REGION"
+
+            echo "Lambda deployment complete."
+            aws lambda get-function \
+              --function-name "$FN" \
+              --region "$REGION" \
+              --query 'Configuration.[FunctionName,LastModified,State,PackageType]' \
+              --output table
+          else
+            echo "::warning::Lambda function '$FN' does not exist in this account - skipping deploy."
+            echo ""
+            echo "The image was pushed successfully:"
+            echo "  $IMAGE"
+            echo ""
+            echo "Create the function once from that image (Lambda -> Create function ->"
+            echo "Container image), then future pushes will deploy to it automatically."
+          fi
