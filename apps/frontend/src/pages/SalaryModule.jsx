@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    Banknote, IndianRupee, BarChart3, FileText, 
-    Info, History, Lock, Download, CheckCircle2 
+import {
+    CreditCard, IndianRupee, BarChart3, FileText,
+    Info, History, Lock
 } from 'lucide-react';
 import { API_URL } from '../config';
+import toast from '../lib/toast';
 
 const SalaryModule = ({ userId }) => {
     const [payslips, setPayslips] = useState([]);
@@ -49,7 +50,7 @@ const SalaryModule = ({ userId }) => {
     };
 
     const toggleMonth = (month) => {
-        setSelectedMonths(prev => 
+        setSelectedMonths(prev =>
             prev.includes(month) ? prev.filter(m => m !== month) : [...prev, month]
         );
     };
@@ -60,179 +61,196 @@ const SalaryModule = ({ userId }) => {
             return ps && ps.released;
         });
         if (releasedSelected.length === 0) {
-            alert("Please select at least one released month to export.");
+            toast.error("Please select at least one released month to export.");
             return;
         }
         let url = `${apiUrl}/employee/salary/statement/${format}?employee_id=${userId}&selected_months=${releasedSelected.join(',')}`;
         window.open(url, '_blank');
     };
 
-    if (loading) return <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>Fetching salary details...</div>;
+    const columnCount = 6 + (settings.enable_pf ? 1 : 0) + (settings.enable_tax ? 1 : 0);
+    const summaryCols = 5 + (settings.enable_tax ? 1 : 0);
+
+    if (loading) {
+        return (
+            <div className="ds">
+                <div className="ds-wrap">
+                    <div className="ds-loading">
+                        <div className="ds-spinner" />
+                        Fetching salary details…
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="salary-page">
-            <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Banknote size={32} color="var(--primary)" /> Salary Module</h1>
-            <div className="card shadow-sm" style={{ marginBottom: '2rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><IndianRupee size={20} color="var(--secondary)" /> Current Month Summary</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1.5rem' }}>
-                    <div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Net Salary</div>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{formatCurrency(salaryOverview.net_salary)}</div>
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Gross Salary</div>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{formatCurrency(salaryOverview.gross_salary)}</div>
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>LOP Deductions</div>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#EF4444' }}>{formatCurrency(salaryOverview.lop_deduction || 0)}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({salaryOverview.lop_days || 0} days)</div>
-                    </div>
-                    {settings.enable_pf && (
-                        <div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Other (PF/PT)</div>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#EF4444' }}>{formatCurrency(salaryOverview.pf_pt || 0)}</div>
-                        </div>
-                    )}
-                    <div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Attendance Penalty</div>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#EF4444' }}>{formatCurrency(salaryOverview.attendance_penalty || 0)}</div>
-                    </div>
-                    {settings.enable_tax && (
-                        <div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Tax (TDS)</div>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--primary)' }}>{formatCurrency(salaryOverview.tax)}</div>
-                        </div>
-                    )}
-                </div>
-            </div>
+        <div className="ds">
+            <div className="ds-wrap">
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <button 
-                        className="btn btn-secondary"
-                        onClick={() => setSelectedMonths(payslips.map(p => p.month))}
-                        style={{ fontSize: '0.85rem' }}
-                    >
-                        Select All
-                    </button>
-                    <button 
-                        className="btn btn-secondary"
-                        onClick={() => setSelectedMonths([])}
-                        style={{ fontSize: '0.85rem' }}
-                        disabled={selectedMonths.length === 0}
-                    >
-                        Clear Selection
-                    </button>
+                {/* ---------- Header ---------- */}
+                <div className="ds-brand" style={{ marginBottom: 24 }}>
+                    <div className="ds-icon"><CreditCard size={17} /></div>
+                    <h1>Salary Module</h1>
                 </div>
 
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    {selectedMonths.length > 0 && (
-                        <div style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 'bold' }}>
-                            {selectedMonths.length} selected
-                            <span 
-                                onClick={() => setSelectedMonths([])}
-                                style={{ marginLeft: '0.5rem', cursor: 'pointer', color: 'var(--text-muted)', textDecoration: 'underline', fontWeight: 'normal' }}
-                            >
-                                Clear
+                {/* ---------- Current month summary ---------- */}
+                <div className="ds-panel roomy stacked">
+                    <div className="ds-panel-title serif-lg">
+                        <IndianRupee size={15} className="ic" /> Current month summary
+                    </div>
+                    <div className={`ds-summary-grid${summaryCols === 6 ? ' six' : ''}`}>
+                        <div className="ds-summary-item">
+                            <div className="label">Net salary</div>
+                            <div className="value neutral">{formatCurrency(salaryOverview.net_salary)}</div>
+                        </div>
+                        <div className="ds-summary-item">
+                            <div className="label">Gross salary</div>
+                            <div className="value neutral">{formatCurrency(salaryOverview.gross_salary)}</div>
+                        </div>
+                        <div className="ds-summary-item">
+                            <div className="label">LOP deductions</div>
+                            <div className="value negative">{formatCurrency(salaryOverview.lop_deduction || 0)}</div>
+                            <div className="sub">{salaryOverview.lop_days || 0} days</div>
+                        </div>
+                        <div className="ds-summary-item">
+                            <div className="label">Other (PF/PT)</div>
+                            <div className="value negative">
+                                {settings.enable_pf ? formatCurrency(salaryOverview.pf_pt || 0) : '–'}
+                            </div>
+                        </div>
+                        <div className="ds-summary-item">
+                            <div className="label">Attendance penalty</div>
+                            <div className="value negative">{formatCurrency(salaryOverview.attendance_penalty || 0)}</div>
+                        </div>
+                        {settings.enable_tax && (
+                            <div className="ds-summary-item">
+                                <div className="label">Tax (TDS)</div>
+                                <div className="value negative">{formatCurrency(salaryOverview.tax)}</div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* ---------- Toolbar ---------- */}
+                <div className="ds-toolbar">
+                    <div className="ds-btn-group">
+                        <button
+                            className="ds-btn"
+                            onClick={() => setSelectedMonths(payslips.map(p => p.month))}
+                        >
+                            Select all
+                        </button>
+                        <button
+                            className="ds-btn"
+                            onClick={() => setSelectedMonths([])}
+                            disabled={selectedMonths.length === 0}
+                        >
+                            Clear selection
+                        </button>
+                        {selectedMonths.length > 0 && (
+                            <span className="ds-pill accent" style={{ alignSelf: 'center' }}>
+                                {selectedMonths.length} selected
                             </span>
-                        </div>
-                    )}
-                    <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => handleExport('excel')}>
-                        <BarChart3 size={16} /> Excel Statement
-                    </button>
-                    <button className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => handleExport('pdf')}>
-                        <FileText size={16} /> PDF Portfolio
-                    </button>
-                </div>
-            </div>
+                        )}
+                    </div>
 
-            {joiningDate && (
-                <div style={{ 
-                    background: '#fdf4ff', 
-                    border: '1px solid #d8b4fe', 
-                    padding: '1rem', 
-                    borderRadius: '8px', 
-                    marginBottom: '1.5rem',
-                    color: 'var(--text-main)',
-                    fontSize: '0.9rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem'
-                }}>
-                    <Info size={18} color="var(--violet)" /> 
-                    <span>You joined NeuZen AI on <strong>{new Date(joiningDate).toLocaleDateString()}</strong>. Salary history is shown based on your tenure.</span>
+                    <div className="ds-btn-group">
+                        <button className="ds-btn accent" onClick={() => handleExport('excel')}>
+                            <BarChart3 size={15} /> Excel statement
+                        </button>
+                        <button className="ds-btn primary" onClick={() => handleExport('pdf')}>
+                            <FileText size={15} /> PDF portfolio
+                        </button>
+                    </div>
                 </div>
-            )}
 
-            <div className="card shadow-sm" style={{ overflowX: 'auto', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><History size={20} color="var(--primary)" /> Salary Disbursement History</h2>
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
-                    <thead>
-                        <tr style={{ background: '#f8fafc', textAlign: 'left' }}>
-                            <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>
-                                <input 
-                                    type="checkbox" 
-                                    onChange={(e) => setSelectedMonths(e.target.checked ? payslips.map(p => p.month) : [])}
-                                    checked={selectedMonths.length === payslips.length && payslips.length > 0}
-                                    style={{ cursor: 'pointer' }}
-                                />
-                            </th>
-                            <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>Month</th>
-                            <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>Gross</th>
-                            <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>LOP</th>
-                            <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>Penalty</th>
-                            {settings.enable_pf && <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>PF/Other</th>}
-                            {settings.enable_tax && <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>Tax</th>}
-                            <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>Net Paid</th>
-                            <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {payslips.length === 0 ? <tr><td colSpan="8" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No salary history found.</td></tr> :
-                            payslips.map((p, i) => (
-                                <tr key={i} style={{ 
-                                    borderBottom: '1px solid var(--border-color)', 
-                                    background: selectedMonths.includes(p.month) ? '#f5f3ff' : 'transparent',
-                                    transition: 'background 0.2s'
-                                }}>
-                                    <td style={{ padding: '1rem' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={selectedMonths.includes(p.month)}
-                                            onChange={() => toggleMonth(p.month)}
-                                            style={{ cursor: 'pointer' }}
-                                        />
-                                    </td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <div style={{ fontWeight: 'bold' }}>{p.month}</div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.date}</div>
-                                    </td>
-                                    <td style={{ padding: '1rem' }}>{formatCurrency(p.gross_salary)}</td>
-                                    <td style={{ padding: '1rem', color: '#EF4444' }}>{formatCurrency(p.lop_deduction)}</td>
-                                    <td style={{ padding: '1rem', color: '#EF4444' }}>{formatCurrency(p.attendance_penalty)}</td>
-                                    {settings.enable_pf && <td style={{ padding: '1rem', color: '#EF4444' }}>{formatCurrency(p.pf_pt)}</td>}
-                                    {settings.enable_tax && <td style={{ padding: '1rem', color: 'var(--primary)' }}>{formatCurrency(p.tax)}</td>}
-                                    <td style={{ padding: '1rem', fontWeight: 'bold', color: 'var(--secondary)' }}>{formatCurrency(p.net_salary)}</td>
-                                    <td style={{ padding: '1rem' }}>
-                                        {p.released ? (
-                                            <button 
-                                                className="btn btn-secondary" 
-                                                style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }} 
-                                                onClick={() => window.open(`${apiUrl}/employee/payslip/download/${p.month}?employee_id=${userId}`, '_blank')}
-                                            >
-                                                View Slip
-                                            </button>
-                                        ) : (
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                 <Lock size={14} /> Pending
-                                            </span>
-                                        )}
-                                    </td>
+                {/* ---------- Tenure notice ---------- */}
+                {joiningDate && (
+                    <div className="ds-notice">
+                        <Info size={16} />
+                        <span>
+                            You joined NeuZen AI on <strong>{new Date(joiningDate).toLocaleDateString()}</strong>.
+                            {' '}Salary history is shown based on your tenure.
+                        </span>
+                    </div>
+                )}
+
+                {/* ---------- Disbursement history ---------- */}
+                <div className="ds-panel roomy" style={{ overflowX: 'auto' }}>
+                    <div className="ds-panel-title serif-lg">
+                        <History size={15} className="ic" /> Salary disbursement history
+                    </div>
+                    <table className="ds-table filled">
+                        <thead>
+                            <tr>
+                                <th style={{ width: 36 }}>
+                                    <input
+                                        type="checkbox"
+                                        onChange={(e) => setSelectedMonths(e.target.checked ? payslips.map(p => p.month) : [])}
+                                        checked={selectedMonths.length === payslips.length && payslips.length > 0}
+                                    />
+                                </th>
+                                <th>Month</th>
+                                <th>Gross</th>
+                                <th>LOP</th>
+                                <th>Penalty</th>
+                                {settings.enable_pf && <th>PF/Other</th>}
+                                {settings.enable_tax && <th>Tax</th>}
+                                <th>Net paid</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {payslips.length === 0 ? (
+                                <tr className="ds-empty-row">
+                                    <td colSpan={columnCount}>No salary history found.</td>
                                 </tr>
-                            ))}
-                    </tbody>
-                </table>
+                            ) : (
+                                payslips.map((p, i) => (
+                                    <tr
+                                        key={i}
+                                        style={selectedMonths.includes(p.month) ? { background: 'var(--accent-soft)' } : undefined}
+                                    >
+                                        <td>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedMonths.includes(p.month)}
+                                                onChange={() => toggleMonth(p.month)}
+                                            />
+                                        </td>
+                                        <td className="ds-month-cell">
+                                            <div className="m">{p.month}</div>
+                                            <div className="d">{p.date}</div>
+                                        </td>
+                                        <td className="ds-amt">{formatCurrency(p.gross_salary)}</td>
+                                        <td className="ds-amt negative">{formatCurrency(p.lop_deduction)}</td>
+                                        <td className="ds-amt negative">{formatCurrency(p.attendance_penalty)}</td>
+                                        {settings.enable_pf && <td className="ds-amt warn">{formatCurrency(p.pf_pt)}</td>}
+                                        {settings.enable_tax && <td className="ds-amt warn">{formatCurrency(p.tax)}</td>}
+                                        <td className="ds-amt">{formatCurrency(p.net_salary)}</td>
+                                        <td>
+                                            {p.released ? (
+                                                <button
+                                                    className="ds-btn"
+                                                    style={{ padding: '6px 12px', fontSize: 12 }}
+                                                    onClick={() => window.open(`${apiUrl}/employee/payslip/download/${p.month}?employee_id=${userId}`, '_blank')}
+                                                >
+                                                    View slip
+                                                </button>
+                                            ) : (
+                                                <span className="ds-status-pending">
+                                                    <Lock size={13} /> Pending
+                                                </span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
             </div>
         </div>
     );

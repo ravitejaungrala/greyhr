@@ -1,4 +1,4 @@
-import google.generativeai as genai
+import anthropic
 import json
 import base64
 import os
@@ -11,10 +11,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview").strip()
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel(MODEL_NAME)
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
+MODEL_NAME = os.getenv("CLAUDE_MODEL", "claude-opus-4-8").strip()
+
+if ANTHROPIC_API_KEY:
+    anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+else:
+    anthropic_client = None
 
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -83,21 +86,28 @@ Analyze the input and return a JSON object with ONLY the exact field names liste
 
 def extract_doc_data(raw_data, doc_type):
     """
-    Step 1: Gemini Data Extraction
+    Step 1: Claude Data Extraction
     Returns the structured JSON data representing the ROI fields.
     """
     print(f"Extracting data for {doc_type}...")
     prompt = f"{MASTER_PROMPT}\n\nFormat this for a {doc_type}:\n{raw_data}"
-    response = model.generate_content(prompt)
     
+    if not anthropic_client:
+        return {"error": "Anthropic client is not initialized."}
+        
     try:
-        cleaned_json = response.text.strip().strip('`').replace('json', '').strip()
+        response = anthropic_client.messages.create(
+            model=MODEL_NAME,
+            max_tokens=4000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        text_response = response.content[0].text
+        cleaned_json = text_response.strip().strip('`').replace('json', '').strip()
         data = json.loads(cleaned_json)
         return {"status": "success", "data": data}
     except Exception as e:
-        print(f"Error parsing Gemini response: {e}")
-        print(f"Raw Response: {response.text}")
-        return {"error": "Failed to extract structured data from Gemini."}
+        print(f"Error parsing Claude response: {e}")
+        return {"error": f"Failed to extract structured data from Claude: {str(e)}"}
 
 def render_doc_to_html_bytes(data, doc_type):
     """
@@ -177,12 +187,12 @@ def generate_any_neuzenai_doc(raw_data, doc_type):
 
 def process_uploaded_template(file_bytes, file_type, mime_type):
     """
-    Uses Gemini to convert a document (PDF, Image, HTML) into a dynamic Jinja2 HTML template.
+    Uses Claude to convert a document (PDF, Image, HTML) into a dynamic Jinja2 HTML template.
     Extracts high-ROI fields and replaces them with {{field_name}}.
     """
     print(f"Processing uploaded template of type {file_type}...")
     
-    # Prompt for Gemini
+    # Prompt for Claude
     prompt = """
     Act as a professional UI/UX developer and document automation expert.
     I am providing you with a document (it could be an Image, PDF, or raw HTML).
@@ -200,19 +210,55 @@ def process_uploaded_template(file_bytes, file_type, mime_type):
     Return ONLY the raw JSON object. No markdown formatting.
     """
     
+    if not anthropic_client:
+        return {"error": "Anthropic client is not initialized."}
+        
     try:
         # Prepare the media part
-        media_part = {
-            "mime_type": mime_type,
-            "data": base64.b64encode(file_bytes).decode('utf-8')
-        }
-        
-        response = model.generate_content([prompt, media_part])
-        cleaned_json = response.text.strip().strip('`').replace('json', '').strip()
+        b64_data = base64.b64encode(file_bytes).decode('utf-8')
+        if mime_type == "application/pdf":
+            media_block = {
+                "type": "document",
+                "source": {
+                    "type": "base64",
+                    "media_type": "application/pdf",
+                    "data": b64_data
+                }
+            }
+        else:
+            supported_images = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+            image_mime = mime_type if mime_type in supported_images else "image/jpeg"
+            media_block = {
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": image_mime,
+                    "data": b64_data
+                }
+            }
+            
+        response = anthropic_client.messages.create(
+            model=MODEL_NAME,
+            max_tokens=4000,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        media_block,
+                        {
+                            "type": "text",
+                            "text": prompt
+                        }
+                    ]
+                }
+            ]
+        )
+        text_response = response.content[0].text
+        cleaned_json = text_response.strip().strip('`').replace('json', '').strip()
         result = json.loads(cleaned_json)
         return {"status": "success", "data": result}
     except Exception as e:
-        print(f"Error in Gemini template processing: {e}")
+        print(f"Error in Claude template processing: {e}")
         import traceback
         traceback.print_exc()
         return {"error": f"AI processing failed: {str(e)}"}

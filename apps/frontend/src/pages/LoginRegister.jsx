@@ -1,15 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
 import './LoginRegister.css';
-import {
-    Mail, Lock, ArrowRight, Eye, EyeOff, CheckCircle2
-} from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 
 const LoginRegister = ({ onLoginSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null);
     const [showPassword, setShowPassword] = useState(false);
     const [loginData, setLoginData] = useState({ email: '', password: '' });
+    const [currentSlide, setCurrentSlide] = useState(0);
+
+    // Auto-slide carousel every 4 seconds
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentSlide(prev => (prev === 0 ? 1 : 0));
+        }, 4000);
+        return () => clearInterval(timer);
+    }, []);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -27,124 +34,137 @@ const LoginRegister = ({ onLoginSuccess }) => {
                 body: JSON.stringify({ email: loginData.email, password: loginData.password })
             });
             const data = await response.json();
-            if (response.ok && !data.error) onLoginSuccess(data);
-            else setMessage({ type: 'error', text: data.error || 'Login failed' });
-        } catch (err) { setMessage({ type: 'error', text: 'Server failure' }); }
+            if (response.ok && !data.error) {
+                onLoginSuccess(data);
+            } else {
+                setMessage({ type: 'error', text: data.error || 'Login failed' });
+            }
+        } catch (err) {
+            setMessage({ type: 'error', text: 'Server failure' });
+        }
         setLoading(false);
     };
 
     return (
-        <div className="nz-auth-shell">
-            <main className="nz-auth-main">
-                <div className="nz-auth-form-wrap">
-                    {/* Brand mark above the card */}
-                    <div className="nz-form-brand">
-                        <div className="nz-brand-logo-icon">
-                            <img src="/icon (2).png" alt="NeuzenAI" />
-                        </div>
-                        <div>
-                            <div className="nz-form-brand-name">NeuzenAI</div>
-                            <div className="nz-form-brand-sub">HRMS</div>
-                        </div>
-                    </div>
+        <div className="nz-login-page">
+            {/* Top Brand Logo */}
+            <header className="nz-login-header">
+                <div className="nz-brand-logo">
+                    <img className="nz-neuzen-icon" src="/icon (2).png" alt="NEUZENAI Logo" />
+                    <span className="nz-neuzen-text">NEUZENAI</span>
+                </div>
+            </header>
 
-                    <div className="nz-form-card">
-                        <div className="nz-form-header">
-                            <h2 className="nz-form-title">Sign in</h2>
-                            <p className="nz-form-sub">Use your work email to continue.</p>
+            {/* Split Screen Container */}
+            <main className="nz-login-main-container">
+                {/* Left Side: Form */}
+                <div className="nz-login-left-section">
+                    <div className="nz-login-card">
+                        {/* greytHR Brand Header */}
+                        <div className="nz-greythr-logo">
+                            <span className="nz-grey-text">greyt</span>
+                            <span className="nz-hr-text">HR</span>
                         </div>
+
+                        <h2 className="nz-login-welcome">Hello there! 👋</h2>
 
                         {message && (
-                            <div className={`nz-form-message ${message.type}`}>
+                            <div className={`nz-login-message ${message.type}`}>
                                 {message.text}
                             </div>
                         )}
 
-                        <form onSubmit={handleAuth} className="nz-form">
-                            <div className="nz-input-group">
-                                <label>Email Address</label>
-                                <div className="nz-input-wrapper">
-                                    <Mail className="nz-field-icon" size={17} />
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        required
-                                        value={loginData.email}
-                                        onChange={handleInputChange}
-                                        placeholder="name@company.com"
-                                        autoComplete="email"
-                                    />
-                                </div>
+                        <form onSubmit={handleAuth} className="nz-login-form">
+                            <div className="nz-login-field">
+                                <label className="nz-login-label">Login ID</label>
+                                <input
+                                    type="text"
+                                    name="email"
+                                    required
+                                    value={loginData.email}
+                                    onChange={handleInputChange}
+                                    placeholder="Employee No"
+                                    className="nz-login-input-field"
+                                />
                             </div>
 
-                            <div className="nz-input-group">
-                                <div className="nz-label-row">
-                                    <label>Password</label>
-                                    <button type="button" className="nz-forgot-link">
-                                        Forgot password?
-                                    </button>
-                                </div>
-                                <div className="nz-input-wrapper has-toggle">
-                                    <Lock className="nz-field-icon" size={17} />
+                            <div className="nz-login-field">
+                                <label className="nz-login-label">Password</label>
+                                <div className="nz-login-password-wrapper">
                                     <input
                                         type={showPassword ? 'text' : 'password'}
                                         name="password"
                                         required
                                         value={loginData.password}
                                         onChange={handleInputChange}
-                                        placeholder="Enter your password"
-                                        autoComplete="current-password"
+                                        placeholder="Password"
+                                        className="nz-login-input-field password-input"
                                     />
                                     <button
                                         type="button"
-                                        className="nz-password-toggle"
+                                        className="nz-password-toggle-eye"
                                         onClick={() => setShowPassword(s => !s)}
                                         aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                        tabIndex={-1}
                                     >
-                                        {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                     </button>
+                                </div>
+                                <div className="nz-forgot-password-wrapper">
+                                    <a href="#forgot" className="nz-forgot-link">Forgot password?</a>
                                 </div>
                             </div>
 
-                            <label className="nz-remember">
-                                <input type="checkbox" />
-                                <span className="nz-remember-mark"><CheckCircle2 size={11} /></span>
-                                <span>Keep me signed in for 7 days</span>
-                            </label>
-
-                            <button type="submit" className="nz-submit-btn" disabled={loading}>
-                                {loading ? (
-                                    <span className="nz-loading">
-                                        <span className="nz-spinner" /> Signing you in…
-                                    </span>
-                                ) : (
-                                    <>
-                                        Sign In <ArrowRight size={17} className="nz-btn-arrow" />
-                                    </>
-                                )}
+                            <button type="submit" className="nz-login-btn" disabled={loading}>
+                                {loading ? 'Logging in...' : 'Login'}
                             </button>
                         </form>
-
-                        <div className="nz-form-footer">
-                            <span>New to NeuzenAI?</span>
-                            <a href="#contact">Contact HR for account setup →</a>
-                        </div>
                     </div>
+                </div>
 
-                    {/* Bottom helper row */}
-                    <div className="nz-form-bottom-row">
-                        <span>© {new Date().getFullYear()} NeuzenAI IT Solutions Pvt Ltd</span>
-                        <span className="nz-form-bottom-links">
-                            <a href="#privacy">Privacy</a>
-                            <span>·</span>
-                            <a href="#terms">Terms</a>
-                            <span>·</span>
-                            <a href="#help">Help</a>
-                        </span>
+                {/* Right Side: Carousel Banner */}
+                <div className="nz-login-right-section">
+                    <div className="nz-carousel-container">
+                        <div className="nz-carousel-image-frame">
+                            <img
+                                src={currentSlide === 0 ? "/login1.png" : "/login2.png"}
+                                alt="greytHR NAVOS Banner"
+                                className="nz-carousel-image"
+                            />
+                        </div>
+
+                        <div className="nz-carousel-caption">
+                            <h3 className="nz-carousel-title">
+                                {currentSlide === 0 ? "greytHR NAVOS!" : "Simplify HR tasks!"}
+                            </h3>
+                            <p className="nz-carousel-subtitle">
+                                {currentSlide === 0 ? "Register Now!" : "Speed up tasks with Agentic AI"}
+                            </p>
+                        </div>
+
+                        <div className="nz-carousel-indicators">
+                            <button
+                                type="button"
+                                className={`nz-carousel-dot-btn ${currentSlide === 0 ? 'active' : ''}`}
+                                onClick={() => setCurrentSlide(0)}
+                                aria-label="Slide 1"
+                            />
+                            <button
+                                type="button"
+                                className={`nz-carousel-dot-btn ${currentSlide === 1 ? 'active' : ''}`}
+                                onClick={() => setCurrentSlide(1)}
+                                aria-label="Slide 2"
+                            />
+                        </div>
                     </div>
                 </div>
             </main>
+
+            {/* Bottom Footer */}
+            <footer className="nz-login-footer">
+                <p className="nz-footer-text">
+                    © Greytip Software Pvt.Ltd | <a href="#privacy">Privacy Policy</a> | <a href="#terms">Terms of Service</a>
+                </p>
+            </footer>
         </div>
     );
 };

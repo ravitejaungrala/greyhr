@@ -5,6 +5,7 @@ import {
     Clock, AlertCircle, ChevronRight, Shield, ExternalLink
 } from 'lucide-react';
 import { API_URL } from '../config';
+import toast from '../lib/toast';
 
 const DocumentCenter = ({ user }) => {
     const [payslips, setPayslips] = useState([]);
@@ -57,7 +58,7 @@ const DocumentCenter = ({ user }) => {
 
     const handleSignOfferLetter = async () => {
         if (!signatureName.trim()) {
-            alert("Please enter your name for signature.");
+            toast.error("Please enter your name for signature.");
             return;
         }
         setSubmitting(true);
@@ -72,16 +73,16 @@ const DocumentCenter = ({ user }) => {
                 })
             });
             if (res.ok) {
-                alert("Offer letter signed successfully! Status sent to Admin.");
+                toast.success("Offer letter signed successfully! Status sent to Admin.");
                 setShowSignModal(false);
                 fetchDocs();
             } else {
                 const data = await res.json();
-                alert(`Error: ${data.detail || data.error}`);
+                toast.error(`Error: ${data.detail || data.error}`);
             }
         } catch (err) {
             console.error("Error signing offer letter:", err);
-            alert("Failed to submit signature.");
+            toast.error("Failed to submit signature.");
         } finally {
             setSubmitting(false);
         }
@@ -102,10 +103,10 @@ const DocumentCenter = ({ user }) => {
                 })
             });
             if (res.ok) {
-                alert(`Request for ${type.replace('_', ' ')} sent to HR department.`);
+                toast.success(`Request for ${type.replace('_', ' ')} sent to HR department.`);
                 setRequestLoading(prev => ({ ...prev, [type]: 'sent' }));
             } else {
-                alert("Failed to send request. Please contact HR directly.");
+                toast.error("Failed to send request. Please contact HR directly.");
             }
         } catch (err) {
             console.error("Error requesting document:", err);

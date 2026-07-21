@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import toast from '../lib/toast';
+
 import { 
     FileText, X, User, FileSignature, 
     Eye, CheckCircle2, ChevronLeft, 
@@ -111,11 +113,11 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
                 setPreviewBase64(`data:text/html;charset=utf-8;base64,${data.html_base64}`);
                 setCurrentStep(3);
             } else {
-                alert(data.error || 'Preview generation failed');
+                toast.error(data.error || 'Preview generation failed');
             }
         } catch (error) {
             console.error('Preview failed:', error);
-            alert('Failed to generate preview');
+            toast.error('Failed to generate preview');
         } finally {
             setIsPreviewing(false);
         }
@@ -135,14 +137,14 @@ const EnhancedDocumentGenerator = ({ isOpen, onClose, apiUrl }) => {
             });
             const data = await response.json();
             if (data.status === 'success') {
-                alert('Document generated and saved successfully! Employee can now download it.');
+                toast.success('Document generated and saved successfully! Employee can now download it.');
                 setCurrentStep(4);
             } else {
-                alert(data.error || 'Document generation failed');
+                toast.error(data.error || 'Document generation failed');
             }
         } catch (error) {
             console.error('Generation failed:', error);
-            alert('Failed to generate document');
+            toast.error('Failed to generate document');
         } finally {
             setIsGenerating(false);
         }

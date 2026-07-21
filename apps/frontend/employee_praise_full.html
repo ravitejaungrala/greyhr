@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Praise</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1B1F27;
+    --sub:#6B7280;
+    --faint:#9AA1AE;
+    --accent:#4C5FD5;
+    --accent-dark:#3E4EBF;
+    --bg:#F3F4F8;
+    --line:#E7E9F0;
+    --card-radius:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Work Sans', sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    min-height:100vh;
+  }
+
+  /* ---------- Top nav ---------- */
+  .topnav{
+    background:#fff;
+    border-bottom:1px solid var(--line);
+    padding:0 32px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    height:64px;
+    position:sticky;
+    top:0;
+    z-index:20;
+  }
+  .topnav-left{display:flex;align-items:center;gap:12px;}
+  .logo-mark{
+    width:30px;height:30px;border-radius:8px;
+    background:linear-gradient(135deg,var(--accent),#8338EC);
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:800;font-size:14px;
+  }
+  .topnav-title{font-size:15px;font-weight:700;}
+  .topnav-crumb{font-size:12.5px;color:var(--faint);}
+  .topnav-right{display:flex;align-items:center;gap:6px;}
+  .nav-tab{
+    font-size:13.5px;color:var(--sub);text-decoration:none;font-weight:600;
+    background:none;border:none;cursor:pointer;font-family:'Work Sans',sans-serif;
+    padding:8px 14px;border-radius:999px;transition:all .15s ease;
+  }
+  .nav-tab:hover{color:var(--accent);}
+  .nav-tab.active{background:#EEF0FF;color:var(--accent-dark);}
+  .nav-avatar{
+    width:32px;height:32px;border-radius:50%;
+    background:#E4E7FB;color:var(--accent-dark);
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;margin-left:12px;
+  }
+
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* ---------- Page header ---------- */
+  .page-header{
+    max-width:1180px;
+    margin:0 auto;
+    padding:32px 32px 0;
+  }
+  .page-header h1{font-size:26px;margin:0 0 6px;font-weight:800;}
+  .page-header p{margin:0;color:var(--sub);font-size:14px;}
+
+  .page-header-flex{
+    max-width:1180px;
+    margin:0 auto;
+    padding:32px 32px 0;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:20px;
+    flex-wrap:wrap;
+  }
+  .page-header-left{display:flex;align-items:center;gap:16px;}
+  .profile-avatar{
+    width:56px;height:56px;border-radius:50%;
+    background:linear-gradient(135deg,#E4E7FB,#D6D6F5);
+    color:var(--accent-dark);
+    display:flex;align-items:center;justify-content:center;
+    font-size:19px;font-weight:800;flex-shrink:0;
+  }
+  .page-header-flex h1{font-size:24px;margin:0 0 4px;font-weight:800;}
+  .page-header-flex .sub{margin:0;color:var(--sub);font-size:13.5px;}
+
+  .pill-btn{
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    padding:11px 20px;
+    border-radius:999px;
+    font-size:13.5px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:'Work Sans',sans-serif;
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    transition:background .15s ease, opacity .15s ease, transform .1s ease;
+  }
+  .pill-btn:hover:not(:disabled){background:var(--accent-dark);}
+  .pill-btn:disabled{opacity:.4;cursor:not-allowed;}
+  .pill-btn:not(:disabled):active{transform:scale(.97);}
+
+  /* ---------- Layout: send view ---------- */
+  .layout{
+    max-width:1180px;
+    margin:0 auto;
+    padding:24px 32px 60px;
+    display:grid;
+    grid-template-columns:1fr 380px;
+    gap:24px;
+    align-items:start;
+  }
+  @media(max-width:920px){ .layout{grid-template-columns:1fr;} }
+
+  .compose-card, .sidebar-card{
+    background:#fff;
+    border-radius:var(--card-radius);
+    box-shadow:0 1px 2px rgba(20,25,50,0.04), 0 0 0 1px var(--line);
+  }
+  .compose-card{padding:26px 28px;}
+  .sidebar-card{padding:22px 22px 24px;margin-bottom:20px;}
+  .sidebar-card h3{font-size:14.5px;margin:0 0 4px;font-weight:700;}
+  .sidebar-card .hint{font-size:12px;color:var(--faint);margin:0 0 16px;}
+
+  .compose-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;}
+  .compose-head h2{font-size:18px;margin:0;font-weight:700;}
+  .compose-head p{margin:2px 0 0;font-size:13px;color:var(--sub);}
+
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
+  @media(max-width:600px){ .form-grid{grid-template-columns:1fr;} }
+
+  .field-block{margin-bottom:20px;}
+  .field-caption{
+    font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--faint);margin-bottom:8px;
+  }
+
+  /* employee picker */
+  .picker{position:relative;}
+  .picker-trigger{
+    display:flex;align-items:center;justify-content:space-between;
+    border:1px solid var(--line);border-radius:10px;padding:11px 14px;
+    cursor:pointer;background:#FBFBFD;
+  }
+  .picker-trigger.filled{background:#fff;border-color:#CBD0F5;}
+  .picker-selected{display:flex;align-items:center;gap:10px;}
+  .avatar{
+    width:28px;height:28px;border-radius:50%;
+    background:#E4E7FB;color:var(--accent-dark);
+    display:flex;align-items:center;justify-content:center;
+    font-size:11.5px;font-weight:700;flex-shrink:0;
+  }
+  .picker-trigger .placeholder{color:var(--faint);font-size:14px;}
+  .picker-name{font-size:14px;font-weight:600;}
+  .picker-title{font-size:11.5px;color:var(--faint);}
+  .chevron{color:var(--faint);transition:transform .15s ease;flex-shrink:0;}
+  .chevron.open{transform:rotate(180deg);}
+
+  .picker-panel{
+    position:absolute;left:0;right:0;margin-top:6px;
+    border:1px solid var(--line);border-radius:10px;background:#fff;
+    max-height:260px;overflow-y:auto;display:none;
+    box-shadow:0 12px 28px -12px rgba(20,25,50,0.25);z-index:5;
+  }
+  .picker-panel.open{display:block;}
+  .picker-search{padding:9px 12px;border-bottom:1px solid var(--line);}
+  .picker-search input{
+    width:100%;border:none;outline:none;font-size:13.5px;
+    font-family:'Work Sans',sans-serif;color:var(--ink);
+  }
+  .picker-search input::placeholder{color:var(--faint);}
+  .picker-row{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;}
+  .picker-row:hover{background:#F6F7FC;}
+  .picker-row .meta{display:flex;flex-direction:column;}
+
+  /* badge chip row (compose) */
+  .badge-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .badge-chip{
+    display:flex;flex-direction:column;align-items:center;gap:5px;
+    padding:9px 6px 7px;border-radius:12px;border:1.5px solid var(--line);
+    cursor:pointer;width:76px;transition:border-color .15s ease, background .15s ease;
+  }
+  .badge-chip:hover{border-color:#CBD0F5;}
+  .badge-chip.active{border-color:var(--accent);background:#F1F2FE;}
+  .badge-chip svg{width:38px;height:48px;}
+  .badge-chip .chip-label{font-size:10px;text-align:center;color:var(--sub);line-height:1.2;}
+  .badge-chip.active .chip-label{color:var(--accent-dark);font-weight:700;}
+
+  textarea{
+    width:100%;border:1px solid var(--line);border-radius:10px;
+    padding:11px 14px;font-family:'Work Sans',sans-serif;font-size:14px;
+    color:var(--ink);outline:none;resize:vertical;min-height:44px;
+  }
+  textarea:focus{border-color:var(--accent);}
+  textarea::placeholder{color:var(--faint);}
+
+  /* preview */
+  .preview-card{border-radius:14px;overflow:hidden;border:1px solid var(--line);}
+  .preview-top{
+    padding:22px 16px 30px;text-align:center;
+    background:linear-gradient(135deg, #CDEBF6 0%, #D6D6F5 45%, #E7CDEF 100%);
+  }
+  .preview-top svg{filter:drop-shadow(0 4px 8px rgba(20,25,50,0.15));}
+  .preview-mid{padding:14px 16px;background:#fff;}
+  .preview-cat{font-size:12px;color:var(--sub);}
+  .preview-name{font-size:16px;font-weight:700;color:var(--ink);margin:2px 0 6px;}
+  .preview-from{font-size:11.5px;color:var(--faint);}
+  .preview-msg{font-size:12px;color:var(--sub);margin-top:8px;line-height:1.5;}
+
+  /* recommendations */
+  .reco-list{display:flex;flex-direction:column;gap:16px;}
+  .reco-item{display:flex;align-items:flex-start;gap:12px;}
+  .reco-meta{flex:1;}
+  .reco-name{font-size:13.5px;font-weight:700;color:var(--ink);}
+  .reco-text{font-size:12px;color:var(--sub);margin:3px 0 5px;line-height:1.4;}
+  .reco-link{font-size:12.5px;font-weight:700;color:var(--accent);background:none;border:none;padding:0;cursor:pointer;font-family:'Work Sans',sans-serif;}
+  .reco-link:hover{text-decoration:underline;}
+
+  /* history (sidebar, compact) */
+  .toggle-btn{
+    width:100%;background:#F6F7FC;border:1px solid var(--line);border-radius:10px;
+    padding:11px;font-size:13px;font-weight:700;color:var(--accent-dark);
+    cursor:pointer;font-family:'Work Sans',sans-serif;
+  }
+  .history-list{display:none;flex-direction:column;gap:10px;margin-top:14px;}
+  .history-list.open{display:flex;}
+  .history-item{
+    display:flex;align-items:center;gap:12px;
+    background:#FBFBFD;border:1px solid var(--line);border-radius:10px;padding:9px 10px;
+  }
+  .history-item svg{width:28px;height:36px;flex-shrink:0;}
+  .history-meta{flex:1;min-width:0;}
+  .history-title{font-size:11.5px;color:var(--sub);}
+  .history-name{font-size:13px;font-weight:700;color:var(--ink);}
+  .history-sub{font-size:10.5px;color:var(--faint);margin-top:1px;}
+  .history-time{font-size:10px;color:var(--faint);white-space:nowrap;}
+
+  /* ---------- Received view ---------- */
+  .stats-row{
+    max-width:1180px;margin:0 auto;padding:24px 32px 0;
+    display:grid;grid-template-columns:repeat(4,1fr);gap:16px;
+  }
+  @media(max-width:760px){ .stats-row{grid-template-columns:repeat(2,1fr);} }
+  .stat-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;}
+  .stat-num{font-size:24px;font-weight:800;color:var(--ink);}
+  .stat-label{font-size:12px;color:var(--sub);margin-top:2px;}
+  .stat-badge-row{display:flex;align-items:center;gap:8px;}
+  .stat-badge-row svg{width:26px;height:34px;flex-shrink:0;}
+
+  .layout-received{max-width:1180px;margin:0 auto;padding:28px 32px 60px;}
+  .toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;}
+  .toolbar h2{font-size:16px;margin:0;font-weight:700;}
+  .filter-chip-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .filter-chip{
+    display:flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;
+    border:1px solid var(--line);background:#fff;color:var(--sub);font-size:12.5px;
+    cursor:pointer;user-select:none;transition:all .15s ease;
+  }
+  .filter-chip:hover{border-color:#CBD0F5;}
+  .filter-chip.active{background:#EEF0FF;border-color:var(--accent);color:var(--accent-dark);font-weight:700;}
+  .filter-chip svg{width:16px;height:20px;}
+
+  .praise-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
+  @media(max-width:760px){ .praise-grid{grid-template-columns:1fr;} }
+  .praise-card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;}
+  .praise-card-top{
+    display:flex;align-items:center;gap:14px;padding:16px 16px 14px;
+    background:linear-gradient(135deg, #CDEBF6 0%, #D6D6F5 45%, #E7CDEF 100%);
+  }
+  .praise-card-top svg{flex-shrink:0;filter:drop-shadow(0 4px 8px rgba(20,25,50,0.15));}
+  .praise-card-cat{font-size:12px;color:#4B4F63;}
+  .praise-card-title{font-size:16px;font-weight:800;color:var(--ink);}
+  .praise-card-body{padding:14px 16px 16px;flex:1;display:flex;flex-direction:column;}
+  .praise-from-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .praise-from-row .avatar{width:24px;height:24px;font-size:10px;}
+  .praise-from-name{font-size:12.5px;font-weight:600;color:var(--ink);}
+  .praise-message{font-size:13px;color:var(--sub);line-height:1.55;margin-bottom:14px;flex:1;}
+  .praise-card-footer{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:12px;margin-top:auto;}
+  .praise-date{font-size:11px;color:var(--faint);}
+  .praise-link{font-size:12.5px;font-weight:700;color:var(--accent);text-decoration:none;}
+  .praise-link:hover{text-decoration:underline;}
+  .empty-state{grid-column:1/-1;text-align:center;padding:50px 20px;color:var(--faint);font-size:13.5px;}
+
+  .toast{
+    position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(12px);
+    background:#1B1F27;color:#fff;padding:12px 20px;border-radius:999px;
+    font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;
+    transition:opacity .2s ease, transform .2s ease;z-index:50;
+    box-shadow:0 10px 24px -8px rgba(0,0,0,0.4);
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <div class="topnav-left">
+    <div class="logo-mark">V</div>
+    <div>
+      <div class="topnav-title">Viva Insights</div>
+      <div class="topnav-crumb" id="crumbOut">Personal insights / Send praise</div>
+    </div>
+  </div>
+  <div class="topnav-right">
+    <button class="nav-tab active" id="tabSend">Send praise</button>
+    <button class="nav-tab" id="tabReceived">My praise</button>
+    <div class="nav-avatar">RU</div>
+  </div>
+</div>
+
+<!-- ============ SEND VIEW ============ -->
+<div class="view active" id="viewSend">
+
+  <div class="page-header">
+    <h1>Send praise</h1>
+    <p>Recognize a colleague's work, pick a badge, and share a note — right from your team dashboard.</p>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="compose-card">
+        <div class="compose-head">
+          <div>
+            <h2>Give recognition</h2>
+            <p>Choose an employee and a badge that fits what they did.</p>
+          </div>
+          <button class="pill-btn" id="sendBtn" disabled>Send praise</button>
+        </div>
+
+        <div class="form-grid">
+          <div class="field-block" style="margin-bottom:0;">
+            <div class="field-caption">Employee</div>
+            <div class="picker">
+              <div class="picker-trigger" id="pickerTrigger">
+                <span class="placeholder" id="pickerPlaceholder">Select an employee</span>
+                <span class="chevron" id="pickerChevron">▾</span>
+              </div>
+              <div class="picker-panel" id="pickerPanel">
+                <div class="picker-search"><input type="text" id="pickerSearch" placeholder="Search people..."></div>
+                <div id="pickerRows"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="field-block" style="margin-bottom:0;">
+            <div class="field-caption">Message</div>
+            <textarea id="messageInput" placeholder="Write a short note about what they did..."></textarea>
+          </div>
+        </div>
+
+        <div class="field-block" style="margin-bottom:0;">
+          <div class="field-caption">Praise badge</div>
+          <div class="badge-row" id="badgeRow"></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sidebar-card">
+        <h3>Preview</h3>
+        <p class="hint">What the employee will see</p>
+        <div class="preview-card">
+          <div class="preview-top"><div id="previewBadge"></div></div>
+          <div class="preview-mid">
+            <div class="preview-cat" id="previewCat">Achiever</div>
+            <div class="preview-name" id="previewName">Select an employee</div>
+            <div class="preview-from" id="previewFrom">From you</div>
+            <div class="preview-msg" id="previewMsg">Your message will appear here.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-card">
+        <h3>Recommendations</h3>
+        <p class="hint">People you've worked with recently</p>
+        <div class="reco-list" id="recoList"></div>
+      </div>
+
+      <div class="sidebar-card" style="margin-bottom:0;">
+        <h3 style="margin-bottom:14px;">Praise history</h3>
+        <button class="toggle-btn" id="historyToggle">Show praise history</button>
+        <div class="history-list" id="historyList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ RECEIVED VIEW ============ -->
+<div class="view" id="viewReceived">
+
+  <div class="page-header-flex">
+    <div class="page-header-left">
+      <div class="profile-avatar">RU</div>
+      <div>
+        <h1>Raviteja Ungarala</h1>
+        <p class="sub">Software Engineer · Praise received from your team</p>
+      </div>
+    </div>
+    <button class="pill-btn" id="goSendBtn">＋ Send praise</button>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num" id="statTotal">0</div>
+      <div class="stat-label">Total praise received</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statMonth">0</div>
+      <div class="stat-label">This month</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statPeople">0</div>
+      <div class="stat-label">Colleagues who praised you</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-badge-row" id="statTopBadge"></div>
+      <div class="stat-label">Most received badge</div>
+    </div>
+  </div>
+
+  <div class="layout-received">
+    <div class="toolbar">
+      <h2>All received praise</h2>
+      <div class="filter-chip-row" id="filterRow"></div>
+    </div>
+    <div class="praise-grid" id="praiseGrid"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Praise sent</div>
+
+<script>
+  /* ================= shared data ================= */
+  const employees = [
+    { id:'raviteja', name:'Raviteja Ungarala', title:'Software Engineer', initials:'RU' },
+    { id:'subbarami', name:'Subbarami Badireddy', title:'Product Manager', initials:'SB' },
+    { id:'salman', name:'Salman Shaik', title:'QA Engineer', initials:'SS' },
+    { id:'priya', name:'Priya Sharma', title:'UX Designer', initials:'PS' },
+    { id:'rohit', name:'Rohit Verma', title:'Team Lead', initials:'RV' },
+    { id:'ananya', name:'Ananya Reddy', title:'Data Analyst', initials:'AR' },
+    { id:'kiran', name:'Kiran Kumar', title:'DevOps Engineer', initials:'KK' }
+  ];
+
+  const recommendations = [
+    { empId:'subbarami', reason:'Thank Subbarami for their collaboration last week.' },
+    { empId:'salman', reason:'Thank Salman for their collaboration last week.' },
+    { empId:'ananya', reason:'Ananya wrapped up the Q3 dashboard ahead of schedule.' },
+    { empId:'kiran', reason:'Kiran resolved the production incident quickly on Friday.' }
+  ];
+
+  const categories = [
+    { key:'achiever',   icon:'⭐', title:'Achiever', ribbonA:'#3A86FF', ribbonB:'#E63946', discA:'#FFCE54', discB:'#E8A317' },
+    { key:'star',       icon:'⭐', title:'Star Performer', ribbonA:'#8338EC', ribbonB:'#FFB703', discA:'#C77DFF', discB:'#8338EC' },
+    { key:'team',       icon:'🤝', title:'Team Player', ribbonA:'#2A9D8F', ribbonB:'#264653', discA:'#57C4B7', discB:'#2A9D8F' },
+    { key:'innovator',  icon:'💡', title:'Innovator', ribbonA:'#003566', ribbonB:'#FFD60A', discA:'#FFE066', discB:'#F4A300' },
+    { key:'leader',     icon:'👑', title:'Leadership', ribbonA:'#1B2A4A', ribbonB:'#6A4C93', discA:'#8D7BC9', discB:'#4B3E8C' },
+    { key:'rising',     icon:'🌟', title:'Rising Star', ribbonA:'#4ECDC4', ribbonB:'#FF6B6B', discA:'#FF9EAA', discB:'#FF6B6B' },
+    { key:'consistent', icon:'🔥', title:'Consistency', ribbonA:'#F94144', ribbonB:'#F3722C', discA:'#FFA45C', discB:'#F3722C' },
+    { key:'customer',   icon:'🎯', title:'Customer Champ', ribbonA:'#277DA1', ribbonB:'#43AA8B', discA:'#6FC3D9', discB:'#277DA1' },
+    { key:'newcomer',   icon:'🌱', title:'Newcomer', ribbonA:'#90BE6D', ribbonB:'#43AA8B', discA:'#B5E48C', discB:'#5AA469' },
+    { key:'mentor',     icon:'📘', title:'Mentor', ribbonA:'#577590', ribbonB:'#277DA1', discA:'#8FA6C9', discB:'#3E5C82' }
+  ];
+
+  let history = [
+    { empId:'raviteja', catKey:'achiever', direction:'sent', fromName:'Subbarami Badireddy', time:'2 days ago' },
+    { empId:'salman', catKey:'team', direction:'sent', fromName:'You', time:'5 days ago' },
+    { empId:'priya', catKey:'innovator', direction:'received', fromName:'Priya Sharma', time:'1 week ago' }
+  ];
+
+  const received = [
+    { catKey:'achiever', fromName:'Subbarami Badireddy', initials:'SB', message:'Thanks for stepping up on the release last week — the rollout was smooth because of your prep.', date:'2 days ago', month:'2026-07' },
+    { catKey:'team', fromName:'Salman Shaik', initials:'SS', message:'Really appreciated you pairing with me on the QA suite, made the handoff painless.', date:'5 days ago', month:'2026-07' },
+    { catKey:'innovator', fromName:'Priya Sharma', initials:'PS', message:'Your idea for the caching layer cut our load time in half. Great thinking.', date:'1 week ago', month:'2026-07' },
+    { catKey:'customer', fromName:'Rohit Verma', initials:'RV', message:'The client called out your patience on the escalation call — well handled.', date:'2 weeks ago', month:'2026-06' },
+    { catKey:'consistent', fromName:'Ananya Reddy', initials:'AR', message:'Third sprint in a row hitting every commitment. Reliable as always.', date:'3 weeks ago', month:'2026-06' },
+    { catKey:'mentor', fromName:'Kiran Kumar', initials:'KK', message:'Thanks for walking me through the deployment pipeline, it finally clicked.', date:'1 month ago', month:'2026-06' },
+    { catKey:'rising', fromName:'Subbarami Badireddy', initials:'SB', message:'Impressive ramp-up for someone three months in — keep it going.', date:'6 weeks ago', month:'2026-05' },
+    { catKey:'star', fromName:'Priya Sharma', initials:'PS', message:'Your dashboard redesign got great feedback from leadership this quarter.', date:'2 months ago', month:'2026-05' }
+  ];
+
+  let selectedEmployeeId = null;
+  let selectedCatKey = 'achiever';
+  let activeFilter = 'all';
+
+  function getEmp(id){ return employees.find(e=>e.id===id); }
+  function getCat(key){ return categories.find(c=>c.key===key); }
+
+  function badgeSVG(cat, size){
+    const id = 'g-' + cat.key + '-' + size + '-' + Math.random().toString(36).slice(2,7);
+    return `
+    <svg width="${size}" height="${Math.round(size*1.3)}" viewBox="0 0 120 156" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="${id}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="${cat.discA}"/>
+          <stop offset="100%" stop-color="${cat.discB}"/>
+        </linearGradient>
+      </defs>
+      <polygon points="46,86 30,152 60,132" fill="${cat.ribbonA}"/>
+      <polygon points="74,86 90,152 60,132" fill="${cat.ribbonB}"/>
+      <circle cx="60" cy="58" r="50" fill="#FFFFFF"/>
+      <circle cx="60" cy="58" r="42" fill="url(#${id})"/>
+      <text x="60" y="71" font-size="34" text-anchor="middle" font-family="'Work Sans',sans-serif">${cat.icon}</text>
+    </svg>`;
+  }
+
+  /* ================= tab switching ================= */
+  const viewSend = document.getElementById('viewSend');
+  const viewReceived = document.getElementById('viewReceived');
+  const tabSend = document.getElementById('tabSend');
+  const tabReceived = document.getElementById('tabReceived');
+  const crumbOut = document.getElementById('crumbOut');
+
+  function showView(name){
+    viewSend.classList.toggle('active', name === 'send');
+    viewReceived.classList.toggle('active', name === 'received');
+    tabSend.classList.toggle('active', name === 'send');
+    tabReceived.classList.toggle('active', name === 'received');
+    crumbOut.textContent = name === 'send' ? 'Personal insights / Send praise' : 'Personal insights / My praise';
+    window.scrollTo({top:0});
+  }
+  tabSend.addEventListener('click', () => showView('send'));
+  tabReceived.addEventListener('click', () => showView('received'));
+  document.getElementById('goSendBtn').addEventListener('click', () => showView('send'));
+
+  /* ================= SEND VIEW logic ================= */
+  const pickerTrigger = document.getElementById('pickerTrigger');
+  const pickerPanel = document.getElementById('pickerPanel');
+  const pickerChevron = document.getElementById('pickerChevron');
+  const pickerRows = document.getElementById('pickerRows');
+  const pickerSearch = document.getElementById('pickerSearch');
+
+  function renderPickerRows(filter=''){
+    const q = filter.trim().toLowerCase();
+    pickerRows.innerHTML = '';
+    employees.filter(e=>e.name.toLowerCase().includes(q)).forEach(e=>{
+      const row = document.createElement('div');
+      row.className = 'picker-row';
+      row.innerHTML = `<div class="avatar">${e.initials}</div>
+        <div class="meta"><span class="picker-name">${e.name}</span><span class="picker-title">${e.title}</span></div>`;
+      row.onclick = () => { selectEmployee(e.id); closePicker(); };
+      pickerRows.appendChild(row);
+    });
+  }
+
+  function selectEmployee(id){
+    selectedEmployeeId = id;
+    const e = getEmp(id);
+    pickerTrigger.classList.add('filled');
+    pickerTrigger.querySelector('#pickerPlaceholder')?.remove();
+    let sel = pickerTrigger.querySelector('.picker-selected');
+    if(!sel){
+      sel = document.createElement('div');
+      sel.className = 'picker-selected';
+      pickerTrigger.prepend(sel);
+    }
+    sel.innerHTML = `<div class="avatar">${e.initials}</div><span class="picker-name">${e.name}</span>`;
+    updatePreview();
+    updateSendState();
+  }
+
+  function openPicker(){ pickerPanel.classList.add('open'); pickerChevron.classList.add('open'); pickerSearch.focus(); renderPickerRows(pickerSearch.value); }
+  function closePicker(){ pickerPanel.classList.remove('open'); pickerChevron.classList.remove('open'); }
+
+  pickerTrigger.addEventListener('click', () => {
+    pickerPanel.classList.contains('open') ? closePicker() : openPicker();
+  });
+  pickerSearch.addEventListener('input', () => renderPickerRows(pickerSearch.value));
+  pickerSearch.addEventListener('click', e => e.stopPropagation());
+
+  const badgeRow = document.getElementById('badgeRow');
+  function renderBadgeRow(){
+    badgeRow.innerHTML = '';
+    categories.forEach(c=>{
+      const chip = document.createElement('div');
+      chip.className = 'badge-chip' + (c.key===selectedCatKey ? ' active' : '');
+      chip.innerHTML = `${badgeSVG(c,36)}<span class="chip-label">${c.title}</span>`;
+      chip.onclick = () => { selectedCatKey = c.key; renderBadgeRow(); updatePreview(); };
+      badgeRow.appendChild(chip);
+    });
+  }
+
+  const messageInput = document.getElementById('messageInput');
+  function updatePreview(){
+    const cat = getCat(selectedCatKey);
+    document.getElementById('previewBadge').innerHTML = badgeSVG(cat, 64);
+    document.getElementById('previewCat').textContent = cat.title;
+    document.getElementById('previewName').textContent = selectedEmployeeId ? getEmp(selectedEmployeeId).name : 'Select an employee';
+    document.getElementById('previewFrom').textContent = 'From you';
+    document.getElementById('previewMsg').textContent = messageInput.value.trim() || 'Your message will appear here.';
+  }
+  messageInput.addEventListener('input', updatePreview);
+
+  function updateSendState(){
+    document.getElementById('sendBtn').disabled = !selectedEmployeeId;
+  }
+
+  document.getElementById('sendBtn').addEventListener('click', () => {
+    if(!selectedEmployeeId) return;
+    history.unshift({ empId:selectedEmployeeId, catKey:selectedCatKey, direction:'sent', fromName:'You', time:'Just now' });
+    renderHistory();
+    showToast(`Praise sent to ${getEmp(selectedEmployeeId).name}`);
+    messageInput.value = '';
+    updatePreview();
+  });
+
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 2200);
+  }
+
+  const historyList = document.getElementById('historyList');
+  const historyToggle = document.getElementById('historyToggle');
+  function renderHistory(){
+    historyList.innerHTML = '';
+    history.forEach(h=>{
+      const cat = getCat(h.catKey);
+      const emp = getEmp(h.empId);
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      const label = h.direction === 'sent' ? `To ${emp.name}` : `From ${h.fromName}`;
+      item.innerHTML = `${badgeSVG(cat,26)}
+        <div class="history-meta">
+          <div class="history-title">${cat.title}</div>
+          <div class="history-name">${label}</div>
+          <div class="history-sub">${h.direction === 'sent' ? 'You praised' : 'Praised you'}</div>
+        </div>
+        <div class="history-time">${h.time}</div>`;
+      historyList.appendChild(item);
+    });
+  }
+  historyToggle.addEventListener('click', () => {
+    const open = historyList.classList.toggle('open');
+    historyToggle.textContent = open ? 'Hide praise history' : 'Show praise history';
+  });
+
+  const recoList = document.getElementById('recoList');
+  function renderReco(){
+    recoList.innerHTML = '';
+    recommendations.forEach(r=>{
+      const emp = getEmp(r.empId);
+      const item = document.createElement('div');
+      item.className = 'reco-item';
+      item.innerHTML = `<div class="avatar">${emp.initials}</div>
+        <div class="reco-meta">
+          <div class="reco-name">${emp.name}</div>
+          <div class="reco-text">${r.reason}</div>
+          <button class="reco-link">Start praise</button>
+        </div>`;
+      item.querySelector('.reco-link').onclick = () => {
+        selectEmployee(emp.id);
+        window.scrollTo({top:0, behavior:'smooth'});
+      };
+      recoList.appendChild(item);
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if(!pickerTrigger.contains(e.target) && !pickerPanel.contains(e.target)) closePicker();
+  });
+
+  /* ================= RECEIVED VIEW logic ================= */
+  function renderStats(){
+    document.getElementById('statTotal').textContent = received.length;
+    const thisMonthCount = received.filter(r => r.month === '2026-07').length;
+    document.getElementById('statMonth').textContent = thisMonthCount;
+    const uniquePeople = new Set(received.map(r => r.fromName)).size;
+    document.getElementById('statPeople').textContent = uniquePeople;
+
+    const counts = {};
+    received.forEach(r => counts[r.catKey] = (counts[r.catKey]||0) + 1);
+    const topKey = Object.keys(counts).sort((a,b)=>counts[b]-counts[a])[0];
+    const topCat = getCat(topKey);
+    document.getElementById('statTopBadge').innerHTML = badgeSVG(topCat, 26) + `<span>${topCat.title}</span>`;
+  }
+
+  const filterRow = document.getElementById('filterRow');
+  function renderFilters(){
+    filterRow.innerHTML = '';
+    const allChip = document.createElement('div');
+    allChip.className = 'filter-chip' + (activeFilter==='all' ? ' active' : '');
+    allChip.textContent = 'All praises';
+    allChip.onclick = () => { activeFilter = 'all'; renderFilters(); renderGrid(); };
+    filterRow.appendChild(allChip);
+
+    const usedKeys = [...new Set(received.map(r=>r.catKey))];
+    usedKeys.forEach(key => {
+      const cat = getCat(key);
+      const chip = document.createElement('div');
+      chip.className = 'filter-chip' + (activeFilter===key ? ' active' : '');
+      chip.innerHTML = `${badgeSVG(cat,16)}<span>${cat.title}</span>`;
+      chip.onclick = () => { activeFilter = key; renderFilters(); renderGrid(); };
+      filterRow.appendChild(chip);
+    });
+  }
+
+  const praiseGrid = document.getElementById('praiseGrid');
+  function renderGrid(){
+    praiseGrid.innerHTML = '';
+    const items = activeFilter === 'all' ? received : received.filter(r => r.catKey === activeFilter);
+
+    if(items.length === 0){
+      praiseGrid.innerHTML = `<div class="empty-state">No praise in this category yet.</div>`;
+      return;
+    }
+
+    items.forEach(r => {
+      const cat = getCat(r.catKey);
+      const card = document.createElement('div');
+      card.className = 'praise-card';
+      card.innerHTML = `
+        <div class="praise-card-top">
+          ${badgeSVG(cat, 52)}
+          <div>
+            <div class="praise-card-cat">Praise received</div>
+            <div class="praise-card-title">${cat.title}</div>
+          </div>
+        </div>
+        <div class="praise-card-body">
+          <div class="praise-from-row">
+            <div class="avatar">${r.initials}</div>
+            <div class="praise-from-name">From ${r.fromName}</div>
+          </div>
+          <div class="praise-message">${r.message}</div>
+          <div class="praise-card-footer">
+            <span class="praise-date">${r.date}</span>
+            <a class="praise-link" href="#">Go to message</a>
+          </div>
+        </div>`;
+      praiseGrid.appendChild(card);
+    });
+  }
+
+  /* ================= init ================= */
+  renderPickerRows();
+  renderBadgeRow();
+  updatePreview();
+  renderHistory();
+  renderReco();
+  renderStats();
+  renderFilters();
+  renderGrid();
+</script>
+
+</body>
+</html>

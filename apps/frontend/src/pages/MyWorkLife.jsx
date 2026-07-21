@@ -215,14 +215,16 @@ const MyWorkLife = ({ userId, setActiveMenu }) => {
 
             <style>{`
                 .id-card-container {
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                    border: 1px solid rgba(255,255,255,0.1);
+                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%) !important;
+                    border: 1px solid rgba(255,255,255,0.1) !important;
+                    backdrop-filter: none !important;
+                    -webkit-backdrop-filter: none !important;
                     position: relative;
                     overflow: hidden;
                     padding: 0 !important;
                     display: flex;
                     flex-direction: column;
-                    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+                    box-shadow: 0 20px 40px rgba(0,0,0,0.4) !important;
                     border-radius: 16px;
                     transition: transform 0.3s ease;
                 }

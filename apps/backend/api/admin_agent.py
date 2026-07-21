@@ -2,7 +2,7 @@ import os
 import json
 import datetime
 import chromadb
-import google.generativeai as genai
+from anthropic import AsyncAnthropic
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 from api.admin_agent_prompt import ADMIN_AGENT_MASTER_PROMPT
@@ -15,22 +15,18 @@ CHROMA_CLOUD_API_KEY = os.getenv("CHROMA_CLOUD_API_KEY", "").strip()
 CHROMA_TENANT = os.getenv("CHROMA_TENANT", "").strip()
 CHROMA_DATABASE = os.getenv("CHROMA_DATABASE", "").strip()
 CHROMA_COLLECTION = os.getenv("CHROMA_COLLECTION", "hrms").strip()
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview")
-GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE", "0.0")) # Keep 0.0 as safe cast fallback if missing
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
+MODEL_NAME = os.getenv("CLAUDE_MODEL", "claude-opus-4-8").strip()
+CLAUDE_TEMPERATURE = float(os.getenv("CLAUDE_TEMPERATURE", "0.0"))
 
 # Initialize Clients
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    print(f"--- Admin Agent AI Initialized ---")
-    print(f"Model: {MODEL_NAME} | Temp: {GEMINI_TEMPERATURE}")
+if ANTHROPIC_API_KEY:
+    anthropic_client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+    print(f"--- Admin Agent AI Initialized (Claude) ---")
+    print(f"Model: {MODEL_NAME} | Temp: {CLAUDE_TEMPERATURE}")
 else:
-    print("WARNING: GEMINI_API_KEY not found in environment.")
-
-model = genai.GenerativeModel(
-    MODEL_NAME,
-    generation_config={"temperature": GEMINI_TEMPERATURE}
-)
+    print("WARNING: ANTHROPIC_API_KEY not found in environment.")
+    anthropic_client = None
 
 # ChromaDB Cloud Client
 try:
@@ -239,21 +235,29 @@ def sync_all_to_vector_db(mongo_db_client):
         print("ChromaDB connection unavailable. Skipping sync.")
         return 0
 
-    print("--- Starting ChromaDB Synchronization ---")
-    employees = list(mongo_db_client.users.find({"status": "approved"}))
-    total = len(employees)
-    print(f"Syncing {total} employees...")
+    if not mongo_db_client or mongo_db_client.users is None:
+        print("MongoDB connection unavailable. Skipping sync.")
+        return 0
 
-    success_count = 0
-    for emp in employees:
-        emp_id = emp.get("employee_id")
-        res = sync_employee_to_vector_db(emp_id, mongo_db_client)
-        if "status" in res and res["status"] == "success":
-            success_count += 1
-    
-    print(f"Synchronization complete: {success_count}/{total} succeeded.")
-    print("-----------------------------------------")
-    return success_count
+    print("--- Starting ChromaDB Synchronization ---")
+    try:
+        employees = list(mongo_db_client.users.find({"status": "approved"}))
+        total = len(employees)
+        print(f"Syncing {total} employees...")
+
+        success_count = 0
+        for emp in employees:
+            emp_id = emp.get("employee_id")
+            res = sync_employee_to_vector_db(emp_id, mongo_db_client)
+            if "status" in res and res["status"] == "success":
+                success_count += 1
+        
+        print(f"Synchronization complete: {success_count}/{total} succeeded.")
+        print("-----------------------------------------")
+        return success_count
+    except Exception as e:
+        print(f"Critical failure during employees sync: {e}")
+        return 0
 
 def get_vector_inventory():
     """Returns a summary of what is currently in ChromaDB."""
@@ -317,8 +321,15 @@ async def process_admin_query(query: str) -> str:
     
     try:
         print(f"--- Admin Agent processing query with model: {MODEL_NAME} ---")
-        response = await model.generate_content_async(prompt)
-        return response.text
+        if not anthropic_client:
+            return "Anthropic client is not initialized."
+        response = await anthropic_client.messages.create(
+            model=MODEL_NAME,
+            max_tokens=4000,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=CLAUDE_TEMPERATURE
+        )
+        return response.content[0].text
     except Exception as e:
         print(f"Error generating AI response: {e}")
         return f"I encountered an error while processing your request: {str(e)}"

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    Plane, RefreshCw, Bot, Info, 
-    CheckCircle2, Calendar, Clock, BarChart3,
-    History, Users, Sparkles, Eye
+import {
+    Plane, RefreshCw, Info,
+    CheckCircle2, FileText,
+    History, Users, Eye
 } from 'lucide-react';
 import {
     ResponsiveContainer,
@@ -11,11 +11,11 @@ import {
     XAxis,
     YAxis,
     CartesianGrid,
-    Tooltip,
-    Legend
+    Tooltip
 } from 'recharts';
 import { API_URL } from '../config';
 import LeaveDetailsView from './LeaveDetailsView';
+import toast from '../lib/toast';
 
 const Leaves = ({ userId, user, mode = 'all' }) => {
     const isApplyView = mode === 'apply';
@@ -27,6 +27,8 @@ const Leaves = ({ userId, user, mode = 'all' }) => {
     const [recentLeaves, setRecentLeaves] = useState([]);
     const [teamAvailability, setTeamAvailability] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [lopOption, setLopOption] = useState('');
+    const [deductFromNextMonthType, setDeductFromNextMonthType] = useState('Casual Leave');
     const [formData, setFormData] = useState({
         employee_id: userId,
         leave_type: 'Annual Leave',
@@ -62,6 +64,15 @@ const Leaves = ({ userId, user, mode = 'all' }) => {
             setSelectedTypeName(leaveData.types[0].name);
         }
     }, [leaveData, selectedTypeName]);
+
+    useEffect(() => {
+        if (Array.isArray(leaveData?.types) && leaveData.types.length > 0) {
+            const filteredTypes = leaveData.types.filter(t => t.name !== 'Privilege Leave');
+            if (filteredTypes.length > 0) {
+                setFormData(prev => ({ ...prev, leave_type: filteredTypes[0].name }));
+            }
+        }
+    }, [leaveData]);
 
     const normalizeLeaveName = (value) => String(value || '').toLowerCase().replace(/[^a-z]/g, '');
     const sameLeaveType = (a, b) => {
@@ -115,6 +126,18 @@ const Leaves = ({ userId, user, mode = 'all' }) => {
     const grantedForType = Math.max(0, availableBalance + totalConsumedForType);
     const openingBalance = 0;
 
+    const requestedDays = calculateLeaveDays({
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        start_session: formData.start_session,
+        end_session: formData.end_session
+    });
+
+    const activeTypeData = (leaveData?.types || []).find(t => t.name === formData.leave_type);
+    const activeBalance = activeTypeData ? Number(activeTypeData.remaining || 0) : 0;
+    const isInsufficient = requestedDays > activeBalance;
+    const excessDays = isInsufficient ? requestedDays - activeBalance : 0;
+
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const monthlyConsumed = Array.from({ length: 12 }, (_, i) => ({ monthIndex: i, consumed: 0 }));
     approvedTypeRecords.forEach((leave) => {
@@ -124,13 +147,31 @@ const Leaves = ({ userId, user, mode = 'all' }) => {
     });
 
     const monthLimit = selectedYear < new Date().getFullYear() ? 12 : (selectedYear > new Date().getFullYear() ? 0 : (new Date().getMonth() + 1));
-    const monthlyGrantRate = monthLimit > 0 ? (grantedForType / monthLimit) : 0;
+
+    // Get the rate of the selected leave type
+    const activeType = (leaveData?.types || []).find((type) => type.name === selectedTypeName) || (leaveData?.types || [])[0] || null;
+    const rate = activeType ? Number(activeType.rate || 0) : 0;
+    
+    // Parse user joining date to filter out months before they joined
+    const joiningDateStr = leaveData?.joining_date || user?.joining_date;
+    const joiningDate = joiningDateStr ? new Date(joiningDateStr) : null;
 
     let runningBalance = openingBalance;
     const monthlyDetailData = months.slice(0, monthLimit).map((m, idx) => {
-        const granted = monthlyGrantRate;
+        // Check if employee had joined in this month
+        let hasJoined = true;
+        if (joiningDate) {
+            const jYear = joiningDate.getFullYear();
+            const jMonth = joiningDate.getMonth(); // 0-indexed
+            if (selectedYear < jYear || (selectedYear === jYear && idx < jMonth)) {
+                hasJoined = false;
+            }
+        }
+
+        const granted = hasJoined ? rate : 0.0;
         const consumed = Number(monthlyConsumed[idx].consumed.toFixed(2));
         runningBalance = runningBalance + granted - consumed;
+        
         // Clamp here so negative does NOT carry into future months (matches backend logic)
         runningBalance = Math.max(0, runningBalance);
         return {
@@ -209,6 +250,11 @@ const Leaves = ({ userId, user, mode = 'all' }) => {
         e.preventDefault();
         if (leaveData.is_intern && formData.leave_type !== 'Compensatory Off') return;
 
+        if (isInsufficient && !lopOption) {
+            toast.error('Please select an option to handle insufficient leaves (Salary Cut or Next Month Deduction).');
+            return;
+        }
+
         setStatus('processing');
 
         try {
@@ -217,7 +263,10 @@ const Leaves = ({ userId, user, mode = 'all' }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...formData,
-                    cc_ids: formData.cc_ids.filter(id => id && id !== '')
+                    cc_ids: formData.cc_ids.filter(id => id && id !== ''),
+                    lop_option: isInsufficient ? lopOption : null,
+                    excess_days: excessDays,
+                    deduct_from_next_month_type: (isInsufficient && lopOption === 'next_month_deduction') ? deductFromNextMonthType : null
                 })
             });
 
@@ -226,6 +275,7 @@ const Leaves = ({ userId, user, mode = 'all' }) => {
                     setStatus('submitted');
                     fetchBalance();
                     fetchRecentLeaves();
+                    setLopOption('');
                 }, 1000);
             }
         } catch (err) {
@@ -244,678 +294,694 @@ const Leaves = ({ userId, user, mode = 'all' }) => {
             });
 
             if (response.ok) {
-                alert('Leave request withdrawn successfully');
+                toast.success('Leave request withdrawn successfully');
                 fetchRecentLeaves();
                 fetchBalance();
             } else {
                 const error = await response.json();
-                alert(`Failed to withdraw leave: ${error.error || 'Unknown error'}`);
+                toast.error(`Failed to withdraw leave: ${error.error || 'Unknown error'}`);
             }
         } catch (err) {
             console.error(err);
-            alert('Failed to withdraw leave request');
+            toast.error('Failed to withdraw leave request');
         }
     };
 
-    if (loading) return <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>Loading leave records...</div>;
+    if (loading) {
+        return (
+            <div className="ds">
+                <div className="ds-wrap-narrow">
+                    <div className="ds-loading">
+                        <div className="ds-spinner" />
+                        Loading leave records…
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (selectedLeaveId) {
         return <LeaveDetailsView leaveId={selectedLeaveId} userId={userId} onBack={() => setSelectedLeaveId(null)} />;
     }
 
-    return (
-        <div className="leaves-page">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <h1 className="card-title" style={{ fontSize: '1.75rem', marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Plane size={32} color="var(--primary)" /> {pageTitle}</h1>
-                    <button 
-                        onClick={() => { fetchBalance(); fetchRecentLeaves(); }}
-                        className="btn-icon" 
-                        style={{ 
-                            background: 'rgba(255, 69, 0, 0.1)', 
-                            borderRadius: '50%', 
-                            padding: '5px',
-                            cursor: 'pointer',
-                            border: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '32px',
-                            height: '32px'
-                        }}
-                        title="Sync Balance"
+    const statusVariant = (raw) => {
+        const s = String(raw || '').toLowerCase();
+        if (s.includes('approved')) return 'present';
+        if (s.includes('rejected')) return 'absent';
+        if (s.includes('withdrawn')) return 'muted';
+        return 'off';
+    };
+
+    /* ---------------- shared header ---------------- */
+    const header = (
+        <div className="ds-page-head">
+            <div className="ds-brand">
+                <div className="ds-icon"><Plane size={17} /></div>
+                <h1>{pageTitle}</h1>
+                <button
+                    onClick={() => { fetchBalance(); fetchRecentLeaves(); }}
+                    className="ds-sync-btn"
+                    title="Sync balance"
+                    type="button"
+                >
+                    <RefreshCw size={13} />
+                </button>
+                {leaveData?.accrual_info?.last_sync && (
+                    <div className="ds-sync">
+                        Synced {new Date(leaveData.accrual_info.last_sync).toLocaleTimeString()}
+                    </div>
+                )}
+            </div>
+
+            <div className="ds-head-right">
+                {isBalanceView && (
+                    <select
+                        className="ds-year-select"
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
                     >
-                        <RefreshCw size={16} />
-                    </button>
-                    {leaveData?.accrual_info?.last_sync && (
-                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                            Synced: {new Date(leaveData.accrual_info.last_sync).toLocaleTimeString()}
-                        </span>
-                    )}
-                </div>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                    {isBalanceView && (
-                        <select
-                            value={selectedYear}
-                            onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
-                            style={{ padding: '0.55rem 0.7rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: '#ffffff', color: '#0f172a', fontWeight: 700, minWidth: '110px' }}
-                        >
-                            {availableYears.map((year) => (
-                                <option key={year} value={year}>{year}</option>
-                            ))}
-                        </select>
-                    )}
+                        {availableYears.map((year) => (
+                            <option key={year} value={year}>{year}</option>
+                        ))}
+                    </select>
+                )}
+
+                <div className="ds-balance-strip">
                     {Array.isArray(leaveData?.types) && leaveData.types.map((type, idx) => {
                         const isSelected = selectedTypeName === type.name;
                         return (
                             <div
                                 key={idx}
-                                className="card shadow-sm"
-                                style={{
-                                    padding: '0.55rem 0.9rem',
-                                    borderRadius: '10px',
-                                    textAlign: 'center',
-                                    minWidth: '120px',
-                                    background: isSelected ? '#eff6ff' : '#ffffff',
-                                    border: isSelected ? '1px solid #93c5fd' : '1px solid var(--border-color)',
-                                    cursor: isBalanceView ? 'pointer' : 'default'
-                                }}
-                                onClick={() => {
-                                    if (isBalanceView) setSelectedTypeName(type.name);
-                                }}
+                                className={`ds-balance-card${isSelected && isBalanceView ? ' active' : ''}${isBalanceView ? ' with-link' : ''}`}
+                                style={!isBalanceView ? { cursor: 'default' } : undefined}
+                                onClick={() => { if (isBalanceView) setSelectedTypeName(type.name); }}
                             >
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{type.name}</div>
-                                <div style={{ fontWeight: 'bold', color: '#0f172a', marginTop: '0.2rem' }}>
-                                    {type.remaining} Days
-                                </div>
-                                {isBalanceView && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setSelectedTypeName(type.name)}
-                                        style={{ marginTop: '0.4rem', border: 'none', background: 'transparent', color: '#1d4ed8', fontWeight: 700, cursor: 'pointer', fontSize: '0.78rem' }}
-                                    >
-                                        View Details
-                                    </button>
-                                )}
+                                <div className="label">{type.name}</div>
+                                <div className="value">{type.remaining} Days</div>
+                                {isBalanceView && <div className="link">View details</div>}
                             </div>
                         );
                     })}
                 </div>
             </div>
+        </div>
+    );
 
-            {!isBalanceView && (
-            <div className="grid-3">
-                {/* Leave Application Form */}
-                <div className="card" style={{ gridColumn: 'span 2', opacity: leaveData.is_intern ? 0.7 : 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                        <Bot size={24} color="var(--primary)" />
-                        <h2 className="card-title" style={{ marginBottom: 0 }}>Smart Leave Application</h2>
-                    </div>
+    return (
+        <div className="ds">
+            <div className="ds-wrap-narrow">
 
-                    {leaveData.is_intern && leaveData.remaining <= 0 ? (
-                        <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: 'rgba(200, 76, 255, 0.1)', border: '1px dashed var(--violet)', borderRadius: '8px' }}>
-                            <Info size={32} color="var(--violet)" />
-                            <p style={{ color: 'var(--violet)', fontWeight: 'bold', marginTop: '1rem' }}>Internship Policy Notice</p>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                                {leaveData.message || "Interns are not eligible for paid leaves. You can only apply for earned Compensatory Off."}
-                            </p>
-                        </div>
-                    ) : (
-                        <form style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }} onSubmit={submitLeave}>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Leave Subject</label>
-                                <input 
-                                    type="text" 
-                                    required 
-                                    placeholder="Brief summary (e.g. Family Function / Medical Checkup)"
-                                    value={formData.subject} 
-                                    onChange={e => setFormData({ ...formData, subject: e.target.value })} 
-                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }} 
-                                />
+                {header}
+
+                {/* ============================= APPLY VIEW ============================= */}
+                {!isBalanceView && (
+                    <div className="ds-layout">
+
+                        {/* ---------- Application form ---------- */}
+                        <div className="ds-panel roomier" style={leaveData.is_intern ? { opacity: 0.75 } : undefined}>
+                            <div className="ds-panel-title serif-xl">
+                                <span className="ic-box"><FileText size={14} /></span>
+                                Smart Leave Application
                             </div>
-                            <div style={{ display: 'flex', gap: '1rem' }}>
-                                {(user?.role === 'admin' || user?.role === 'super_admin') && (
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Select Employee</label>
-                                        <select value={formData.employee_id} onChange={e => {
-                                            setFormData({ ...formData, employee_id: e.target.value });
-                                            // Refresh balance when employee changes if needed, 
-                                        }} style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }}>
-                                            <option value={userId}>Current User (You)</option>
-                                            {employeeDirectory.filter(emp => emp.employee_id !== userId).map(emp => (
-                                                <option key={emp.employee_id} value={emp.employee_id}>{emp.name} ({emp.employee_id})</option>
-                                            ))}
+
+                            {leaveData.is_intern && leaveData.remaining <= 0 ? (
+                                <div className="ds-insight-box" style={{ textAlign: 'center', padding: '28px 20px' }}>
+                                    <Info size={26} style={{ marginBottom: 10 }} />
+                                    <div style={{ fontWeight: 700, marginBottom: 6 }}>Internship Policy Notice</div>
+                                    <div style={{ color: 'var(--ink-soft)' }}>
+                                        {leaveData.message || "Interns are not eligible for paid leaves. You can only apply for earned Compensatory Off."}
+                                    </div>
+                                </div>
+                            ) : (
+                                <form onSubmit={submitLeave}>
+
+                                    <div className="ds-field">
+                                        <label>Leave subject</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            placeholder="Brief summary (e.g. Family Function / Medical Checkup)"
+                                            value={formData.subject}
+                                            onChange={e => setFormData({ ...formData, subject: e.target.value })}
+                                        />
+                                    </div>
+
+                                    {(user?.role === 'admin' || user?.role === 'super_admin') && (
+                                        <div className="ds-field">
+                                            <label>Select employee</label>
+                                            <select
+                                                value={formData.employee_id}
+                                                onChange={e => setFormData({ ...formData, employee_id: e.target.value })}
+                                            >
+                                                <option value={userId}>Current User (You)</option>
+                                                {employeeDirectory.filter(emp => emp.employee_id !== userId).map(emp => (
+                                                    <option key={emp.employee_id} value={emp.employee_id}>
+                                                        {emp.name} ({emp.employee_id})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    <div className="ds-field">
+                                        <label>Leave type</label>
+                                        <select
+                                            value={formData.leave_type}
+                                            onChange={e => setFormData({ ...formData, leave_type: e.target.value })}
+                                        >
+                                            {leaveData.types
+                                                .filter(t => t.name !== 'Privilege Leave')
+                                                .filter(t => !leaveData.is_intern || t.name === 'Compensatory Off' || t.remaining > 0)
+                                                .map(t => (<option key={t.name}>{t.name}</option>))
+                                            }
                                         </select>
                                     </div>
-                                )}
-                                <div style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Leave Type</label>
-                                    <select value={formData.leave_type} onChange={e => setFormData({ ...formData, leave_type: e.target.value })} style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }}>
-                                        {leaveData.types.filter(t => !leaveData.is_intern || t.name === 'Compensatory Off' || t.remaining > 0).map(t => (
-                                            <option key={t.name}>{t.name}</option>
-                                        ))}
-                                        <option>Paid Leave</option>
-                                        <option>Unpaid Leave</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '1rem' }}>
-                                <div style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Duration</label>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        <input type="date" required value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} style={{ flex: 1, padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }} />
-                                        <input type="date" required value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} style={{ flex: 1, padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }} />
+
+                                    <div className="ds-field ds-row two">
+                                        <div>
+                                            <label>From date</label>
+                                            <input
+                                                type="date"
+                                                required
+                                                value={formData.start_date}
+                                                onChange={e => setFormData({ ...formData, start_date: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label>To date</label>
+                                            <input
+                                                type="date"
+                                                required
+                                                value={formData.end_date}
+                                                onChange={e => setFormData({ ...formData, end_date: e.target.value })}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
 
-                            <div style={{ display: 'flex', gap: '1rem' }}>
-                                <div style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>From Date Session</label>
-                                    <select 
-                                        value={formData.start_session}
-                                        onChange={e => setFormData({ ...formData, start_session: e.target.value })}
-                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }}
-                                    >
-                                        <option value="Full Day">Full Day</option>
-                                        <option value="Session 1">Session 1 (Morning)</option>
-                                        <option value="Session 2">Session 2 (Afternoon)</option>
-                                    </select>
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>To Date Session</label>
-                                    <select 
-                                        value={formData.end_session}
-                                        onChange={e => setFormData({ ...formData, end_session: e.target.value })}
-                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }}
-                                    >
-                                        <option value="Full Day">Full Day</option>
-                                        <option value="Session 1">Session 1 (Morning)</option>
-                                        <option value="Session 2">Session 2 (Afternoon)</option>
-                                    </select>
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Send Request To (Approver)</label>
-                                    <select 
-                                        required
-                                        value={formData.approver_id} 
-                                        onChange={e => setFormData({ ...formData, approver_id: e.target.value })} 
-                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }}
-                                    >
-                                        <option value="">Select Approver</option>
-                                        {approvers.map(app => (
-                                            <option key={app.employee_id} value={app.employee_id}>
-                                                {app.name} ({app.role === 'super_admin' ? 'Super Admin' : (app.role === 'hr' ? 'HR' : 'Admin')})
-                                            </option>
-                                        ))}
-                                        {approvers.length === 0 && <option value="">No admins found</option>}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* CC Selection Checklist */}
-                            <div style={{ marginTop: '1rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>
-                                    CC Recipients ({formData.cc_ids.length} selected)
-                                </label>
-                                
-                                <input 
-                                    type="text" 
-                                    placeholder="Search employees to CC..." 
-                                    value={ccSearch}
-                                    onChange={e => setCcSearch(e.target.value)}
-                                    style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.8rem' }}
-                                />
-
-                                <div style={{ 
-                                    height: '120px', 
-                                    overflowY: 'auto', 
-                                    border: '1px solid var(--border-color)', 
-                                    borderRadius: '6px', 
-                                    padding: '0.4rem',
-                                    backgroundColor: 'rgba(0,0,0,0.2)',
-                                    scrollbarWidth: 'thin',
-                                    scrollbarColor: 'var(--primary) transparent'
-                                }}>
-                                    {approvers
-                                        .filter(a => a.employee_id !== formData.approver_id && a.employee_id !== userId)
-                                        .filter(a => a.name.toLowerCase().includes(ccSearch.toLowerCase()))
-                                        .map(app => (
-                                            <label key={app.employee_id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem', borderRadius: '4px', cursor: 'pointer', backgroundColor: formData.cc_ids.includes(app.employee_id) ? 'rgba(255, 69, 0, 0.2)' : 'transparent' }}>
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={formData.cc_ids.includes(app.employee_id)}
-                                                    onChange={() => {
-                                                        const newCcIds = formData.cc_ids.includes(app.employee_id)
-                                                            ? formData.cc_ids.filter(id => id !== app.employee_id)
-                                                            : [...formData.cc_ids, app.employee_id];
-                                                        setFormData({ ...formData, cc_ids: newCcIds });
-                                                    }}
-                                                />
-                                                <span style={{ fontSize: '0.85rem' }}>{app.name} <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>({app.role.replace('_', ' ')})</span></span>
-                                            </label>
-                                        ))
-                                    }
-                                    {approvers.length === 0 && <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '1rem' }}>No recipients available</p>}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Reason</label>
-                                <textarea rows="3" required value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-light)' }} placeholder="Briefly describe your reason..."></textarea>
-                            </div>
-
-                            <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', padding: '0.75rem 2rem' }} disabled={status === 'processing'}>
-                                {status === 'processing' ? 'Submitting & Analyzing...' : 'Submit Request'}
-                            </button>
-                        </form>
-                    )}
-
-                    {status === 'submitted' && (
-                        <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: 'rgba(255, 69, 0, 0.1)', border: '1px solid var(--secondary)', borderRadius: '8px' }}>
-                            <p style={{ color: 'var(--secondary)', fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckCircle2 size={18} /> Submitted Pending Admin Approval</p>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-light)' }}>The AI Smart Leave Agent has reviewed your request and forwarded it to the Administrator Space.</p>
-                        </div>
-                    )}
-                </div>
-
-                {/* AI Leave Insights */}
-                <div className="card shadow-sm" style={{ borderColor: 'var(--border-color)', background: '#ffffff' }}>
-                    <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Users size={20} /> Team Availability</h2>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                        AI snapshot of your team's current availability.
-                    </p>
-
-                    <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        {teamAvailability.length === 0 ? <li style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading team status...</li> :
-                            teamAvailability.map(member => (
-                                <li key={member.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <div className="avatar" style={{
-                                            width: 24,
-                                            height: 24,
-                                            fontSize: '10px',
-                                            backgroundColor: member.status === 'Available' ? 'var(--secondary)' : member.status === 'On Leave' ? '#EF4444' : 'var(--text-muted)'
-                                        }}>{member.initials}</div>
-                                        <span>{member.name} {member.id === userId ? '(You)' : ''}</span>
-                                    </div>
-                                    <span style={{ color: member.status === 'Available' ? 'var(--secondary)' : member.status === 'On Leave' ? '#EF4444' : 'var(--text-muted)' }}>
-                                        {member.status}
-                                    </span>
-                                </li>
-                            ))
-                        }
-                    </ul>
-                </div>
-            </div>
-            )}
-
-            {isBalanceView && selectedType && (
-            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.85rem' }}>
-                    {[
-                        { label: 'Available Balance', value: availableBalance, key: 'avail' },
-                        { label: 'Opening Balance', value: openingBalance, key: 'open' },
-                        { label: 'Granted', value: Number(grantedForType.toFixed(2)), key: 'granted' },
-                        { label: 'Availed', value: Number(totalConsumedForType.toFixed(2)), key: 'availed' }
-                    ].map((item) => {
-                        const isActive = item.key === 'granted' ? showGrantedTable : item.key === 'availed' ? showAvailedTable : false;
-                        const isClickable = item.key === 'granted' || item.key === 'availed';
-                        const handleClick = () => {
-                            if (item.key === 'granted') setShowGrantedTable((prev) => !prev);
-                            else if (item.key === 'availed') setShowAvailedTable((prev) => !prev);
-                        };
-                        return (
-                        <div
-                            key={item.label}
-                            className="card shadow-sm"
-                            onClick={isClickable ? handleClick : undefined}
-                            style={{
-                                background: isActive ? '#eff6ff' : '#ffffff',
-                                border: isActive ? '1px solid #93c5fd' : '1px solid var(--border-color)',
-                                padding: '0.85rem 1rem',
-                                cursor: isClickable ? 'pointer' : 'default',
-                                userSelect: 'none'
-                            }}
-                        >
-                            <div style={{ color: '#64748b', fontSize: '0.78rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                {item.label}
-                                {isClickable && (
-                                    <span style={{ fontSize: '0.7rem', color: '#1d4ed8', fontWeight: 600 }}>
-                                        {isActive ? '▲ Hide' : '▼ Details'}
-                                    </span>
-                                )}
-                            </div>
-                            <div style={{ color: '#0f172a', fontSize: '1.6rem', fontWeight: 800, marginTop: '0.25rem' }}>{item.value}</div>
-                        </div>
-                        );
-                    })}
-                </div>
-
-                {showGrantedTable && (
-                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid #93c5fd' }}>
-                    <h2 className="card-title" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ color: '#1d4ed8' }}>▼</span> Granted — {selectedType.name} ({selectedYear})
-                        <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: '#64748b', fontWeight: 400 }}>{monthlyDetailData.length} month{monthlyDetailData.length !== 1 ? 's' : ''}</span>
-                    </h2>
-                    <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left', background: '#f8fafc' }}>
-                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Month</th>
-                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Granted (Days)</th>
-                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Consumed (Days)</th>
-                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Running Balance</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {monthlyDetailData.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="4" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                            No grant data for {selectedType.name} in {selectedYear}.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    monthlyDetailData.map((row, idx) => (
-                                        <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                                            <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>{row.month}</td>
-                                            <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#15803d' }}>{row.granted > 0 ? `+${row.granted}` : row.granted}</td>
-                                            <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: row.consumed > 0 ? '#dc2626' : '#64748b' }}>{row.consumed > 0 ? `-${row.consumed}` : row.consumed}</td>
-                                            <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: row.balance <= 0 ? '#dc2626' : '#0f172a' }}>{row.balance}</td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                            {monthlyDetailData.length > 0 && (
-                            <tfoot>
-                                <tr style={{ borderTop: '2px solid var(--border-color)', background: '#f0f9ff' }}>
-                                    <td style={{ padding: '0.75rem 1rem', fontWeight: 700 }}>Total</td>
-                                    <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#15803d' }}>+{Number(grantedForType.toFixed(2))}</td>
-                                    <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: totalConsumedForType > 0 ? '#dc2626' : '#64748b' }}>{totalConsumedForType > 0 ? `-${Number(totalConsumedForType.toFixed(2))}` : 0}</td>
-                                    <td style={{ padding: '0.75rem 1rem', fontWeight: 700 }}>{availableBalance}</td>
-                                </tr>
-                            </tfoot>
-                            )}
-                        </table>
-                    </div>
-                </div>
-                )}
-
-                {showAvailedTable && (
-                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid #93c5fd' }}>
-                    <h2 className="card-title" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ color: '#1d4ed8' }}>▼</span> Availed — {selectedType.name} ({selectedYear})
-                        <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: '#64748b', fontWeight: 400 }}>{approvedTypeRecords.length} record{approvedTypeRecords.length !== 1 ? 's' : ''}</span>
-                    </h2>
-                    <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left', background: '#f8fafc' }}>
-                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Leave Type</th>
-                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Applied On</th>
-                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>From</th>
-                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>To</th>
-                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Days</th>
-                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Status</th>
-                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>Reason</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {approvedTypeRecords.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="7" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                            No availed records for {selectedType.name} in {selectedYear}.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    approvedTypeRecords.map((leaf, idx) => (
-                                        <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                                            <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>{leaf.leave_type || selectedType.name}</td>
-                                            <td style={{ padding: '0.75rem 1rem' }}>{leaf.applied_on ? new Date(leaf.applied_on).toLocaleDateString() : '-'}</td>
-                                            <td style={{ padding: '0.75rem 1rem' }}>{leaf.start_date ? new Date(leaf.start_date).toLocaleDateString() : '-'}</td>
-                                            <td style={{ padding: '0.75rem 1rem' }}>{leaf.end_date ? new Date(leaf.end_date).toLocaleDateString() : '-'}</td>
-                                            <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#1d4ed8' }}>{calculateLeaveDays(leaf)}</td>
-                                            <td style={{ padding: '0.75rem 1rem' }}>
-                                                <span style={{
-                                                    padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.78rem', fontWeight: 600,
-                                                    background: String(leaf.status || '').toLowerCase().includes('approved') ? '#dcfce7' : '#fef9c3',
-                                                    color: String(leaf.status || '').toLowerCase().includes('approved') ? '#15803d' : '#92400e'
-                                                }}>{leaf.status || '-'}</span>
-                                            </td>
-                                            <td style={{ padding: '0.75rem 1rem', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#64748b' }} title={leaf.reason || ''}>{leaf.reason || '-'}</td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                )}
-
-                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                    <h2 className="card-title" style={{ marginBottom: '1rem' }}>{selectedType.name}: {selectedYear}</h2>
-                    <div style={{ width: '100%', height: '320px' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={monthlyDetailData} margin={{ top: 10, right: 20, left: 10, bottom: 18 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                                <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 12 }} />
-                                <YAxis tick={{ fill: '#64748b', fontSize: 12 }} allowDecimals />
-                                <Tooltip
-                                    contentStyle={{ borderRadius: '10px', border: '1px solid #dbe4f0', boxShadow: '0 8px 25px rgba(15,23,42,0.1)' }}
-                                    formatter={(value, name) => [value, name === 'balance' ? 'Balance' : 'Consumed']}
-                                />
-                                <Legend formatter={(value) => (value === 'balance' ? 'Balance' : 'Consumed')} />
-                                <Bar dataKey="balance" fill="#7ec1ec" radius={[4, 4, 0, 0]} maxBarSize={34} />
-                                <Bar dataKey="consumed" fill="#f28b82" radius={[4, 4, 0, 0]} maxBarSize={34} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                    <h2 className="card-title" style={{ marginBottom: '1rem' }}>Transactions</h2>
-                    <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
-                                    <th style={{ padding: '0.85rem', color: 'var(--text-muted)' }}>Transaction Type</th>
-                                    <th style={{ padding: '0.85rem', color: 'var(--text-muted)' }}>Posted On</th>
-                                    <th style={{ padding: '0.85rem', color: 'var(--text-muted)' }}>From</th>
-                                    <th style={{ padding: '0.85rem', color: 'var(--text-muted)' }}>To</th>
-                                    <th style={{ padding: '0.85rem', color: 'var(--text-muted)' }}>Days</th>
-                                    <th style={{ padding: '0.85rem', color: 'var(--text-muted)' }}>Reason</th>
-                                    <th style={{ padding: '0.85rem', color: 'var(--text-muted)' }}>Remarks</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {selectedTypeRecords.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="7" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                            No detailed records for {selectedType.name} in {selectedYear}.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    selectedTypeRecords.map((leaf, idx) => (
-                                        <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                            <td style={{ padding: '0.85rem', fontWeight: 600 }}>{leaf.leave_type || selectedType.name}</td>
-                                            <td style={{ padding: '0.85rem' }}>{leaf.applied_on ? new Date(leaf.applied_on).toLocaleDateString() : '-'}</td>
-                                            <td style={{ padding: '0.85rem' }}>{leaf.start_date ? new Date(leaf.start_date).toLocaleDateString() : '-'}</td>
-                                            <td style={{ padding: '0.85rem' }}>{leaf.end_date ? new Date(leaf.end_date).toLocaleDateString() : '-'}</td>
-                                            <td style={{ padding: '0.85rem', fontWeight: 600 }}>{calculateLeaveDays(leaf)}</td>
-                                            <td style={{ padding: '0.85rem', maxWidth: '320px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={leaf.reason || ''}>{leaf.reason || '-'}</td>
-                                            <td style={{ padding: '0.85rem', color: '#64748b' }}>{leaf.status || '-'}</td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            )}
-
-            {/* Monthly Summary & History */}
-            {!isApplyView && !isBalanceView && (
-            <div style={{ marginTop: '2.5rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                
-                <div className="grid-3" style={{ gap: '1.5rem' }}>
-                    <div className="card shadow-sm" style={{ textAlign: 'center', padding: '1.5rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>LEAVES THIS MONTH</div>
-                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary)' }}>
-                            {recentLeaves.filter(l => {
-                                const isApproved = l.status && l.status.toLowerCase().includes('approved');
-                                const currentMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
-                                const startMonth = l.start_date.slice(0, 7);
-                                return isApproved && startMonth === currentMonth;
-                            }).length}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Approved requests</div>
-                    </div>
-                    
-                    <div className="card shadow-sm" style={{ textAlign: 'center', padding: '1.5rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>PENDING REQUESTS</div>
-                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#F59E0B' }}>
-                            {recentLeaves.filter(l => l.status.includes('Pending')).length}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Awaiting review</div>
-                    </div>
-
-                    <div className="card shadow-sm" style={{ textAlign: 'center', padding: '1.5rem', background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>UPCOMING LEAVES</div>
-                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--secondary)' }}>
-                            {recentLeaves.filter(l => {
-                                const isApproved = l.status && l.status.toLowerCase().includes('approved');
-                                const isFuture = new Date(l.start_date) > new Date();
-                                return isApproved && isFuture;
-                            }).length}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Future dates</div>
-                    </div>
-                </div>
-
-                <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                        <h2 className="card-title" style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><History size={20} /> Recent Applications & Status</h2>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Real-time approval tracking</div>
-                    </div>
-                    
-                    <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
-                                    <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Date Range</th>
-                                    <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Type</th>
-                                    <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Reason</th>
-                                    <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Status</th>
-                                    <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {recentLeaves.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No recent leave applications.</td>
-                                    </tr>
-                                ) : recentLeaves.map((leaf, idx) => (
-                                    <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                        <td style={{ padding: '1rem' }}>
-                                            <div style={{ fontWeight: '600' }}>
-                                                {new Date(leaf.start_date).toLocaleDateString()} ({leaf.start_session || 'Full Day'}) 
-                                                <br />
-                                                to {new Date(leaf.end_date).toLocaleDateString()} ({leaf.end_session || 'Full Day'})
-                                            </div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Requested {new Date(leaf.applied_on).toLocaleDateString()}</div>
-                                        </td>
-                                        <td style={{ padding: '1rem' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <span style={{ 
-                                                    padding: '0.15rem 0.4rem', 
-                                                    borderRadius: '4px', 
-                                                    backgroundColor: 'var(--primary-glow)', 
-                                                    color: 'var(--primary)',
-                                                    fontSize: '0.75rem',
-                                                    fontWeight: 'bold',
-                                                    border: '1px solid var(--primary)'
-                                                }}>{leaf.leave_type_short || 'L'}</span>
-                                                <span>{leaf.leave_type}</span>
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '1rem', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={leaf.reason}>
-                                            {leaf.reason}
-                                        </td>
-                                        <td style={{ padding: '1rem' }}>
-                                            <span style={{ 
-                                                padding: '0.4rem 0.8rem', 
-                                                borderRadius: '20px', 
-                                                fontSize: '0.75rem', 
-                                                fontWeight: '600',
-                                                backgroundColor: leaf.status.includes('Approved') ? 'rgba(34, 197, 94, 0.15)' : 
-                                                                leaf.status.includes('Rejected') ? 'rgba(239, 68, 68, 0.15)' : 
-                                                                leaf.status.includes('Withdrawn') ? 'rgba(156, 163, 175, 0.15)' :
-                                                                'rgba(245, 158, 11, 0.15)',
-                                                color: leaf.status.includes('Approved') ? '#22C55E' : 
-                                                       leaf.status.includes('Rejected') ? '#EF4444' : 
-                                                       leaf.status.includes('Withdrawn') ? '#6B7280' :
-                                                       '#F59E0B',
-                                                border: `1px solid ${
-                                                    leaf.status.includes('Approved') ? '#22C55E44' : 
-                                                    leaf.status.includes('Rejected') ? '#EF444444' :
-                                                    leaf.status.includes('Withdrawn') ? '#6B728044' :
-                                                    '#F59E0B44'
-                                                }`
-                                            }}>
-                                                {leaf.status}
-                                            </span>
-                                            {leaf.status === 'Pending Admin Approval' && (
-                                                <button 
-                                                    onClick={() => withdrawLeave(leaf.id)}
-                                                    style={{ 
-                                                        marginLeft: '0.5rem',
-                                                        padding: '0.2rem 0.5rem',
-                                                        fontSize: '0.7rem',
-                                                        backgroundColor: '#EF4444',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        borderRadius: '4px',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                    title="Withdraw this leave request"
-                                                >
-                                                    Withdraw
-                                                </button>
-                                            )}
-                                        </td>
-                                        <td style={{ padding: '1rem' }}>
-                                            <button
-                                                onClick={() => setSelectedLeaveId(leaf.id)}
-                                                style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '0.5rem',
-                                                    padding: '0.4rem 0.8rem',
-                                                    backgroundColor: 'var(--primary)',
-                                                    color: 'white',
-                                                    border: 'none',
-                                                    borderRadius: '4px',
-                                                    cursor: 'pointer',
-                                                    fontSize: '0.8rem',
-                                                    fontWeight: '500',
-                                                    transition: 'all 0.2s'
-                                                }}
-                                                onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--secondary)'}
-                                                onMouseLeave={(e) => e.target.style.backgroundColor = 'var(--primary)'}
+                                    <div className="ds-field ds-row three">
+                                        <div>
+                                            <label>From date session</label>
+                                            <select
+                                                value={formData.start_session}
+                                                onChange={e => setFormData({ ...formData, start_session: e.target.value })}
                                             >
-                                                <Eye size={14} />
-                                                View Details
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                                <option value="Full Day">Full Day</option>
+                                                <option value="Session 1">Session 1 (Morning)</option>
+                                                <option value="Session 2">Session 2 (Afternoon)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label>To date session</label>
+                                            <select
+                                                value={formData.end_session}
+                                                onChange={e => setFormData({ ...formData, end_session: e.target.value })}
+                                            >
+                                                <option value="Full Day">Full Day</option>
+                                                <option value="Session 1">Session 1 (Morning)</option>
+                                                <option value="Session 2">Session 2 (Afternoon)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label>Send request to (approver)</label>
+                                            <select
+                                                required
+                                                value={formData.approver_id}
+                                                onChange={e => setFormData({ ...formData, approver_id: e.target.value })}
+                                            >
+                                                <option value="">Select approver</option>
+                                                {approvers.map(app => (
+                                                    <option key={app.employee_id} value={app.employee_id}>
+                                                        {app.name} ({app.role === 'super_admin' ? 'Super Admin' : (app.role === 'hr' ? 'HR' : 'Admin')})
+                                                    </option>
+                                                ))}
+                                                {approvers.length === 0 && <option value="">No admins found</option>}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* CC recipients */}
+                                    <div className="ds-field">
+                                        <label>CC recipients ({formData.cc_ids.length} selected)</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Search employees to CC…"
+                                            value={ccSearch}
+                                            onChange={e => setCcSearch(e.target.value)}
+                                            style={{ marginBottom: 10 }}
+                                        />
+                                        <div className="ds-cc-box" style={{ display: 'block', maxHeight: 140, overflowY: 'auto' }}>
+                                            {approvers
+                                                .filter(a => a.employee_id !== formData.approver_id && a.employee_id !== userId)
+                                                .filter(a => a.name.toLowerCase().includes(ccSearch.toLowerCase()))
+                                                .map(app => (
+                                                    <label key={app.employee_id} className="ds-cc-option">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={formData.cc_ids.includes(app.employee_id)}
+                                                            onChange={() => {
+                                                                const newCcIds = formData.cc_ids.includes(app.employee_id)
+                                                                    ? formData.cc_ids.filter(id => id !== app.employee_id)
+                                                                    : [...formData.cc_ids, app.employee_id];
+                                                                setFormData({ ...formData, cc_ids: newCcIds });
+                                                            }}
+                                                        />
+                                                        <span>
+                                                            {app.name}
+                                                            <small> ({app.role.replace('_', ' ')})</small>
+                                                        </span>
+                                                    </label>
+                                                ))
+                                            }
+                                            {approvers.length === 0 && <span>No recipients available</span>}
+                                        </div>
+                                    </div>
+
+                                    {/* Insufficient balance handling */}
+                                    {isInsufficient && (
+                                        <div className="ds-lop-box">
+                                            <div className="ds-lop-head">
+                                                <Info size={15} />
+                                                <span>Insufficient leave balance</span>
+                                            </div>
+                                            <p className="ds-lop-copy">
+                                                You are requesting <strong>{requestedDays} days</strong> of leave, but your remaining
+                                                balance for <strong>{formData.leave_type}</strong> is only <strong>{activeBalance} days</strong>.
+                                                Choose how to handle the remaining <strong>{excessDays} excess day(s)</strong>:
+                                            </p>
+
+                                            <label className="ds-radio">
+                                                <input
+                                                    type="radio"
+                                                    name="lop_option"
+                                                    value="salary_cut"
+                                                    checked={lopOption === 'salary_cut'}
+                                                    onChange={() => setLopOption('salary_cut')}
+                                                />
+                                                <span>Salary cut (loss of pay) for {excessDays} day(s)</span>
+                                            </label>
+
+                                            <label className="ds-radio">
+                                                <input
+                                                    type="radio"
+                                                    name="lop_option"
+                                                    value="next_month_deduction"
+                                                    checked={lopOption === 'next_month_deduction'}
+                                                    onChange={() => setLopOption('next_month_deduction')}
+                                                />
+                                                <span>Deduct from next month's accrued balance</span>
+                                            </label>
+
+                                            {lopOption === 'next_month_deduction' && (
+                                                <div style={{ marginLeft: 26, marginTop: 10 }}>
+                                                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--ink-faint)', marginBottom: 6 }}>
+                                                        Deduct from next month's
+                                                    </label>
+                                                    <select
+                                                        value={deductFromNextMonthType}
+                                                        onChange={e => setDeductFromNextMonthType(e.target.value)}
+                                                        style={{ minWidth: 170, width: 'auto' }}
+                                                    >
+                                                        <option value="Casual Leave">Casual Leave</option>
+                                                        <option value="Sick Leave">Sick Leave</option>
+                                                        <option value="Privilege Leave">Privilege Leave</option>
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div className="ds-field">
+                                        <label>Reason</label>
+                                        <textarea
+                                            rows="3"
+                                            required
+                                            value={formData.reason}
+                                            onChange={e => setFormData({ ...formData, reason: e.target.value })}
+                                            placeholder="Briefly describe your reason…"
+                                        />
+                                    </div>
+
+                                    <button type="submit" className="ds-submit-btn" disabled={status === 'processing'}>
+                                        {status === 'processing' ? 'Submitting & analyzing…' : 'Submit Request'}
+                                    </button>
+                                </form>
+                            )}
+
+                            {status === 'submitted' && (
+                                <div className="ds-insight-box" style={{ marginTop: 20, marginBottom: 0 }}>
+                                    <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                        <CheckCircle2 size={16} /> Submitted — pending admin approval
+                                    </div>
+                                    The AI Smart Leave Agent has reviewed your request and forwarded it to the administrator space.
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ---------- Team availability ---------- */}
+                        <div className="ds-panel roomier">
+                            <div className="ds-panel-title serif-xl">
+                                <span className="ic-box"><Users size={14} /></span>
+                                Team Availability
+                            </div>
+                            <div className="ds-team-note">AI snapshot of your team's current availability.</div>
+
+                            {teamAvailability.length === 0 ? (
+                                <div style={{ color: 'var(--ink-faint)', fontSize: 13 }}>Loading team status…</div>
+                            ) : teamAvailability.map(member => {
+                                const online = member.status === 'Available';
+                                return (
+                                    <div className="ds-member" key={member.id}>
+                                        <div className="who">
+                                            <div className="ds-avatar">{member.initials}</div>
+                                            <div className="name">
+                                                {member.name}
+                                                {member.id === userId && <small>You</small>}
+                                            </div>
+                                        </div>
+                                        <div className={`ds-status-dot${online ? ' online' : ''}`}>
+                                            <span className="ds-dot" />{member.status}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
-                </div>
+                )}
+
+                {/* ============================ BALANCE VIEW ============================ */}
+                {isBalanceView && selectedType && (
+                    <>
+                        {/* ---------- Summary cards ---------- */}
+                        <div className="ds-summary">
+                            {[
+                                { label: 'Available balance', value: availableBalance, key: 'avail' },
+                                { label: 'Opening balance', value: openingBalance, key: 'open' },
+                                { label: 'Granted', value: Number(grantedForType.toFixed(2)), key: 'granted' },
+                                { label: 'Availed', value: Number(totalConsumedForType.toFixed(2)), key: 'availed' }
+                            ].map((item) => {
+                                const isActive = item.key === 'granted' ? showGrantedTable : item.key === 'availed' ? showAvailedTable : false;
+                                const isClickable = item.key === 'granted' || item.key === 'availed';
+                                const handleClick = () => {
+                                    if (item.key === 'granted') setShowGrantedTable((prev) => !prev);
+                                    else if (item.key === 'availed') setShowAvailedTable((prev) => !prev);
+                                };
+                                return (
+                                    <div
+                                        key={item.label}
+                                        className="ds-summary-card"
+                                        onClick={isClickable ? handleClick : undefined}
+                                        style={{
+                                            cursor: isClickable ? 'pointer' : 'default',
+                                            userSelect: 'none',
+                                            borderColor: isActive ? 'var(--accent)' : undefined
+                                        }}
+                                    >
+                                        <div className="top-row">
+                                            <span className="label">{item.label}</span>
+                                            {isClickable && (
+                                                <span className="detail-link">{isActive ? '▲ Hide' : '▾ Details'}</span>
+                                            )}
+                                        </div>
+                                        <div className="value">{item.value}</div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* ---------- Granted breakdown ---------- */}
+                        {showGrantedTable && (
+                            <div className="ds-panel roomy stacked">
+                                <div className="ds-panel-title serif-lg">
+                                    Granted — {selectedType.name} · {selectedYear}
+                                    <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--ink-faint)', fontWeight: 400 }}>
+                                        {monthlyDetailData.length} month{monthlyDetailData.length !== 1 ? 's' : ''}
+                                    </span>
+                                </div>
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table className="ds-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Month</th>
+                                                <th>Granted (days)</th>
+                                                <th>Consumed (days)</th>
+                                                <th>Running balance</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {monthlyDetailData.length === 0 ? (
+                                                <tr className="ds-empty-row">
+                                                    <td colSpan="4">No grant data for {selectedType.name} in {selectedYear}.</td>
+                                                </tr>
+                                            ) : monthlyDetailData.map((row, idx) => (
+                                                <tr key={idx}>
+                                                    <td style={{ fontWeight: 600 }}>{row.month}</td>
+                                                    <td className="ds-amt positive">{row.granted > 0 ? `+${row.granted}` : row.granted}</td>
+                                                    <td className={`ds-amt${row.consumed > 0 ? ' negative' : ''}`}>{row.consumed > 0 ? `-${row.consumed}` : row.consumed}</td>
+                                                    <td className={`ds-amt${row.balance <= 0 ? ' negative' : ''}`}>{row.balance}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        {monthlyDetailData.length > 0 && (
+                                            <tfoot>
+                                                <tr style={{ background: 'var(--bg)' }}>
+                                                    <td style={{ fontWeight: 700 }}>Total</td>
+                                                    <td className="ds-amt positive">+{Number(grantedForType.toFixed(2))}</td>
+                                                    <td className={`ds-amt${totalConsumedForType > 0 ? ' negative' : ''}`}>
+                                                        {totalConsumedForType > 0 ? `-${Number(totalConsumedForType.toFixed(2))}` : 0}
+                                                    </td>
+                                                    <td className="ds-amt">{availableBalance}</td>
+                                                </tr>
+                                            </tfoot>
+                                        )}
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ---------- Availed breakdown ---------- */}
+                        {showAvailedTable && (
+                            <div className="ds-panel roomy stacked">
+                                <div className="ds-panel-title serif-lg">
+                                    Availed — {selectedType.name} · {selectedYear}
+                                    <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--ink-faint)', fontWeight: 400 }}>
+                                        {approvedTypeRecords.length} record{approvedTypeRecords.length !== 1 ? 's' : ''}
+                                    </span>
+                                </div>
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table className="ds-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Leave type</th><th>Applied on</th><th>From</th>
+                                                <th>To</th><th>Days</th><th>Status</th><th>Reason</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {approvedTypeRecords.length === 0 ? (
+                                                <tr className="ds-empty-row">
+                                                    <td colSpan="7">No availed records for {selectedType.name} in {selectedYear}.</td>
+                                                </tr>
+                                            ) : approvedTypeRecords.map((leaf, idx) => (
+                                                <tr key={idx}>
+                                                    <td style={{ fontWeight: 600 }}>{leaf.leave_type || selectedType.name}</td>
+                                                    <td>{leaf.applied_on ? new Date(leaf.applied_on).toLocaleDateString() : '–'}</td>
+                                                    <td>{leaf.start_date ? new Date(leaf.start_date).toLocaleDateString() : '–'}</td>
+                                                    <td>{leaf.end_date ? new Date(leaf.end_date).toLocaleDateString() : '–'}</td>
+                                                    <td className="ds-amt">{calculateLeaveDays(leaf)}</td>
+                                                    <td><span className={`ds-pill ${statusVariant(leaf.status)}`}>{leaf.status || '–'}</span></td>
+                                                    <td className="ds-truncate" title={leaf.reason || ''}>{leaf.reason || '–'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ---------- Balance chart ---------- */}
+                        <div className="ds-panel roomy stacked">
+                            <div className="ds-panel-title serif-lg" style={{ marginBottom: 12 }}>
+                                {selectedType.name} · {selectedYear}
+                            </div>
+                            <div className="ds-chart-wrap tall">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={monthlyDetailData} margin={{ top: 10, right: 16, left: 0, bottom: 8 }} barGap={4}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#EEF0F5" vertical={false} />
+                                        <XAxis
+                                            dataKey="month"
+                                            tick={{ fill: '#A0A4B8', fontSize: 11, fontFamily: 'Inter' }}
+                                            axisLine={false}
+                                            tickLine={false}
+                                        />
+                                        <YAxis
+                                            tick={{ fill: '#A0A4B8', fontSize: 11, fontFamily: 'Inter' }}
+                                            axisLine={false}
+                                            tickLine={false}
+                                            allowDecimals
+                                        />
+                                        <Tooltip
+                                            cursor={{ fill: 'rgba(53,82,214,0.05)' }}
+                                            contentStyle={{
+                                                borderRadius: 10,
+                                                border: '1px solid var(--border)',
+                                                boxShadow: '0 8px 24px -12px rgba(20,24,45,0.18)',
+                                                fontSize: 12.5,
+                                                fontFamily: 'Inter'
+                                            }}
+                                            formatter={(value, name) => [value, name === 'balance' ? 'Balance' : 'Consumed']}
+                                        />
+                                        <Bar
+                                            dataKey="balance"
+                                            fill="#3552D6"
+                                            radius={[4, 4, 0, 0]}
+                                            maxBarSize={26}
+                                        />
+                                        <Bar
+                                            dataKey="consumed"
+                                            fill="#E5484D"
+                                            radius={[4, 4, 0, 0]}
+                                            maxBarSize={26}
+                                        />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div className="ds-chart-legend">
+                                <div className="item"><span className="ds-swatch" style={{ background: '#3552D6' }} />Balance</div>
+                                <div className="item"><span className="ds-swatch" style={{ background: '#E5484D' }} />Consumed</div>
+                            </div>
+                        </div>
+
+                        {/* ---------- Transactions ---------- */}
+                        <div className="ds-panel roomy stacked">
+                            <div className="ds-panel-title serif-lg">Transactions</div>
+                            <div style={{ overflowX: 'auto' }}>
+                                <table className="ds-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Transaction type</th><th>Posted on</th><th>From</th>
+                                            <th>To</th><th>Days</th><th>Reason</th><th>Remarks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {selectedTypeRecords.length === 0 ? (
+                                            <tr className="ds-empty-row">
+                                                <td colSpan="7">No detailed records for {selectedType.name} in {selectedYear}.</td>
+                                            </tr>
+                                        ) : selectedTypeRecords.map((leaf, idx) => (
+                                            <tr key={idx}>
+                                                <td style={{ fontWeight: 600 }}>{leaf.leave_type || selectedType.name}</td>
+                                                <td>{leaf.applied_on ? new Date(leaf.applied_on).toLocaleDateString() : '–'}</td>
+                                                <td>{leaf.start_date ? new Date(leaf.start_date).toLocaleDateString() : '–'}</td>
+                                                <td>{leaf.end_date ? new Date(leaf.end_date).toLocaleDateString() : '–'}</td>
+                                                <td className="ds-amt">{calculateLeaveDays(leaf)}</td>
+                                                <td className="ds-truncate" title={leaf.reason || ''}>{leaf.reason || '–'}</td>
+                                                <td style={{ color: 'var(--ink-soft)' }}>{leaf.status || '–'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {/* ====================== COMBINED VIEW (mode="all") ===================== */}
+                {!isApplyView && !isBalanceView && (
+                    <>
+                        <div className="ds-summary" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                            <div className="ds-summary-card">
+                                <div className="top-row"><span className="label">Leaves this month</span></div>
+                                <div className="value">
+                                    {recentLeaves.filter(l => {
+                                        const isApproved = l.status && l.status.toLowerCase().includes('approved');
+                                        const currentMonth = new Date().toISOString().slice(0, 7);
+                                        return isApproved && l.start_date.slice(0, 7) === currentMonth;
+                                    }).length}
+                                </div>
+                            </div>
+                            <div className="ds-summary-card">
+                                <div className="top-row"><span className="label">Pending requests</span></div>
+                                <div className="value" style={{ color: 'var(--off)' }}>
+                                    {recentLeaves.filter(l => l.status.includes('Pending')).length}
+                                </div>
+                            </div>
+                            <div className="ds-summary-card">
+                                <div className="top-row"><span className="label">Upcoming leaves</span></div>
+                                <div className="value" style={{ color: 'var(--present)' }}>
+                                    {recentLeaves.filter(l => {
+                                        const isApproved = l.status && l.status.toLowerCase().includes('approved');
+                                        return isApproved && new Date(l.start_date) > new Date();
+                                    }).length}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="ds-panel roomy">
+                            <div className="ds-panel-title serif-lg">
+                                <History size={15} className="ic" /> Recent applications &amp; status
+                            </div>
+                            <div style={{ overflowX: 'auto' }}>
+                                <table className="ds-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date range</th><th>Type</th><th>Reason</th><th>Status</th><th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {recentLeaves.length === 0 ? (
+                                            <tr className="ds-empty-row">
+                                                <td colSpan="5">No recent leave applications.</td>
+                                            </tr>
+                                        ) : recentLeaves.map((leaf, idx) => (
+                                            <tr key={idx}>
+                                                <td>
+                                                    <div style={{ fontWeight: 600 }}>
+                                                        {new Date(leaf.start_date).toLocaleDateString()} ({leaf.start_session || 'Full Day'})
+                                                        <br />
+                                                        to {new Date(leaf.end_date).toLocaleDateString()} ({leaf.end_session || 'Full Day'})
+                                                    </div>
+                                                    <div style={{ fontSize: 11.5, color: 'var(--ink-faint)', marginTop: 3 }}>
+                                                        Requested {new Date(leaf.applied_on).toLocaleDateString()}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        <span className="ds-pill accent">{leaf.leave_type_short || 'L'}</span>
+                                                        <span>{leaf.leave_type}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="ds-truncate" title={leaf.reason}>{leaf.reason}</td>
+                                                <td>
+                                                    <span className={`ds-pill ${statusVariant(leaf.status)}`}>{leaf.status}</span>
+                                                    {leaf.status === 'Pending Admin Approval' && (
+                                                        <button
+                                                            className="ds-btn"
+                                                            style={{ marginLeft: 8, padding: '4px 10px', fontSize: 11.5, color: 'var(--absent)' }}
+                                                            onClick={() => withdrawLeave(leaf.id)}
+                                                            title="Withdraw this leave request"
+                                                        >
+                                                            Withdraw
+                                                        </button>
+                                                    )}
+                                                </td>
+                                                <td>
+                                                    <button
+                                                        className="ds-btn"
+                                                        style={{ padding: '6px 12px', fontSize: 12 }}
+                                                        onClick={() => setSelectedLeaveId(leaf.id)}
+                                                    >
+                                                        <Eye size={13} /> View details
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </>
+                )}
+
             </div>
-            )}
         </div>
     );
 };

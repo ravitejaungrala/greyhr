@@ -1,7 +1,6 @@
 import os
 import datetime
-import google.generativeai as genai
-import google.ai.generativelanguage as glm
+from anthropic import AsyncAnthropic
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 from contextvars import ContextVar
@@ -11,11 +10,8 @@ from api.employee_agent_prompt import EMPLOYEE_AGENT_MASTER_PROMPT
 load_dotenv()
 
 # Configuration
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview").strip()
-
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
+MODEL_NAME = os.getenv("CLAUDE_MODEL", "claude-opus-4-8").strip()
 
 # --- Context Variables for Secure, Stateless Tool Execution ---
 current_employee_id: ContextVar[str] = ContextVar("current_employee_id")
@@ -26,64 +22,63 @@ current_employee_name: ContextVar[str] = ContextVar("current_employee_name")
 
 employee_tools_schema = [
     {
-        "function_declarations": [
-            {
-                "name": "apply_leave_tool",
-                "description": "Submits a formal leave request (Casual, Sick, or Privilege) to the HR system with optional session selection for half-day leaves.",
-                "parameters": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "leave_type": {"type": "STRING", "description": "Type of leave: 'Casual', 'Sick', or 'Privilege'."},
-                        "start_date": {"type": "STRING", "description": "Start date in YYYY-MM-DD format."},
-                        "end_date": {"type": "STRING", "description": "End date in YYYY-MM-DD format."},
-                        "start_session": {"type": "STRING", "description": "Session for start date: 'Full Day', 'Session 1' (morning), or 'Session 2' (afternoon)."},
-                        "end_session": {"type": "STRING", "description": "Session for end date: 'Full Day', 'Session 1' (morning), or 'Session 2' (afternoon)."},
-                        "reason": {"type": "STRING", "description": "Short explanation for the leave request."}
-                    },
-                    "required": ["leave_type", "start_date", "end_date", "reason"]
-                }
+        "name": "apply_leave_tool",
+        "description": "Submits a formal leave request (Casual, Sick, or Privilege) to the HR system with optional session selection for half-day leaves.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "leave_type": {"type": "string", "description": "Type of leave: 'Casual', 'Sick', or 'Privilege'."},
+                "start_date": {"type": "string", "description": "Start date in YYYY-MM-DD format."},
+                "end_date": {"type": "string", "description": "End date in YYYY-MM-DD format."},
+                "start_session": {"type": "string", "description": "Session for start date: 'Full Day', 'Session 1' (morning), or 'Session 2' (afternoon)."},
+                "end_session": {"type": "string", "description": "Session for end date: 'Full Day', 'Session 1' (morning), or 'Session 2' (afternoon)."},
+                "reason": {"type": "string", "description": "Short explanation for the leave request."}
             },
-            {
-                "name": "withdraw_leave_tool",
-                "description": "Withdraws a pending leave request that has not yet been approved or rejected.",
-                "parameters": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "leave_id": {"type": "STRING", "description": "The ID of the leave request to withdraw."}
-                    },
-                    "required": ["leave_id"]
-                }
+            "required": ["leave_type", "start_date", "end_date", "reason"]
+        }
+    },
+    {
+        "name": "withdraw_leave_tool",
+        "description": "Withdraws a pending leave request that has not yet been approved or rejected.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "leave_id": {"type": "string", "description": "The ID of the leave request to withdraw."}
             },
-            {
-                "name": "request_item_tool",
-                "description": "Submits a requisition for hardware (monitor, chair, laptop) or office supplies.",
-                "parameters": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "item_name": {"type": "STRING", "description": "Name of the requested item (e.g., 'Ergonomic Chair', '27-inch Monitor')."},
-                        "reason": {"type": "STRING", "description": "Justification for the equipment request."}
-                    },
-                    "required": ["item_name", "reason"]
-                }
+            "required": ["leave_id"]
+        }
+    },
+    {
+        "name": "request_item_tool",
+        "description": "Submits a requisition for hardware (monitor, chair, laptop) or office supplies.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "item_name": {"type": "string", "description": "Name of the requested item (e.g., 'Ergonomic Chair', '27-inch Monitor')."},
+                "reason": {"type": "string", "description": "Justification for the equipment request."}
             },
-            {
-                "name": "get_my_status_tool",
-                "description": "Instantly retrieves the current leave balances and recent request statuses for the logged-in employee.",
-                "parameters": {"type": "OBJECT", "properties": {}}
+            "required": ["item_name", "reason"]
+        }
+    },
+    {
+        "name": "get_my_status_tool",
+        "description": "Instantly retrieves the current leave balances and recent request statuses for the logged-in employee.",
+        "input_schema": {
+            "type": "object",
+            "properties": {}
+        }
+    },
+    {
+        "name": "get_my_salary_tool",
+        "description": "Retrieves the salary breakdown for a specific month. Use this when the employee asks about their pay, salary, or earnings.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "month_name": {"type": "string", "description": "Full name of the month (e.g., 'March')."},
+                "year": {"type": "integer", "description": "Year (e.g., 2026)."}
             },
-            {
-                "name": "get_my_salary_tool",
-                "description": "Retrieves the salary breakdown for a specific month. Use this when the employee asks about their pay, salary, or earnings.",
-                "parameters": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "month_name": {"type": "STRING", "description": "Full name of the month (e.g., 'March')."},
-                        "year": {"type": "INTEGER", "description": "Year (e.g., 2026)."}
-                    },
-                    "required": ["month_name", "year"]
-                }
-            }
-        ]
+            "required": ["month_name", "year"]
+        }
     }
 ]
 
@@ -205,12 +200,9 @@ class EmployeeAgent:
         current_mongo_db.set(self.mongo_db)
         current_employee_name.set(self.employee_name)
 
-        # Initialize the model using dictionary-based schemas
-        self.model = genai.GenerativeModel(
-            model_name=MODEL_NAME,
-            tools=employee_tools_schema
-        )
-        self.chat = self.model.start_chat()
+        # Initialize Anthropic Async client
+        self.client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+        self.history = []
 
     async def get_response(self, query: str) -> str:
         """Processes the employee's message and returns the AI response."""
@@ -220,44 +212,64 @@ class EmployeeAgent:
         current_employee_name.set(self.employee_name)
         
         context = f"Employee {self.employee_name} ({self.employee_id}) is logged in."
-        prompt = EMPLOYEE_AGENT_MASTER_PROMPT.format(
+        system_prompt = EMPLOYEE_AGENT_MASTER_PROMPT.format(
             employee_id=self.employee_id,
             employee_name=self.employee_name,
             context=context,
             query=query
         )
         
+        self.history.append({"role": "user", "content": query})
+        
         try:
-            # Initial AI message
-            response = await self.chat.send_message_async(prompt)
-            
-            # Decisive Tool Execution Loop using 'glm' Proto Messages
-            # This bypasses SDK-level validation errors by speaking the raw Proto language.
-            for part in response.candidates[0].content.parts:
-                if fn := part.function_call:
-                    func = TOOL_MAP.get(fn.name)
+            while True:
+                response = await self.client.messages.create(
+                    model=MODEL_NAME,
+                    max_tokens=4000,
+                    system=system_prompt,
+                    messages=self.history,
+                    tools=employee_tools_schema
+                )
+                
+                # Convert response content into the API history message structure
+                assistant_content = []
+                tool_uses = []
+                text_response = ""
+                for block in response.content:
+                    if block.type == "text":
+                        assistant_content.append({"type": "text", "text": block.text})
+                        text_response += block.text
+                    elif block.type == "tool_use":
+                        assistant_content.append({
+                            "type": "tool_use",
+                            "id": block.id,
+                            "name": block.name,
+                            "input": block.input
+                        })
+                        tool_uses.append(block)
+                
+                self.history.append({"role": "assistant", "content": assistant_content})
+                
+                if not tool_uses:
+                    return text_response
+                
+                tool_results = []
+                for tool_use in tool_uses:
+                    func = TOOL_MAP.get(tool_use.name)
                     if func:
-                        # 1. Execute implementation
-                        result = func(**{k: v for k, v in fn.args.items()})
-                        
-                        # 2. Build the exact Protobuf structure the AI requires
-                        # We use 'glm' (google.ai.generativelanguage) directly here.
-                        f_response = glm.FunctionResponse(
-                            name=fn.name,
-                            response={'result': result}
-                        )
-                        
-                        # 3. Create a Content message with the tool result part
-                        # Role MUST be 'function' for tools
-                        content = glm.Content(
-                            role="function",
-                            parts=[glm.Part(function_response=f_response)]
-                        )
-                        
-                        # 4. Dispatch the result back for final generation
-                        response = await self.chat.send_message_async(content)
-            
-            return response.text
+                        try:
+                            # Execute the tool function
+                            result = func(**tool_use.input)
+                        except Exception as e:
+                            result = f"Error executing tool: {str(e)}"
+                        tool_results.append({
+                            "type": "tool_result",
+                            "tool_use_id": tool_use.id,
+                            "content": str(result)
+                        })
+                
+                self.history.append({"role": "user", "content": tool_results})
+                
         except Exception as e:
             print(f"Employee Agent Error: {e}")
             return f"I encountered an error while processing your request: {str(e)}"

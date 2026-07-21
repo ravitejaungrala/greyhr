@@ -5,6 +5,7 @@ import {
     RefreshCw, CloudUpload 
 } from 'lucide-react';
 import { base64ToBlobUrl } from '../utils';
+import toast from '../lib/toast';
 
 const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, initialData }) => {
     const [schema, setSchema] = useState(null);
@@ -74,7 +75,7 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
     };
 
     const handleExtract = async () => {
-        if (!rawText.trim()) return alert("Please paste some text first.");
+        if (!rawText.trim()) return toast.error("Please paste some text first.");
         setIsExtracting(true);
         try {
             const res = await fetch(`${apiUrl}/generate-doc/extract`, {
@@ -84,14 +85,14 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
             });
             const extracted = await res.json();
             if (extracted.error) {
-                alert(extracted.error);
+                toast.error(extracted.error);
             } else {
                 const fields = extracted.data || extracted;
                 setFormData(prev => ({ ...prev, ...fields }));
             }
         } catch (err) {
             console.error(err);
-            alert("Failed to extract data via AI.");
+            toast.error("Failed to extract data via AI.");
         } finally {
             setIsExtracting(false);
         }
@@ -119,11 +120,11 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
                 const blobUrl = base64ToBlobUrl(base64Content, contentType);
                 setPreviewBase64(blobUrl);
             } else {
-                alert(data.error || "Preview generation failed.");
+                toast.error(data.error || "Preview generation failed.");
             }
         } catch (err) {
             console.error(err);
-            alert("Failed to generate preview.");
+            toast.error("Failed to generate preview.");
         } finally {
             setIsPreviewing(false);
         }
@@ -169,14 +170,14 @@ const DocumentGeneratorModal = ({ isOpen, onClose, employee, docType, apiUrl, in
                         console.error("Failed to auto-save employee profile", updateErr);
                     }
                 }
-                alert("Document successfully generated and sent to employee!");
+                toast.success("Document successfully generated and sent to employee!");
                 onClose();
             } else {
-                alert(data.error || "Finalization failed.");
+                toast.error(data.error || "Finalization failed.");
             }
         } catch (err) {
             console.error(err);
-            alert("Failed to finalize document.");
+            toast.error("Failed to finalize document.");
         } finally {
             setIsFinalizing(false);
         }

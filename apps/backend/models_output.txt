@@ -1,0 +1,2 @@
+Available Models:
+Error listing models: "Could not resolve authentication method. Expected one of api_key, auth_token, or credentials to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted"

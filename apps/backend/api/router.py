@@ -11,6 +11,7 @@ from database.mongo_client import mongo_db
 from dotenv import load_dotenv
 load_dotenv(override=True)
 import datetime
+from html import escape
 from dateutil.relativedelta import relativedelta
 import calendar
 import base64
@@ -18,8 +19,9 @@ import uuid
 import json
 import os
 import re
+import secrets
+import anthropic
 import tempfile
-import google.generativeai as genai
 import cv2
 import numpy as np
 from io import BytesIO
@@ -36,9 +38,10 @@ from api.doc_engine import (
 )
 from api.enhanced_doc_system import enhanced_router
 from api.email_utils import (
-    send_leave_notification, 
+    send_leave_notification,
     send_item_notification,
-    get_admin_emails
+    get_admin_emails,
+    send_approval_email
 )
 from api.admin_agent import (
     process_admin_query, 
@@ -52,6 +55,14 @@ from api.admin_agent import (
 
 router = APIRouter()
 
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
+CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-opus-4-8").strip()
+
+if ANTHROPIC_API_KEY:
+    anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+else:
+    anthropic_client = None
+
 @router.get("/health")
 def health_check():
     """System health check endpoint"""
@@ -62,9 +73,6 @@ def health_check():
         "s3": "connected" if s3_db.s3_client else "disconnected"
     }
     return status
-
-# Configure Gemini
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # --- Auth & Registration ---
 
@@ -148,6 +156,9 @@ class LeaveRequest(BaseModel):
     reason: str
     approver_id: Optional[str] = None
     cc_ids: List[str] = []
+    lop_option: Optional[str] = None
+    excess_days: Optional[float] = 0.0
+    deduct_from_next_month_type: Optional[str] = None
 
 class ManualLeaveRequest(BaseModel):
     employee_id: str
@@ -508,18 +519,39 @@ def login(request: LoginRequest):
         }
     
     # 2. Check for Employee credentials
-    user = mongo_db.users.find_one({"email": request.email, "password": request.password})
+    user = mongo_db.users.find_one({
+        "$or": [
+            {"email": request.email},
+            {"employee_id": request.email}
+        ],
+        "password": request.password
+    })
     if not user:
+        # An invited employee has password=None. Guessing an empty password must
+        # not match, and they deserve a useful message rather than "invalid".
+        invited = mongo_db.users.find_one(
+            {"$or": [{"email": request.email}, {"employee_id": request.email}]},
+            {"_id": 0, "status": 1, "password": 1}
+        )
+        if invited and not invited.get("password"):
+            return {"error": "Please use the onboarding link we emailed you to set your password first."}
         return {"error": "Invalid email or password"}
+
     user = enrich_user_company_fields(user)
-    
+    status = normalize_status(user.get("status"))
+
+    if status == "rejected":
+        # Still allowed in - they need to see the reason and resubmit.
+        pass
+
     # Return user details with their stored role
     return {
         "role": user.get("role", "employee"),
-        "name": user["name"],
-        "email": user["email"],
-        "employee_id": user["employee_id"],
-        "status": user["status"],
+        "name": user.get("name"),
+        "email": user.get("email"),
+        "employee_id": user.get("employee_id"),
+        "status": status,
+        "rejection_reason": user.get("rejection_reason"),
         "company_key": user.get("company_key"),
         "company_name": user.get("company_name"),
         "accessible_companies": user.get("accessible_companies", [])
@@ -624,7 +656,7 @@ def get_pending_employees(admin_email: Optional[str] = None, company: Optional[s
     pending = list_scoped_users(
         admin_email=admin_email,
         company=company,
-        statuses=["pending_approval", "onboarding_pending"]
+        statuses=["pending_approval", "onboarding_pending", "invited", "onboarding", "rejected"]
     )
     return {"employees": pending}
 
@@ -660,6 +692,16 @@ def get_possible_approvers():
         {"role": {"$in": ["admin", "super_admin", "hr", "hr_responsible"]}}, 
         {"_id": 0, "name": 1, "employee_id": 1, "role": 1}
     ).sort("name", 1))
+    
+    # Always insert the fallback/main Super Admin if not already present
+    super_admin_exists = any(a.get("employee_id") == "ADMIN_SUPER" for a in approvers)
+    if not super_admin_exists:
+        approvers.insert(0, {
+            "name": "Super Admin",
+            "employee_id": "ADMIN_SUPER",
+            "role": "super_admin"
+        })
+        
     return {"approvers": approvers}
 
 class AdminApprovalRequest(BaseModel):
@@ -880,6 +922,675 @@ def delete_employee(employee_id: str):
         return {"error": "Employee not found"}
         
     return {"message": f"Employee {employee_id} deleted successfully"}
+
+# =============================================================================
+# ONBOARDING
+#
+# State machine (users.status):
+#
+#   invited            admin created the record and emailed a tokenised link.
+#                      No password set yet. Cannot log in.
+#        |  employee opens link, sets own password
+#        v
+#   onboarding         can log in, but sees ONLY the onboarding form.
+#        |  employee submits family / education / IDs / experience
+#        v
+#   pending_approval   read-only waiting screen. Admin or HR reviews.
+#        |                                    \
+#        | approve                             \ reject (with reason)
+#        v                                      v
+#   approved           full access.          rejected  -- employee sees the
+#                                                         reason and may fix
+#                                                         and resubmit, which
+#                                                         returns them to
+#                                                         pending_approval.
+#
+# Legacy records carrying 'onboarding_pending' or 'incomplete_profile' are
+# treated as 'onboarding' by normalize_status() so nobody is stranded.
+# =============================================================================
+
+ONBOARDING_TOKEN_TTL_HOURS = 72
+
+LEGACY_STATUS_MAP = {
+    "onboarding_pending": "onboarding",
+    "incomplete_profile": "onboarding",
+}
+
+
+def normalize_status(status: Optional[str]) -> str:
+    """Map historical status values onto the current state machine."""
+    if not status:
+        return "onboarding"
+    return LEGACY_STATUS_MAP.get(status, status)
+
+
+def _issue_onboarding_token() -> Dict[str, str]:
+    expires = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+        hours=ONBOARDING_TOKEN_TTL_HOURS
+    )
+    return {
+        "onboarding_token": secrets.token_urlsafe(32),
+        "onboarding_token_expires_at": expires.isoformat(),
+    }
+
+
+def _onboarding_link(token: str) -> str:
+    base = (os.getenv("FRONTEND_URL") or "https://neuzenaihr.web.app").rstrip("/")
+    return f"{base}/onboarding?token={token}"
+
+
+def _send_invite_email(name: str, email: str, token: str, company_name: Optional[str]) -> bool:
+    link = _onboarding_link(token)
+    safe_name = escape(str(name or "there"))
+    safe_company = escape(str(company_name or "NeuzenAI"))
+    body = (
+        "<div style=\"font-family:Arial,sans-serif;font-size:14px;color:#1B2030;"
+        "max-width:560px;margin:0 auto\">"
+        f"<h2 style=\"color:#1a1a2e;margin:0 0 6px\">Welcome to {safe_company}</h2>"
+        "<p style=\"color:#6B7186;margin:0 0 20px\">Let's finish setting up your profile.</p>"
+        f"<p>Hi {safe_name},</p>"
+        "<p>Your HR team has created your employee account. To get started, set your "
+        "password and complete your profile using the secure link below.</p>"
+        "<p style=\"margin:26px 0\">"
+        f"<a href=\"{escape(link)}\" style=\"background:#ff4500;color:#fff;padding:13px 26px;"
+        "border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block\">"
+        "Complete your onboarding</a></p>"
+        f"<p style=\"font-size:12px;color:#6B7186\">This link expires in "
+        f"{ONBOARDING_TOKEN_TTL_HOURS} hours. If it expires, ask your HR team to resend it.</p>"
+        "<p style=\"font-size:12px;color:#A0A4B8;word-break:break-all\">"
+        f"If the button does not work, paste this into your browser:<br>{escape(link)}</p>"
+        "<hr style=\"border:none;border-top:1px solid #E6E8F0;margin:24px 0\">"
+        "<p style=\"font-size:12px;color:#A0A4B8\">You are receiving this because an "
+        "administrator created an account for you. If this was not expected, please "
+        "contact your HR team.</p></div>"
+    )
+    try:
+        return send_approval_email(
+            recipient_emails=[email],
+            subject=f"Complete your onboarding - {company_name or 'NeuzenAI'}",
+            body_html=body,
+        )
+    except Exception as exc:
+        print(f"Invite email failed for {email}: {exc}")
+        return False
+
+
+class EmployeeInviteRequest(BaseModel):
+    """
+    Everything the ADMIN decides. The employee never edits these.
+    Deliberately no password field - the employee sets their own.
+    """
+    name: str
+    email: str
+    position: str
+    employment_type: str = "Full-Time"
+    role: str = "employee"
+    monthly_salary: int = 0
+    in_hand_salary: int = 0
+    privilege_leave_rate: float = 1.5
+    sick_leave_rate: float = 1.0
+    casual_leave_rate: float = 1.0
+    tax_deduction_rate: float = 0.0
+    pf_deduction_rate: float = 0.0
+    internship_end_date: Optional[str] = None
+    accessible_companies: Optional[List[str]] = None
+
+
+@router.post("/admin/employees/invite")
+def invite_employee(request: EmployeeInviteRequest):
+    """Create the employee record and email a tokenised onboarding link."""
+    if mongo_db.users is None:
+        return {"error": "Database error"}
+
+    email = (request.email or "").strip().lower()
+    if not email or "@" not in email:
+        return {"error": "A valid email address is required."}
+    if mongo_db.users.find_one({"email": email}):
+        return {"error": "An employee with this email already exists."}
+    if request.role not in ["admin", "hr", "hr_responsible", "employee"]:
+        return {"error": "Invalid role."}
+
+    emp_id = f"EMP{uuid.uuid4().hex[:6].upper()}"
+    company_meta = derive_company_metadata(email=email)
+    token_fields = _issue_onboarding_token()
+
+    record = {
+        "employee_id": emp_id,
+        "name": request.name,
+        "email": email,
+        "password": None,               # employee sets it via the link
+        "role": request.role,
+        "status": "invited",
+        "company_key": company_meta["company_key"],
+        "company_name": company_meta["company_name"],
+        "accessible_companies": normalize_company_list(request.accessible_companies)
+                                 or ([company_meta["company_key"]] if company_meta["company_key"] else []),
+
+        # --- Admin-controlled employment terms ---
+        "employment_type": request.employment_type,
+        "position": request.position,
+        "monthly_salary": request.monthly_salary,
+        "in_hand_salary": request.in_hand_salary,
+        "internship_end_date": request.internship_end_date,
+        "tax_deduction_rate": request.tax_deduction_rate,
+        "pf_deduction_rate": request.pf_deduction_rate,
+
+        # Leave rates written FLAT - this is the shape get_leave_balance reads.
+        # (The nested leave_rates{} shape used by /admin/add-employee is the
+        # reason admin-configured rates were previously ignored.)
+        "privilege_leave_rate": request.privilege_leave_rate,
+        "sick_leave_rate": request.sick_leave_rate,
+        "casual_leave_rate": request.casual_leave_rate,
+
+        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "invited_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        **token_fields,
+    }
+
+    mongo_db.users.insert_one(record)
+
+    email_sent = _send_invite_email(
+        request.name, email, token_fields["onboarding_token"], company_meta["company_name"]
+    )
+
+    return {
+        "message": "Employee invited successfully."
+                   + ("" if email_sent else " Email delivery failed - share the link manually."),
+        "employee_id": emp_id,
+        "email_sent": email_sent,
+        # Returned so the admin can copy it if SMTP is down. Not a credential.
+        "onboarding_link": _onboarding_link(token_fields["onboarding_token"]),
+    }
+
+
+@router.post("/admin/employees/{employee_id}/resend-invite")
+def resend_employee_invite(employee_id: str):
+    """Issue a fresh token and re-send the invite."""
+    if mongo_db.users is None:
+        return {"error": "Database error"}
+
+    user = mongo_db.users.find_one({"employee_id": employee_id})
+    if not user:
+        return {"error": "Employee not found"}
+    if normalize_status(user.get("status")) not in ["invited", "onboarding"]:
+        return {"error": "This employee has already completed onboarding."}
+
+    token_fields = _issue_onboarding_token()
+    mongo_db.users.update_one({"employee_id": employee_id}, {"$set": token_fields})
+    email_sent = _send_invite_email(
+        user.get("name"), user.get("email"), token_fields["onboarding_token"], user.get("company_name")
+    )
+    return {
+        "message": "Invite resent." if email_sent else "Could not send the email - share the link manually.",
+        "email_sent": email_sent,
+        "onboarding_link": _onboarding_link(token_fields["onboarding_token"]),
+    }
+
+
+class OnboardingTokenRequest(BaseModel):
+    token: str
+
+
+class SetPasswordRequest(BaseModel):
+    token: str
+    password: str
+
+
+def _resolve_token(token: str):
+    """Return (user, error_message). Token must exist and be unexpired."""
+    if not token:
+        return None, "Missing onboarding token."
+    user = mongo_db.users.find_one({"onboarding_token": token})
+    if not user:
+        return None, "This onboarding link is not valid. Please ask your HR team to resend it."
+
+    expires_raw = user.get("onboarding_token_expires_at")
+    if expires_raw:
+        try:
+            expires = datetime.datetime.fromisoformat(expires_raw)
+            if expires.tzinfo is None:
+                expires = expires.replace(tzinfo=datetime.timezone.utc)
+            if datetime.datetime.now(datetime.timezone.utc) > expires:
+                return None, "This onboarding link has expired. Please ask your HR team to resend it."
+        except Exception:
+            pass
+    return user, None
+
+
+@router.get("/auth/onboarding/verify")
+def verify_onboarding_token(token: str):
+    """Called by the onboarding landing page before showing the password form."""
+    if mongo_db.users is None:
+        return {"valid": False, "error": "Database error"}
+
+    user, err = _resolve_token(token)
+    if err:
+        return {"valid": False, "error": err}
+
+    status = normalize_status(user.get("status"))
+    return {
+        "valid": True,
+        "name": user.get("name"),
+        "email": user.get("email"),
+        "employee_id": user.get("employee_id"),
+        "company_name": user.get("company_name"),
+        "status": status,
+        # If they already set a password, skip straight to the login step
+        "password_set": bool(user.get("password")),
+    }
+
+
+@router.post("/auth/onboarding/set-password")
+def set_onboarding_password(request: SetPasswordRequest):
+    if mongo_db.users is None:
+        return {"error": "Database error"}
+
+    user, err = _resolve_token(request.token)
+    if err:
+        return {"error": err}
+
+    if not request.password or len(request.password) < 8:
+        return {"error": "Password must be at least 8 characters."}
+
+    mongo_db.users.update_one(
+        {"employee_id": user["employee_id"]},
+        {"$set": {
+            "password": request.password,
+            "status": "onboarding",
+            "password_set_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }}
+    )
+    return {
+        "message": "Password set. You can now sign in and complete your profile.",
+        "email": user.get("email"),
+    }
+
+
+class OnboardingEducation(BaseModel):
+    institution_name: Optional[str] = None
+    board_university: Optional[str] = None
+    department: Optional[str] = None
+    score: Optional[str] = None
+    start_year: Optional[str] = None
+    end_year: Optional[str] = None
+    certificate_base64: Optional[str] = None
+
+
+class OnboardingExperience(BaseModel):
+    company_name: Optional[str] = None
+    designation: Optional[str] = None
+    years: Optional[str] = None
+    reason_for_leaving: Optional[str] = None
+    payslip_base64: Optional[str] = None
+
+
+class OnboardingSubmitRequest(BaseModel):
+    """Everything the EMPLOYEE fills in. No salary/role/leave fields here by design."""
+    employee_id: str
+
+    # Personal & family
+    full_name: Optional[str] = None
+    dob: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    father_name: Optional[str] = None
+    mother_name: Optional[str] = None
+    siblings_details: Optional[str] = None
+
+    # Education
+    ssc_details: Optional[OnboardingEducation] = None
+    inter_details: Optional[OnboardingEducation] = None
+    ug_details: Optional[OnboardingEducation] = None
+
+    # IDs, bank
+    pan_no: Optional[str] = None
+    pf_number: Optional[str] = None
+    uan_number: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_number: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    cif_number: Optional[str] = None
+
+    # Documents
+    passport_photo_base64: Optional[str] = None
+    pan_card_base64: Optional[str] = None
+    bank_passbook_base64: Optional[str] = None
+
+    # Previous employment
+    has_experience: bool = False
+    experience_list: List[OnboardingExperience] = []
+
+
+def _save_onboarding_file(employee_id: str, b64: Optional[str], name: str, prefix: str):
+    """Upload one base64 document, returning its S3 key (or None)."""
+    if not b64:
+        return None
+    try:
+        file_bytes, ext, mime = parse_base64_with_meta(b64)
+        if not file_bytes:
+            return None
+        key = f"{prefix}/{employee_id}_{name}{ext}"
+        s3_db.save_image(key, file_bytes, content_type=mime)
+        return key
+    except Exception as exc:
+        print(f"Onboarding upload failed for {employee_id}/{name}: {exc}")
+        return None
+
+
+def _education_block(detail: Optional[OnboardingEducation], cert_key: Optional[str]):
+    if not detail:
+        return None
+    return {
+        "institution": detail.institution_name,
+        "university": detail.board_university,
+        "department": detail.department,
+        "score": detail.score,
+        "start_year": detail.start_year,
+        "end_year": detail.end_year,
+        "cert_url": cert_key,
+    }
+
+
+@router.post("/employee/onboarding/submit")
+def submit_onboarding(request: OnboardingSubmitRequest):
+    """
+    Employee submits their own details for review.
+
+    Allowed from 'onboarding' (first submission) and 'rejected' (resubmission
+    after HR asked for corrections). Anything else is refused so an approved
+    employee cannot silently demote themselves - the bug that existed in
+    /auth/complete-profile.
+    """
+    if mongo_db.users is None:
+        return {"error": "Database error"}
+
+    user = mongo_db.users.find_one({"employee_id": request.employee_id})
+    if not user:
+        return {"error": "Employee not found"}
+
+    status = normalize_status(user.get("status"))
+    if status not in ["onboarding", "rejected"]:
+        if status == "pending_approval":
+            return {"error": "Your details are already submitted and awaiting review."}
+        return {"error": "Your profile has already been approved. Contact HR to make changes."}
+
+    emp_id = request.employee_id
+
+    # --- Documents ---
+    passport_key = _save_onboarding_file(emp_id, request.passport_photo_base64, "passport", "profile_photos")
+    pan_key = _save_onboarding_file(emp_id, request.pan_card_base64, "pan_card", "onboarding_docs")
+    bank_key = _save_onboarding_file(emp_id, request.bank_passbook_base64, "bank_passbook", "onboarding_docs")
+    ssc_key = _save_onboarding_file(emp_id, request.ssc_details.certificate_base64 if request.ssc_details else None, "ssc_cert", "onboarding_docs")
+    inter_key = _save_onboarding_file(emp_id, request.inter_details.certificate_base64 if request.inter_details else None, "inter_cert", "onboarding_docs")
+    ug_key = _save_onboarding_file(emp_id, request.ug_details.certificate_base64 if request.ug_details else None, "ug_cert", "onboarding_docs")
+
+    education: Dict[str, Any] = {}
+    for key, detail, cert in [
+        ("ssc", request.ssc_details, ssc_key),
+        ("intermediate", request.inter_details, inter_key),
+        ("ug", request.ug_details, ug_key),
+    ]:
+        block = _education_block(detail, cert)
+        if block:
+            education[key] = block
+
+    # --- Previous employment ---
+    experience_list = []
+    for idx, exp in enumerate(request.experience_list or []):
+        payslip_key = _save_onboarding_file(emp_id, exp.payslip_base64, f"payslip_{idx}", "onboarding_docs")
+        experience_list.append({
+            "company_name": exp.company_name,
+            "designation": exp.designation,
+            "years": exp.years,
+            "reason_for_leaving": exp.reason_for_leaving,
+            "payslip_url": payslip_key,
+        })
+
+    set_ops: Dict[str, Any] = {
+        "full_name": request.full_name or user.get("name"),
+        "dob": request.dob,
+        "phone": request.phone,
+        "address": request.address,
+        "father_name": request.father_name,
+        "mother_name": request.mother_name,
+        "siblings_details": request.siblings_details,
+
+        "pan_no": request.pan_no,
+        "pf_number": request.pf_number,
+        "pf_no": request.pf_number,          # legacy readers use pf_no
+        "uan_number": request.uan_number,
+
+        "bank_details": {
+            "bank_name": request.bank_name,
+            "account_number": request.account_number,
+            # Written under BOTH keys: different screens read different ones.
+            "ifsc_code": request.ifsc_code,
+            "ifsc": request.ifsc_code,
+            "cif_number": request.cif_number,
+            "passbook_url": bank_key,
+        },
+
+        "experience": {
+            "has_experience": request.has_experience,
+            "list": experience_list,
+            "pf_number": request.pf_number,
+            "uan_number": request.uan_number,
+        },
+
+        "status": "pending_approval",
+        "onboarding_submitted_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        # Clear any previous rejection so the employee isn't shown a stale reason
+        "rejection_reason": None,
+    }
+
+    if education:
+        set_ops["education"] = education
+    if passport_key:
+        set_ops["passport_photo_url"] = passport_key
+    if pan_key:
+        set_ops["pan_card_url"] = pan_key
+
+    # Drop keys the employee left blank so we never overwrite good data with None
+    set_ops = {k: v for k, v in set_ops.items() if v is not None or k == "rejection_reason"}
+
+    mongo_db.users.update_one({"employee_id": emp_id}, {"$set": set_ops})
+
+    # Notify reviewers (admin + hr) in-app and by email
+    employee_name = request.full_name or user.get("name") or emp_id
+    try:
+        if mongo_db.db is not None:
+            mongo_db.db["notifications"].insert_one({
+                "type": "onboarding_review",
+                "message": f"{employee_name} submitted their onboarding details for review.",
+                "employee_id": emp_id,
+                "status": "Pending",
+                "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            })
+    except Exception as exc:
+        print(f"Onboarding notification failed: {exc}")
+
+    try:
+        reviewers = _reviewer_emails(user.get("company_key"))
+        if reviewers:
+            send_approval_email(
+                recipient_emails=reviewers,
+                subject=f"Onboarding review needed - {employee_name}",
+                body_html=(
+                    "<div style=\"font-family:Arial,sans-serif;font-size:14px;color:#1B2030\">"
+                    "<h2 style=\"color:#1a1a2e;margin:0 0 12px\">Onboarding submitted</h2>"
+                    f"<p><strong>{escape(str(employee_name))}</strong> ({escape(emp_id)}) has "
+                    "submitted their onboarding details and is awaiting review.</p>"
+                    "<p>Approve to grant them full access to the HRMS.</p>"
+                    "<p style=\"margin-top:18px\">"
+                    "<a href=\"https://neuzenaihr.web.app/admin/dashboard\" "
+                    "style=\"background:#ff4500;color:#fff;padding:10px 18px;border-radius:6px;"
+                    "text-decoration:none;font-weight:bold\">Review now</a></p></div>"
+                ),
+            )
+    except Exception as exc:
+        print(f"Onboarding reviewer email failed: {exc}")
+
+    return {
+        "message": "Your details have been submitted for review.",
+        "status": "pending_approval",
+    }
+
+
+def _reviewer_emails(company_key: Optional[str]) -> List[str]:
+    """Admins and HR who can review onboarding, scoped to the employee's company."""
+    if mongo_db.users is None:
+        return []
+    query: Dict[str, Any] = {"role": {"$in": ["admin", "hr", "hr_responsible", "super_admin"]}}
+    reviewers = list(mongo_db.users.find(query, {"_id": 0, "email": 1, "company_key": 1, "role": 1}))
+    scoped = [
+        r["email"] for r in reviewers
+        if r.get("email") and (
+            r.get("role") == "super_admin"
+            or not company_key
+            or r.get("company_key") == company_key
+        )
+    ]
+    return list(dict.fromkeys(scoped))
+
+
+@router.get("/admin/onboarding/review/{employee_id}")
+def get_onboarding_submission(employee_id: str):
+    """Read-only view of exactly what the employee submitted."""
+    if mongo_db.users is None:
+        return {"error": "Database error"}
+
+    user = mongo_db.users.find_one({"employee_id": employee_id}, {"_id": 0, "password": 0})
+    if not user:
+        return {"error": "Employee not found"}
+
+    user["status"] = normalize_status(user.get("status"))
+    return {"employee": user}
+
+
+class OnboardingDecisionRequest(BaseModel):
+    employee_id: str
+    action: str                       # "approve" | "reject"
+    reason: Optional[str] = None      # required when rejecting
+    reviewer_email: Optional[str] = None
+
+
+@router.post("/admin/onboarding/decision")
+def decide_onboarding(request: OnboardingDecisionRequest):
+    """
+    Approve or reject a submission. Review is read-only: this endpoint writes no
+    profile fields, only the decision. Corrections happen afterwards via
+    PATCH /admin/employee/{id}.
+    """
+    if mongo_db.users is None:
+        return {"error": "Database error"}
+
+    action = (request.action or "").strip().lower()
+    if action not in ["approve", "reject"]:
+        return {"error": "Action must be either 'approve' or 'reject'."}
+
+    user = mongo_db.users.find_one({"employee_id": request.employee_id})
+    if not user:
+        return {"error": "Employee not found"}
+
+    status = normalize_status(user.get("status"))
+    if status != "pending_approval":
+        return {"error": f"This employee is not awaiting review (currently: {status})."}
+
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    if action == "approve":
+        updates = {
+            "status": "approved",
+            "onboarding_completed_at": now,
+            "reviewed_at": now,
+            "reviewed_by": request.reviewer_email,
+            "rejection_reason": None,
+            # Only stamp joining_date on first approval, so re-approval after a
+            # correction does not silently reset tenure and leave accrual.
+            **({} if user.get("joining_date") else {"joining_date": now}),
+        }
+        message = "Your onboarding has been approved. You now have full access to the HRMS."
+    else:
+        if not (request.reason or "").strip():
+            return {"error": "Please provide a reason so the employee knows what to fix."}
+        updates = {
+            "status": "rejected",
+            "reviewed_at": now,
+            "reviewed_by": request.reviewer_email,
+            "rejection_reason": request.reason.strip(),
+        }
+        message = f"Your onboarding needs changes: {request.reason.strip()}"
+
+    mongo_db.users.update_one({"employee_id": request.employee_id}, {"$set": updates})
+
+    if action == "approve":
+        try:
+            sync_employee_to_vector_db(request.employee_id, mongo_db)
+        except Exception as exc:
+            print(f"Vector sync failed after approval: {exc}")
+
+    try:
+        if mongo_db.db is not None:
+            mongo_db.db["notifications"].insert_one({
+                "type": "onboarding_result",
+                "message": message,
+                "employee_id": request.employee_id,
+                "audience": "employee",
+                "result": "Approved" if action == "approve" else "Rejected",
+                "created_at": now,
+            })
+            mongo_db.db["notifications"].update_many(
+                {"type": "onboarding_review", "employee_id": request.employee_id},
+                {"$set": {"status": "Approved" if action == "approve" else "Rejected"}}
+            )
+    except Exception as exc:
+        print(f"Decision notification failed: {exc}")
+
+    try:
+        if user.get("email"):
+            send_approval_email(
+                recipient_emails=[user["email"]],
+                subject=(
+                    "Your onboarding has been approved"
+                    if action == "approve" else
+                    "Action needed on your onboarding"
+                ),
+                body_html=(
+                    "<div style=\"font-family:Arial,sans-serif;font-size:14px;color:#1B2030\">"
+                    f"<p>Hi {escape(str(user.get('name') or 'there'))},</p>"
+                    f"<p>{escape(message)}</p>"
+                    "<p style=\"margin-top:18px\">"
+                    "<a href=\"https://neuzenaihr.web.app/login\" "
+                    "style=\"background:#ff4500;color:#fff;padding:10px 18px;border-radius:6px;"
+                    "text-decoration:none;font-weight:bold\">Open HRMS</a></p></div>"
+                ),
+            )
+    except Exception as exc:
+        print(f"Decision email failed: {exc}")
+
+    return {"message": f"Employee {action}d successfully.", "status": updates["status"]}
+
+
+@router.get("/admin/onboarding/pending")
+def list_pending_onboarding(admin_email: Optional[str] = None, company: Optional[str] = "all"):
+    """Submissions awaiting review, plus counts for the sidebar badge."""
+    if mongo_db.users is None:
+        return {"employees": [], "counts": {}}
+
+    submitted = list_scoped_users(admin_email=admin_email, company=company, statuses=["pending_approval"])
+    in_progress = list_scoped_users(
+        admin_email=admin_email, company=company,
+        statuses=["invited", "onboarding", "onboarding_pending", "incomplete_profile"]
+    )
+    for u in in_progress:
+        u["status"] = normalize_status(u.get("status"))
+
+    return {
+        "employees": submitted,
+        "in_progress": in_progress,
+        "counts": {"awaiting_review": len(submitted), "in_progress": len(in_progress)},
+    }
+
 
 @router.post("/admin/create-employee")
 def admin_create_employee(request: AdminEmployeeCreate):
@@ -1203,6 +1914,12 @@ class WorkdayOverride(BaseModel):
 class CompOffAction(BaseModel):
     request_id: str
     status: str  # 'Approved' or 'Rejected'
+    force_credit: bool = False  # admin override of the 9-hour rule
+
+class CompOffRequestCreate(BaseModel):
+    employee_id: str
+    date: str          # YYYY-MM-DD
+    reason: str = ""
 
 class WeekendWorkRequest(BaseModel):
     employee_id: str
@@ -1861,9 +2578,8 @@ def get_ai_holidays(year: int = 2026):
     This replaces the external Nager.Date API when it's unstable.
     """
     try:
-        # Read the model from .env, replace spaces with dashes as the API expects no spaces
-        model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview").replace(" ", "-").lower()
-        model = genai.GenerativeModel(model_name)
+        if not anthropic_client:
+            raise RuntimeError("Anthropic client is not initialized.")
         prompt = (
             f"List a comprehensive set of at least 25 official public, national, regional, and restricted holidays in India for the year {year}. "
             "CRITICAL: Accuracy is paramount. Use the following reference dates for 2026 major festivals if the year is 2026: "
@@ -1875,8 +2591,12 @@ def get_ai_holidays(year: int = 2026):
             "Each object must have exactly two fields: 'name' and 'date' (format: YYYY-MM-DD). "
             "Do not include any extra text, markdown blocks, or formatting."
         )
-        response = model.generate_content(prompt)
-        text = response.text.strip()
+        response = anthropic_client.messages.create(
+            model=CLAUDE_MODEL,
+            max_tokens=4000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        text = response.content[0].text.strip()
         
         # Robust JSON extraction from markdown if present
         if "```json" in text:
@@ -2323,11 +3043,127 @@ def get_admin_photo(photo_key: str):
 
 # --- Attendance ---
 # ProfileUpdateRequest consolidated at top
+def resolve_day_type(date_str: str):
+    """
+    Single source of truth for 'is this a working day?'.
+
+    Precedence: workday_override > holiday > weekend.
+    Mirrors the logic previously inlined in /employee/attendance/calendar so
+    that the calendar, the attendance scan and the comp-off flow can no longer
+    disagree about what kind of day it is.
+
+    Returns a dict:
+      {
+        is_working_day: bool,          # after overrides are applied
+        is_non_working: bool,          # convenience inverse
+        day_type: 'weekend'|'holiday'|'forced_holiday'|'swapped_working'|'working',
+        label: str,                    # human readable, safe to show in UI
+        holiday_name: Optional[str]
+      }
+    """
+    fallback = {
+        "is_working_day": True,
+        "is_non_working": False,
+        "day_type": "working",
+        "label": "Working Day",
+        "holiday_name": None,
+    }
+
+    try:
+        current_date = datetime.datetime.strptime(date_str, "%Y-%m-%d")
+    except Exception:
+        return fallback
+
+    holiday = None
+    override = None
+    if mongo_db.db is not None:
+        try:
+            holiday = mongo_db.holidays.find_one({"date": date_str}, {"_id": 0})
+            override = mongo_db.workday_overrides.find_one({"date": date_str}, {"_id": 0})
+        except Exception as exc:
+            print(f"resolve_day_type lookup failed for {date_str}: {exc}")
+            return fallback
+
+    is_weekend = current_date.weekday() >= 5  # 5=Sat, 6=Sun
+    override_type = (override or {}).get("type")
+
+    if override_type == "forced_working":
+        return {
+            "is_working_day": True,
+            "is_non_working": False,
+            "day_type": "swapped_working",
+            "label": "Swapped Working Day",
+            "holiday_name": None,
+        }
+
+    if override_type == "forced_holiday":
+        return {
+            "is_working_day": False,
+            "is_non_working": True,
+            "day_type": "forced_holiday",
+            "label": "Company Holiday",
+            "holiday_name": None,
+        }
+
+    if holiday:
+        return {
+            "is_working_day": False,
+            "is_non_working": True,
+            "day_type": "holiday",
+            "label": f"Holiday: {holiday.get('name', 'Holiday')}",
+            "holiday_name": holiday.get("name"),
+        }
+
+    if is_weekend:
+        day_name = current_date.strftime("%A")
+        return {
+            "is_working_day": False,
+            "is_non_working": True,
+            "day_type": "weekend",
+            "label": f"Weekly Off ({day_name})",
+            "holiday_name": None,
+        }
+
+    return fallback
+
+
+def create_comp_off_request(employee_id: str, date_str: str, day_info: dict, hours: Optional[str] = None):
+    """
+    Create (or return the existing) Pending comp-off request for an employee-day.
+
+    Idempotent on request_id, so repeated sign-ins on the same non-working day
+    never produce duplicate requests. Returns (record, created: bool).
+    """
+    if mongo_db.db is None:
+        return None, False
+
+    req_id = f"RL_{employee_id}_{date_str.replace('-', '')}"
+    existing = mongo_db.comp_off_requests.find_one({"request_id": req_id}, {"_id": 0})
+    if existing:
+        return existing, False
+
+    record = {
+        "request_id": req_id,
+        "employee_id": employee_id,
+        "date": date_str,
+        "hours": hours or "-",
+        "day_type": day_info.get("day_type"),
+        "day_label": day_info.get("label"),
+        "status": "Pending",
+        "source": "attendance_sign_in",
+        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }
+    mongo_db.comp_off_requests.insert_one(record)
+    record.pop("_id", None)
+    return record, True
+
+
 class AttendanceScanRequest(BaseModel):
     employee_id: str
     image_base64: Optional[str] = None
     location: str
     action_type: str # 'sign_in' or 'sign_out'
+    acknowledged_non_working: bool = False  # employee confirmed the popup
 
 @router.post("/attendance/scan")
 def process_face_scan(request: AttendanceScanRequest):
@@ -2361,6 +3197,29 @@ def process_face_scan(request: AttendanceScanRequest):
         # First action of the day must be sign_in
         if request.action_type == "sign_out":
             return {"error": "You must Sign In before you can Sign Out."}
+
+    # 0.6 Resolve what kind of day this is (weekend / holiday / override)
+    day_info = resolve_day_type(today_str)
+
+    # 0.7 Non-working day gate.
+    # On a weekly off / holiday we do not silently record the punch. The employee
+    # must explicitly acknowledge that this will be raised as a comp-off request
+    # for admin approval. The gate is enforced here (not just in the UI) so it
+    # cannot be bypassed by calling the API directly.
+    if (
+        request.action_type == "sign_in"
+        and day_info["is_non_working"]
+        and not request.acknowledged_non_working
+    ):
+        return {
+            "requires_confirmation": True,
+            "day_info": day_info,
+            "message": (
+                f"Today is a {day_info['label']}. "
+                "Signing in will raise a Compensatory Off request for admin approval. "
+                "Comp-off is credited only if an admin approves it."
+            ),
+        }
 
     # 1. Decode Image (Optional)
     image_key = None
@@ -2415,6 +3274,82 @@ def process_face_scan(request: AttendanceScanRequest):
             "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
         })
 
+    # 3.5 Comp-off handling for non-working days
+    comp_off = None
+    if day_info["is_non_working"]:
+        employee_name = user.get("name") or request.employee_id
+
+        if request.action_type == "sign_in":
+            comp_off, created = create_comp_off_request(
+                request.employee_id, today_str, day_info
+            )
+            if created and mongo_db.db is not None:
+                # Actionable admin notification
+                mongo_db.db["notifications"].insert_one({
+                    "type": "comp_off_request",
+                    "message": (
+                        f"{employee_name} signed in on a {day_info['label']} "
+                        f"({today_str}). Comp-Off approval required."
+                    ),
+                    "employee_id": request.employee_id,
+                    "request_id": comp_off["request_id"],
+                    "date": today_str,
+                    "day_label": day_info["label"],
+                    "status": "Pending",
+                    "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+                })
+                # Email the approvers, best effort — never block the punch
+                try:
+                    admin_emails = get_admin_emails()
+                    if admin_emails:
+                        send_approval_email(
+                            recipient_emails=admin_emails,
+                            subject=f"Comp-Off approval needed - {employee_name} ({today_str})",
+                            body_html=(
+                                "<div style=\"font-family:Arial,sans-serif;font-size:14px;color:#1B2030\">"
+                                "<h2 style=\"color:#1a1a2e;margin:0 0 12px\">Compensatory Off Request</h2>"
+                                f"<p><strong>{escape(str(employee_name))}</strong> "
+                                f"({escape(str(request.employee_id))}) signed in on "
+                                f"<strong>{escape(today_str)}</strong>, which is a "
+                                f"{escape(day_info['label'])}.</p>"
+                                "<p>Approve to credit <strong>1 day</strong> of Compensatory Off. "
+                                "If rejected, no comp-off will be credited.</p>"
+                                "<p style=\"margin-top:18px\">"
+                                "<a href=\"https://neuzenaihr.web.app/admin/monitoring\" "
+                                "style=\"background:#ff4500;color:#fff;padding:10px 18px;"
+                                "border-radius:6px;text-decoration:none;font-weight:bold\">"
+                                "Review in HRMS</a></p></div>"
+                            ),
+                        )
+                except Exception as exc:
+                    print(f"Comp-off approver email failed: {exc}")
+
+        elif request.action_type == "sign_out":
+            # Backfill the hours worked so the admin can judge the request
+            try:
+                req_id = f"RL_{request.employee_id}_{today_str.replace('-', '')}"
+                swipes = list(mongo_db.attendance.find(
+                    {"employee_id": request.employee_id, "timestamp": {"$regex": f"^{today_str}"}}
+                ).sort("timestamp", 1))
+                total_sec = 0
+                in_time = None
+                for s in swipes:
+                    if s["action"] == "sign_in":
+                        in_time = datetime.datetime.fromisoformat(s["timestamp"].replace('Z', '+00:00'))
+                    elif s["action"] == "sign_out" and in_time:
+                        out_time = datetime.datetime.fromisoformat(s["timestamp"].replace('Z', '+00:00'))
+                        total_sec += (out_time - in_time).total_seconds()
+                        in_time = None
+                hrs, rem = divmod(int(total_sec), 3600)
+                mins, _ = divmod(rem, 60)
+                mongo_db.comp_off_requests.update_one(
+                    {"request_id": req_id, "status": "Pending"},
+                    {"$set": {"hours": f"{hrs:02d}:{mins:02d}"}}
+                )
+                comp_off = mongo_db.comp_off_requests.find_one({"request_id": req_id}, {"_id": 0})
+            except Exception as exc:
+                print(f"Comp-off hours backfill failed: {exc}")
+
     if "_id" in attendance_record:
         attendance_record["_id"] = str(attendance_record["_id"])
 
@@ -2445,7 +3380,9 @@ def process_face_scan(request: AttendanceScanRequest):
     return {
         "message": f"Identity verified against reference. Successfully processed {request.action_type}",
         "warning": warning,
-        "record": attendance_record
+        "record": attendance_record,
+        "day_info": day_info,
+        "comp_off": comp_off,
     }
 
 class IDPhotoUpload(BaseModel):
@@ -2578,13 +3515,8 @@ class CopilotQuery(BaseModel):
 
 @router.post("/copilot/ask")
 def ask_hr_copilot(query: CopilotQuery):
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        return {"agent": "HR Copilot", "response": "AI Copilot is not configured (missing API Key)."}
-    
-    genai.configure(api_key=api_key)
-    model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview").strip()
-    model = genai.GenerativeModel(model_name)
+    if not anthropic_client:
+        return {"agent": "HR Copilot", "response": "AI Copilot is not configured (missing Anthropic API Key)."}
     
     context = "Company policies retrieval is currently disabled."
 
@@ -2598,10 +3530,14 @@ def ask_hr_copilot(query: CopilotQuery):
     """
     
     try:
-        response = model.generate_content(prompt)
+        response = anthropic_client.messages.create(
+            model=CLAUDE_MODEL,
+            max_tokens=1000,
+            messages=[{"role": "user", "content": prompt}]
+        )
         return {
             "agent": "HR Copilot",
-            "response": response.text
+            "response": response.content[0].text
         }
     except Exception as e:
         return {
@@ -2819,18 +3755,18 @@ def get_attendance_calendar(employee_id: str, year: Optional[int] = None, month:
             
             # Status logic for WORKING day with records
             if tot_sec >= 9 * 3600 and is_originally_non_working:
-                # Earned Comp-Off Request
+                # Comp-off requests are now raised at sign-in by /attendance/scan.
+                # This branch no longer creates them — a GET must not write. It
+                # only backfills the hours on a request that already exists, so
+                # the admin sees actual time worked on the approval card.
                 req_id = f"RL_{employee_id}_{day_str.replace('-', '')}"
-                existing = mongo_db.comp_off_requests.find_one({"request_id": req_id})
-                if not existing:
-                    mongo_db.comp_off_requests.insert_one({
-                        "request_id": req_id,
-                        "employee_id": employee_id,
-                        "date": day_str,
-                        "hours": data["total_work_hrs"],
-                        "status": "Pending",
-                        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
-                    })
+                try:
+                    mongo_db.comp_off_requests.update_one(
+                        {"request_id": req_id, "status": "Pending"},
+                        {"$set": {"hours": data["total_work_hrs"]}}
+                    )
+                except Exception as exc:
+                    print(f"Comp-off hours sync failed for {req_id}: {exc}")
                 data["status"] = "Present (Earned Comp-Off Request)"
                 data["status_char"] = "P"
                 data["color"] = "var(--secondary)"
@@ -3054,32 +3990,107 @@ def get_comp_off_requests(admin_email: Optional[str] = None, company: Optional[s
 @router.post("/admin/comp-off-requests/action")
 def process_comp_off_action(action: CompOffAction):
     if mongo_db.db is None: return {"error": "DB error"}
-    
+
     # 1. Fetch request
     request = mongo_db.comp_off_requests.find_one({"request_id": action.request_id})
     if not request: return {"error": "Request not found"}
-    
-    # 2. Update Status
-    mongo_db.comp_off_requests.update_one(
-        {"request_id": action.request_id},
+
+    # 2. Guard against re-processing.
+    # The balance credit below is a $inc, so approving twice used to credit two
+    # days. Only a request still sitting at Pending may be actioned.
+    current_status = request.get("status", "Pending")
+    if current_status != "Pending":
+        return {
+            "error": f"This request was already {current_status.lower()}.",
+            "status": current_status,
+        }
+
+    # 3. Update Status atomically — the filter on status makes the transition
+    # single-shot even if two admins click at the same moment.
+    result = mongo_db.comp_off_requests.update_one(
+        {"request_id": action.request_id, "status": "Pending"},
+        {"$set": {
+            "status": action.status,
+            "actioned_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }}
+    )
+    if result.modified_count == 0:
+        return {"error": "This request was already processed."}
+
+    # 4. Resolve the originating admin notification so it stops showing as pending
+    mongo_db.db["notifications"].update_many(
+        {"type": "comp_off_request", "request_id": action.request_id},
         {"$set": {"status": action.status}}
     )
-    
-    # 3. If Approved, increment balance
+
+    # 5. If Approved, increment balance
     if action.status == "Approved":
         mongo_db.users.update_one(
             {"employee_id": request["employee_id"]},
             {"$inc": {"comp_off_balance": 1}}
         )
-        # Notify
-        mongo_db.db["notifications"].insert_one({
-            "type": "leave",
-            "message": f"Your Comp-Off request for {request['date']} has been approved.",
-            "employee_id": request["employee_id"],
-            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
-        })
-        
+        message = f"Your Comp-Off request for {request['date']} has been approved. 1 day credited."
+    else:
+        message = (
+            f"Your Comp-Off request for {request['date']} was not approved. "
+            "No comp-off has been credited."
+        )
+
+    # Notify the employee either way — a silent rejection is worse than none
+    mongo_db.db["notifications"].insert_one({
+        "type": "comp_off_result",
+        "message": message,
+        "employee_id": request["employee_id"],
+        "request_id": action.request_id,
+        "date": request["date"],
+        "result": action.status,
+        "audience": "employee",
+        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+    })
+
     return {"message": f"Comp-off request {action.status}"}
+
+
+@router.get("/employee/comp-off/status")
+def get_employee_comp_off_status(employee_id: str, date: Optional[str] = None):
+    """
+    Day-type + comp-off state for one employee-day.
+
+    Lets the dashboard warn the employee *before* they punch, and show the
+    status of a request they already raised today.
+    """
+    if mongo_db.db is None:
+        return {"error": "Database error"}
+
+    day_str = date or datetime.datetime.utcnow().strftime('%Y-%m-%d')
+    day_info = resolve_day_type(day_str)
+
+    req_id = f"RL_{employee_id}_{day_str.replace('-', '')}"
+    existing = mongo_db.comp_off_requests.find_one({"request_id": req_id}, {"_id": 0})
+
+    user = mongo_db.users.find_one({"employee_id": employee_id}, {"_id": 0, "comp_off_balance": 1})
+
+    return {
+        "date": day_str,
+        "day_info": day_info,
+        "request": existing,
+        "comp_off_balance": (user or {}).get("comp_off_balance", 0),
+    }
+
+
+@router.get("/admin/comp-off-requests/count")
+def get_pending_comp_off_count(admin_email: Optional[str] = None, company: Optional[str] = "all"):
+    """Pending count for the sidebar badge. Company-scoped like the list endpoint."""
+    if mongo_db.db is None:
+        return {"count": 0}
+    scoped_context = get_scoped_employee_context(admin_email=admin_email, company=company)
+    employee_ids = scoped_context["employee_ids"]
+    if not employee_ids:
+        return {"count": 0}
+    count = mongo_db.comp_off_requests.count_documents(
+        {"status": "Pending", "employee_id": {"$in": employee_ids}}
+    )
+    return {"count": count}
 
 @router.post("/employee/weekend-work/request")
 def request_weekend_work(req: WeekendWorkRequest):
@@ -3318,11 +4329,12 @@ def get_leave_balance(employee_id: str):
             "used": used_co,
             "remaining": rem_co,
             "is_intern": True,
+            "joining_date": user.get("joining_date"),
             "types": [
-                {"name": "Privilege Leave", "remaining": 0},
-                {"name": "Sick Leave", "remaining": 0},
-                {"name": "Casual Leave", "remaining": 0},
-                {"name": "Compensatory Off", "remaining": round(rem_co, 1)}
+                {"name": "Privilege Leave", "remaining": 0, "rate": 0.0},
+                {"name": "Sick Leave", "remaining": 0, "rate": 0.0},
+                {"name": "Casual Leave", "remaining": 0, "rate": 0.0},
+                {"name": "Compensatory Off", "remaining": round(rem_co, 1), "rate": 0.0}
             ],
             "message": "Interns are eligible for Compensatory Off credits earned via holiday work."
         }
@@ -3376,16 +4388,59 @@ def get_leave_balance(employee_id: str):
                 start = datetime.datetime.fromisoformat(raw_start.replace('Z', '+00:00').replace(' ', 'T')[:19] if 'T' in raw_start or ' ' in raw_start else raw_start)
                 
                 # Attribute leave to its month
-                key = (start.year, start.month)
-                if key not in monthly_usage:
-                    monthly_usage[key] = {"pl": 0.0, "sl": 0.0, "cl": 0.0, "co": 0.0}
-                
                 days = (datetime.datetime.fromisoformat(raw_end.replace('Z', '+00:00').replace(' ', 'T')[:19] if 'T' in raw_end or ' ' in raw_end else raw_end).date() - start.date()).days + 1
                 
-                if "Privilege" in l_type: monthly_usage[key]["pl"] += days
-                elif "Sick" in l_type: monthly_usage[key]["sl"] += days
-                elif "Casual" in l_type: monthly_usage[key]["cl"] += days
-                elif "Compensatory" in l_type or "Comp-Off" in l_type: monthly_usage[key]["co"] += days
+                lop_opt = leaf.get("lop_option")
+                excess = float(leaf.get("excess_days", 0.0))
+                
+                if lop_opt == "next_month_deduction":
+                    deduct_type = leaf.get("deduct_from_next_month_type") or l_type
+                    current_month_days = max(0.0, days - excess)
+                    
+                    key = (start.year, start.month)
+                    if key not in monthly_usage:
+                        monthly_usage[key] = {"pl": 0.0, "sl": 0.0, "cl": 0.0, "co": 0.0}
+                    
+                    if "Privilege" in l_type: monthly_usage[key]["pl"] += current_month_days
+                    elif "Sick" in l_type: monthly_usage[key]["sl"] += current_month_days
+                    elif "Casual" in l_type: monthly_usage[key]["cl"] += current_month_days
+                    elif "Compensatory" in l_type or "Comp-Off" in l_type: monthly_usage[key]["co"] += current_month_days
+                    
+                    if excess > 0:
+                        if start.month == 12:
+                            next_month_year = start.year + 1
+                            next_month = 1
+                        else:
+                            next_month_year = start.year
+                            next_month = start.month + 1
+                        
+                        next_key = (next_month_year, next_month)
+                        if next_key not in monthly_usage:
+                            monthly_usage[next_key] = {"pl": 0.0, "sl": 0.0, "cl": 0.0, "co": 0.0}
+                        
+                        if "Privilege" in deduct_type: monthly_usage[next_key]["pl"] += excess
+                        elif "Sick" in deduct_type: monthly_usage[next_key]["sl"] += excess
+                        elif "Casual" in deduct_type: monthly_usage[next_key]["cl"] += excess
+                        elif "Compensatory" in deduct_type or "Comp-Off" in deduct_type: monthly_usage[next_key]["co"] += excess
+                elif lop_opt == "salary_cut":
+                    current_month_days = max(0.0, days - excess)
+                    key = (start.year, start.month)
+                    if key not in monthly_usage:
+                        monthly_usage[key] = {"pl": 0.0, "sl": 0.0, "cl": 0.0, "co": 0.0}
+                    
+                    if "Privilege" in l_type: monthly_usage[key]["pl"] += current_month_days
+                    elif "Sick" in l_type: monthly_usage[key]["sl"] += current_month_days
+                    elif "Casual" in l_type: monthly_usage[key]["cl"] += current_month_days
+                    elif "Compensatory" in l_type or "Comp-Off" in l_type: monthly_usage[key]["co"] += current_month_days
+                else:
+                    key = (start.year, start.month)
+                    if key not in monthly_usage:
+                        monthly_usage[key] = {"pl": 0.0, "sl": 0.0, "cl": 0.0, "co": 0.0}
+                    
+                    if "Privilege" in l_type: monthly_usage[key]["pl"] += days
+                    elif "Sick" in l_type: monthly_usage[key]["sl"] += days
+                    elif "Casual" in l_type: monthly_usage[key]["cl"] += days
+                    elif "Compensatory" in l_type or "Comp-Off" in l_type: monthly_usage[key]["co"] += days
             except Exception as e:
                 print(f"Error grouping leaf for iterative calculation: {e}")
                 continue
@@ -3446,11 +4501,12 @@ def get_leave_balance(employee_id: str):
         "used": total_used_all,
         "remaining": final_remaining,
         "is_intern": False,
+        "joining_date": user.get("joining_date"),
         "types": [
-            {"name": "Privilege Leave", "remaining": round(rem_pl, 1)},
-            {"name": "Sick Leave", "remaining": round(rem_sl, 1)},
-            {"name": "Casual Leave", "remaining": round(rem_cl, 1)},
-            {"name": "Compensatory Off", "remaining": round(rem_co, 1)}
+            {"name": "Privilege Leave", "remaining": round(rem_pl, 1), "rate": pl_rate},
+            {"name": "Sick Leave", "remaining": round(rem_sl, 1), "rate": sl_rate},
+            {"name": "Casual Leave", "remaining": round(rem_cl, 1), "rate": cl_rate},
+            {"name": "Compensatory Off", "remaining": round(rem_co, 1), "rate": 0.0}
         ],
         "accrual_info": {
             "months_passed": months_processed_count,
@@ -3609,8 +4665,24 @@ def calculate_month_salary(user, year, month, settings=None):
                         leaves_taken += 1
     except: pass
 
-    # LOP Deduction is now informational only (Requested: dont reduce or cut the salary)
-    lop_deduction = 0.0 
+    # Add excess_days of salary_cut leaves to lop_days
+    extra_lop_days = 0.0
+    if mongo_db.db is not None:
+        try:
+            salary_cut_leaves = list(mongo_db.leaves.find({
+                "employee_id": user.get("employee_id"),
+                "status": {"$regex": "Approved", "$options": "i"},
+                "lop_option": "salary_cut",
+                "start_date": {"$regex": f"^{month_prefix}"}
+            }))
+            for leaf in salary_cut_leaves:
+                extra_lop_days += float(leaf.get("excess_days", 0.0))
+        except Exception as sle:
+            print(f"Error fetching salary cut leaves: {sle}")
+    lop_days += extra_lop_days
+
+    # Calculate LOP deduction (no longer informational only)
+    lop_deduction = round(lop_days * daily_salary, 2)
     
     # Dynamic Deductions based on Admin Toggles and Fixed Rates
     emp_tax_rate = user.get("tax_deduction_rate")
@@ -3619,7 +4691,7 @@ def calculate_month_salary(user, year, month, settings=None):
     tax = int(base_salary * (float(emp_tax_rate) / 100)) if emp_tax_rate is not None else 0
     pf_pt = int(base_salary * (float(emp_pf_rate) / 100)) if emp_pf_rate is not None else 0
     
-    net = round(base_salary - tax - pf_pt, 2)
+    net = round(base_salary - tax - pf_pt - lop_deduction, 2)
     
     return {
         "monthly_salary": monthly_salary,
@@ -3977,21 +5049,21 @@ def download_salary_statement_excel(employee_id: str, months: Optional[int] = No
     except Exception as e:
         return Response(status_code=500, content=str(e))
 def analyze_payslip_template(request: PayslipTemplateRequest):
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        return {"error": "AI not configured (missing API Key)."}
+    if not anthropic_client:
+        return {"error": "AI not configured (missing Anthropic API Key)."}
     
-    genai.configure(api_key=api_key)
-    model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview").strip()
-    model = genai.GenerativeModel(model_name)
-    
-    # 1. Decode Image for Gemini
+    # 1. Decode Image for S3 save
     try:
         image_bytes = parse_base64(request.image_base64)
     except:
         return {"error": "Invalid image format"}
 
-    # 2. Ask Gemini to extract the layout structure
+    # 2. Extract base64 data for Claude
+    b64_data = request.image_base64
+    if "," in b64_data:
+        b64_data = b64_data.split(",")[1]
+
+    # 3. Ask Claude to extract the layout structure
     prompt = """
     Analyze this payslip template image. Identify the coordinates or relative positions of the following fields:
     - Employee Name
@@ -4006,9 +5078,30 @@ def analyze_payslip_template(request: PayslipTemplateRequest):
     """
     
     try:
-        response = model.generate_content([prompt, {"mime_type": "image/jpeg", "data": image_bytes}])
-        # Store the extracted format in Mongo for future use
-        format_description = response.text
+        response = anthropic_client.messages.create(
+            model=CLAUDE_MODEL,
+            max_tokens=4000,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/jpeg",
+                                "data": b64_data
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": prompt
+                        }
+                    ]
+                }
+            ]
+        )
+        format_description = response.content[0].text
         if mongo_db.db is not None:
             mongo_db.db.settings.update_one(
                 {"key": "payslip_format"},
@@ -4883,9 +5976,6 @@ def analyze_and_convert_template(content_b64: str, file_type: str, document_type
         # 1. Identify placeholders
         # 2. If PDF, convert to a clean HTML template relative to the content
         
-        model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview")
-        model = genai.GenerativeModel(model_name)
-        
         # Specialized prompts based on document type
         document_type = document_type if document_type else "Document"
         
@@ -4925,9 +6015,17 @@ def analyze_and_convert_template(content_b64: str, file_type: str, document_type
         {raw_text[:8000]}
         """
         
-        response = model.generate_content(prompt)
+        if not anthropic_client:
+            raise RuntimeError("Anthropic client is not initialized.")
+            
+        response = anthropic_client.messages.create(
+            model=CLAUDE_MODEL,
+            max_tokens=4000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        resp_text = response.content[0].text.strip()
         # Clean response if it contains markdown code blocks
-        resp_text = response.text.replace('```json', '').replace('```', '').strip()
+        resp_text = resp_text.replace('```json', '').replace('```', '').strip()
         import json
         try:
             analysis = json.loads(resp_text, strict=False)
@@ -4996,3 +6094,77 @@ def list_offer_letter_templates():
 def delete_offer_letter_template(employment_type: str):
     mongo_db.offer_letter_templates.delete_one({"employment_type": employment_type})
     return {"message": f"Template deleted for {employment_type}"}
+
+# --- Praise (Viva Insights Style) ---
+
+class PraiseSendRequest(BaseModel):
+    sender_id: str
+    receiver_id: str
+    badge_key: str
+    message: str
+
+@router.get("/praise/employees")
+def get_praise_employees():
+    if mongo_db.users is None:
+        return []
+    users = list(mongo_db.users.find({}, {"_id": 0}))
+    formatted = []
+    for u in users:
+        name = u.get("name", "")
+        initials = "".join([n[0] for n in name.split()[:2]]).upper() if name else ""
+        formatted.append({
+            "id": u.get("employee_id"),
+            "name": name,
+            "title": u.get("designation", "Employee"),
+            "initials": initials
+        })
+    return formatted
+
+@router.get("/praise/history")
+def get_praise_history(employee_id: str):
+    if mongo_db.db is None:
+        return {"history": []}
+    praises = list(mongo_db.db.praises.find({
+        "$or": [
+            {"sender_id": employee_id},
+            {"receiver_id": employee_id}
+        ]
+    }, {"_id": 0}).sort("timestamp", -1))
+    return {"history": praises}
+
+@router.post("/praise/send")
+def send_praise(request: PraiseSendRequest):
+    if mongo_db.db is None or mongo_db.users is None:
+        return {"status": "error", "message": "Database connection offline"}
+        
+    sender = mongo_db.users.find_one({"employee_id": request.sender_id})
+    receiver = mongo_db.users.find_one({"employee_id": request.receiver_id})
+    if not sender or not receiver:
+        return {"status": "error", "message": "Sender or Receiver not found"}
+        
+    sender_name = sender.get("name", "")
+    receiver_name = receiver.get("name", "")
+    sender_initials = "".join([n[0] for n in sender_name.split()[:2]]).upper() if sender_name else ""
+    receiver_initials = "".join([n[0] for n in receiver_name.split()[:2]]).upper() if receiver_name else ""
+    
+    praise_doc = {
+        "sender_id": request.sender_id,
+        "sender_name": sender_name,
+        "sender_initials": sender_initials,
+        "receiver_id": request.receiver_id,
+        "receiver_name": receiver_name,
+        "receiver_initials": receiver_initials,
+        "badge_key": request.badge_key,
+        "message": request.message,
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+    }
+    mongo_db.db.praises.insert_one(praise_doc)
+    praise_doc.pop("_id", None)
+    return {"status": "success", "message": "Praise shared successfully", "record": praise_doc}
+
+@router.get("/praise/received")
+def get_received_praise(employee_id: str):
+    if mongo_db.db is None:
+        return {"received": []}
+    received = list(mongo_db.db.praises.find({"receiver_id": employee_id}, {"_id": 0}).sort("timestamp", -1))
+    return {"received": received}

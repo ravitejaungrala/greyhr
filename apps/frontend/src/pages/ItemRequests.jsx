@@ -5,6 +5,7 @@ import {
     AlertTriangle, X, User, MessageSquare
 } from 'lucide-react';
 import { API_URL } from '../config';
+import toast from '../lib/toast';
 
 const ItemRequests = ({ userId, user }) => {
     const [requests, setRequests] = useState([]);
@@ -67,11 +68,11 @@ const ItemRequests = ({ userId, user }) => {
 
     const handleItemRequestSubmit = async () => {
         if (requestType === 'item' && (!itemRequestData.item_name || !itemRequestData.reason)) {
-            alert("Please fill in all fields");
+            toast.error("Please fill in all fields");
             return;
         }
         if (requestType === 'general' && (!itemRequestData.subject || !itemRequestData.reason)) {
-            alert("Please fill in subject and message");
+            toast.error("Please fill in subject and message");
             return;
         }
 
@@ -88,7 +89,7 @@ const ItemRequests = ({ userId, user }) => {
                 })
             });
             if (res.ok) {
-                alert(requestType === 'item' ? "Item request submitted successfully!" : "Message sent successfully!");
+                toast.success(requestType === 'item' ? "Item request submitted successfully!" : "Message sent successfully!");
                 setIsItemModalOpen(false);
                 setItemRequestData({ subject: '', item_name: '', quantity: 1, reason: '', approver_id: allEmployees[0]?.employee_id || '', cc_ids: [] });
                 fetchMyRequests(); // Refresh list

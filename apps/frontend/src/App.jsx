@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import './index.css';
+import { API_URL } from './config';
 import { 
   ClipboardCheck, Users, Settings, Calendar, BarChart3, Bell, Megaphone, 
   Camera, CreditCard, PieChart, FileText, History, Layout, Timer, 
   MessageSquare, Heart, Wallet, Palmtree, Folder, Package, LogOut,
-  ChevronDown, ChevronRight, Activity, BrainCircuit, UserPlus
+  ChevronDown, ChevronRight, BrainCircuit, UserPlus, Clock
 } from 'lucide-react';
 
 // Pages
@@ -22,6 +23,9 @@ import ItemRequests from './pages/ItemRequests';
 import EmployeeAssistant from './pages/EmployeeAssistant';
 import LandingPage from './pages/LandingPage';
 import LeavePolicy from './pages/LeavePolicy';
+import Holidays from './pages/Holidays';
+import Onboarding from './pages/Onboarding';
+import Toaster from './components/Toaster';
 
 // Helper component for dynamic document titles
 const DynamicTitle = () => {
@@ -71,10 +75,6 @@ function AppContent() {
     return sessionStorage.getItem('isDocExpanded') === 'true';
   });
 
-  const [isAttendExpanded, setIsAttendExpanded] = useState(() => {
-    return sessionStorage.getItem('isAttendExpanded') === 'true';
-  });
-
   const [isReqExpanded, setIsReqExpanded] = useState(() => {
     return sessionStorage.getItem('isReqExpanded') === 'true';
   });
@@ -105,12 +105,33 @@ function AppContent() {
   }, [isDocExpanded]);
 
   useEffect(() => {
-    sessionStorage.setItem('isAttendExpanded', isAttendExpanded);
-  }, [isAttendExpanded]);
-
-  useEffect(() => {
     sessionStorage.setItem('isReqExpanded', isReqExpanded);
   }, [isReqExpanded]);
+
+  // Pending comp-off approvals — drives the sidebar badge
+  const [pendingCompOff, setPendingCompOff] = useState(0);
+
+  useEffect(() => {
+    const isAdminUser = user?.role === 'admin' || user?.role === 'super_admin';
+    if (!isAdminUser) { setPendingCompOff(0); return; }
+
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const url = new URL(`${API_URL}/admin/comp-off-requests/count`);
+        if (user?.email) url.searchParams.set('admin_email', user.email);
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!cancelled) setPendingCompOff(data?.count || 0);
+      } catch {
+        // Badge is non-critical — stay silent rather than noising the console
+      }
+    };
+
+    load();
+    const timer = setInterval(load, 60000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [user?.email, user?.role, location.pathname]);
 
   const handleLogout = () => {
     setUser(null);
@@ -122,7 +143,7 @@ function AppContent() {
     navigate(path);
   };
 
-  const NavItem = ({ path, icon: Icon, title, subtitle, isSub = false }) => {
+  const NavItem = ({ path, icon: Icon, title, subtitle, isSub = false, badge = 0 }) => {
     const isActive = location.pathname === path;
     return (
       <div
@@ -136,12 +157,13 @@ function AppContent() {
           <span className="nav-title">{title}</span>
           {subtitle && <span className="nav-subtitle">{subtitle}</span>}
         </div>
-        {isActive && !isSub && <div className="active-dot" />}
+        {badge > 0 && <span className="nav-badge" title={`${badge} pending`}>{badge > 99 ? '99+' : badge}</span>}
+        {isActive && !isSub && badge === 0 && <div className="active-dot" />}
       </div>
     );
   };
 
-  const NavGroup = ({ id, icon: Icon, title, subtitle, isExpanded, setIsExpanded, children }) => {
+  const NavGroup = ({ id, icon: Icon, title, subtitle, isExpanded, setIsExpanded, children, badge = 0 }) => {
     const isInside = location.pathname.includes(id);
     return (
       <>
@@ -156,6 +178,7 @@ function AppContent() {
              <span className="nav-title">{title}</span>
              <span className="nav-subtitle">{subtitle}</span>
           </div>
+          {badge > 0 && !isExpanded && <span className="nav-badge">{badge > 99 ? '99+' : badge}</span>}
           <span className="arrow">{isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
         </div>
         {isExpanded && (
@@ -170,6 +193,8 @@ function AppContent() {
   if (!user) {
     return (
       <Routes>
+        {/* Public — reached from the invite email, no session required */}
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/login" element={<LoginRegister onLoginSuccess={(u) => { setUser(u); navigate(u.role?.includes('admin') ? '/admin/dashboard' : '/employee/pulse'); }} />} />
         <Route path="*" element={<LandingPage onLoginClick={() => navigate('/login')} />} />
       </Routes>
@@ -177,6 +202,36 @@ function AppContent() {
   }
 
   const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+
+  // Employees who have not finished onboarding get a dedicated surface instead
+  // of the app shell. Without this they used to land on a normal dashboard that
+  // silently fetched nothing, because every data call is gated on 'approved'.
+  if (!isAdmin && user.status && user.status !== 'approved') {
+    if (user.status === 'pending_approval') {
+      return (
+        <div className="ds ds-onboard-shell">
+          <DynamicTitle />
+          <div className="ds-panel roomier ds-onboard-card" style={{ textAlign: 'center' }}>
+            <Clock size={30} color="var(--accent)" style={{ marginBottom: 12 }} />
+            <h1 className="ds-onboard-title">Awaiting review</h1>
+            <p className="ds-modal-copy">
+              Thanks {user.name?.split(' ')[0]} — your details are with your HR team.
+              You'll get an email as soon as they're reviewed, and full access will be
+              enabled then.
+            </p>
+            <button className="ds-btn" onClick={handleLogout}>Sign out</button>
+          </div>
+        </div>
+      );
+    }
+    // 'onboarding' or 'rejected' — send them to the form to complete or fix
+    return (
+      <Routes>
+        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="*" element={<Navigate to="/onboarding" replace />} />
+      </Routes>
+    );
+  }
 
   return (
     <div className="app-container">
@@ -186,11 +241,11 @@ function AppContent() {
         <div className="sidebar-header">
           <div className="brand-logo-container">
              <div className="brand-logo-icon">
-                <img src="/icon (2).png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                <img src="/icon (2).png" alt="Logo" className="brand-logo-img" />
              </div>
              <div className="brand-text-group">
                 <div className="brand-main">NeuzenAI</div>
-                <div className="brand-sub" style={{ color: 'var(--primary)' }}>HRMS SOLUTIONS</div>
+                <div className="brand-sub">HRMS SOLUTIONS</div>
              </div>
           </div>
         </div>
@@ -226,6 +281,7 @@ function AppContent() {
               >
                 <NavItem path="/admin/announcements" icon={Megaphone} title="Bulletin" subtitle="ANNOUNCEMENTS" isSub />
                 <NavItem path="/admin/notifications" icon={Bell} title="Alerts" subtitle="NOTIFICATIONS" isSub />
+                <NavItem path="/employee/engage" icon={MessageSquare} title="Engage" subtitle="COMMUNITY" isSub />
               </NavGroup>
               
               <NavGroup 
@@ -235,10 +291,11 @@ function AppContent() {
                 subtitle="INSIGHTS"
                 isExpanded={isAnalyExpanded}
                 setIsExpanded={setIsAnalyExpanded}
+                badge={pendingCompOff}
               >
                 <NavItem path="/admin/reports" icon={BarChart3} title="Reports" subtitle="COMPREHENSIVE" isSub />
                 <NavItem path="/admin/finance" icon={PieChart} title="Finance" subtitle="REPORTS" isSub />
-                <NavItem path="/admin/monitoring" icon={Camera} title="Monitoring" subtitle="LOGS" isSub />
+                <NavItem path="/admin/monitoring" icon={Camera} title="Monitoring" subtitle="LOGS" isSub badge={pendingCompOff} />
               </NavGroup>
               
               <NavItem path="/admin/intelligence" icon={BrainCircuit} title="Intelligence" subtitle="AI SPECIALIST" />
@@ -261,16 +318,7 @@ function AppContent() {
             <>
               <NavItem path="/employee/pulse" icon={Layout} title="Pulse" subtitle="OVERVIEW" />
               
-              <NavGroup 
-                id="attendance" 
-                icon={Timer} 
-                title="Attendance" 
-                subtitle="PRESENCE"
-                isExpanded={isAttendExpanded}
-                setIsExpanded={setIsAttendExpanded}
-              >
-                <NavItem path="/employee/activity" icon={Activity} title="Activity" subtitle="STATS" isSub />
-              </NavGroup>
+              <NavItem path="/employee/activity" icon={Timer} title="Attendance" subtitle="PRESENCE" />
 
               <NavItem path="/employee/engage" icon={MessageSquare} title="Engage" subtitle="COMMUNITY" />
               <NavItem path="/employee/wellbeing" icon={Heart} title="Wellbeing" subtitle="WORK LIFE" />
@@ -290,6 +338,9 @@ function AppContent() {
               </NavGroup>
 
               <NavItem path="/employee/docs" icon={Folder} title="Collection" subtitle="DOCUMENTS" />
+
+              <div className="nav-divider" />
+
               <NavItem path="/employee/assistant" icon={BrainCircuit} title="AI Assistant" subtitle="NEUZENAI SPECIALIST" />
             </>
           )}
@@ -297,12 +348,12 @@ function AppContent() {
 
         <div className="sidebar-footer">
            <div className="user-profile-card">
-              <div className="user-avatar-orange" style={{ background: 'var(--accent-blue)', color: 'var(--primary)' }}>
+              <div className="user-avatar-orange">
                  {user.name.charAt(0).toUpperCase()}
               </div>
               <div className="user-details">
                  <div className="user-name-bold">{user.name}</div>
-                  <div className="user-company-sub" style={{ color: 'var(--primary)' }}>
+                  <div className="user-company-sub">
                    {user.role === 'super_admin'
                     ? 'ALL COMPANIES'
                     : (user.accessible_companies?.length > 1 ? 'MULTI-COMPANY ACCESS' : (user.company_name || 'COMPANY ACCESS')).toUpperCase()}
@@ -343,9 +394,10 @@ function AppContent() {
             <Route path="/employee/leaves" element={<Navigate to="/employee/leaves/balance" replace />} />
             <Route path="/employee/leaves/apply" element={<Leaves userId={user.employee_id} user={user} mode="apply" />} />
             <Route path="/employee/leaves/balance" element={<Leaves userId={user.employee_id} user={user} mode="balance" />} />
-            <Route path="/employee/engage" element={<EngageModule />} />
+            <Route path="/employee/engage" element={<EngageModule user={user} />} />
             <Route path="/employee/wellbeing" element={<MyWorkLife userId={user.employee_id} user={user} setActiveMenu={navigateTo} />} />
             <Route path="/employee/salary" element={<SalaryModule userId={user.employee_id} user={user} />} />
+            <Route path="/employee/holidays" element={<Holidays />} />
             <Route path="/employee/docs" element={<DocumentCenter user={user} />} />
             <Route path="/employee/items" element={<ItemRequests userId={user.employee_id} user={user} />} />
             <Route path="/employee/assistant" element={<EmployeeAssistant user={user} />} />
@@ -361,6 +413,7 @@ function App() {
   return (
     <BrowserRouter>
       <AppContent />
+      <Toaster />
     </BrowserRouter>
   );
 }

@@ -18,6 +18,18 @@ import EnhancedDocumentGenerator from '../components/EnhancedDocumentGenerator';
 import HistoricalDocGenerator from '../components/HistoricalDocGenerator';
 import { PLACEHOLDER_IMAGE } from '../utils';
 import IntelligenceAgent from './IntelligenceAgent';
+import toast from '../lib/toast';
+import { apiSend } from '../lib/api';
+
+// The five role strings the backend assigns (router.py). Colour-coded by
+// privilege level so elevated accounts stand out in the directory.
+const ROLE_BADGE = {
+    super_admin:    { label: 'Super Admin', bg: '#fef2f2', fg: '#dc2626' },
+    admin:          { label: 'Admin',       bg: '#fff7ed', fg: '#ea580c' },
+    hr:             { label: 'HR',          bg: '#f5f3ff', fg: '#7c3aed' },
+    hr_responsible: { label: 'HR Lead',     bg: '#f5f3ff', fg: '#7c3aed' },
+    employee:       { label: 'Employee',    bg: '#f1f5f9', fg: '#475569' },
+};
 
 const AdminDashboard = ({ activeTab, user }) => {
     const isSuperAdmin = user?.role === 'super_admin';
@@ -131,15 +143,26 @@ const AdminDashboard = ({ activeTab, user }) => {
 
     // Add Employee Modal State
     const [isAddEmpModalOpen, setIsAddEmpModalOpen] = useState(false);
+    // No password field — the employee sets their own via the emailed link.
     const [addEmpForm, setAddEmpForm] = useState({
         name: '',
         email: '',
-        password: '',
         employment_type: 'Full-Time',
         position: '',
-        monthly_salary: 0
+        role: 'employee',
+        monthly_salary: 0,
+        in_hand_salary: 0,
+        tax_deduction_rate: 0,
+        pf_deduction_rate: 0,
+        privilege_leave_rate: 1.5,
+        sick_leave_rate: 1.0,
+        casual_leave_rate: 1.0,
+        internship_end_date: ''
     });
     const [addEmpLoading, setAddEmpLoading] = useState(false);
+
+    const addLabelStyle = { fontSize: '0.75rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '0.35rem' };
+    const addInputStyle = { width: '100%', padding: '0.7rem 0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '0.85rem', background: '#ffffff', color: '#0f172a' };
 
     // Form states
     const [newHoliday, setNewHoliday] = useState({ name: '', date: '', type: 'Public Holiday' });
@@ -237,7 +260,7 @@ const AdminDashboard = ({ activeTab, user }) => {
             setEditUploads((prev) => ({ ...prev, [key]: base64 }));
         } catch (error) {
             console.error(error);
-            alert('Failed to read selected file.');
+            toast.error('Failed to read selected file.');
         }
     };
 
@@ -408,35 +431,37 @@ const AdminDashboard = ({ activeTab, user }) => {
     }, [activeTab, companyFilter]);
 
     const handleApproval = async (empId, action) => {
+        // Review is read-only: this writes the decision only, never profile
+        // fields. The old version sent salary/role/leave rates from the stepper
+        // and silently discarded everything the admin typed in steps 1-4.
+        let reason = null;
+        if (action === 'reject') {
+            reason = window.prompt('What needs to be corrected? The employee will see this and can resubmit.');
+            if (reason === null) return;              // admin cancelled
+            if (!reason.trim()) return toast.error('Please give a reason so the employee knows what to fix.');
+        }
+
         try {
-            const response = await fetch(`${apiUrl}/auth/admin/approve`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    employee_id: empId,
-                    action,
-                    employment_type: empRoleSetup.employment_type,
-                    position: empRoleSetup.position,
-                    monthly_salary: parseInt(empRoleSetup.monthly_salary),
-                    privilege_leave_rate: parseFloat(empRoleSetup.privilege_leave_rate),
-                    sick_leave_rate: parseFloat(empRoleSetup.sick_leave_rate),
-                    casual_leave_rate: parseFloat(empRoleSetup.casual_leave_rate),
-                    role: empRoleSetup.role,
-                    accessible_companies: empRoleSetup.accessible_companies,
-                    internship_end_date: empRoleSetup.internship_end_date || null,
-                    tax_deduction_rate: parseFloat(empRoleSetup.tax_deduction_rate || 0),
-                    pf_deduction_rate: parseFloat(empRoleSetup.pf_deduction_rate || 0)
-                })
+            const data = await apiSend(`${apiUrl}/admin/onboarding/decision`, 'POST', {
+                employee_id: empId,
+                action,
+                reason,
+                reviewer_email: user?.email || null,
             });
-            if (response.ok) {
-                setPendingEmployees(prev => prev.filter(emp => emp.employee_id !== empId));
-                setViewedEmp(null);
-            }
+            setPendingEmployees(prev => prev.filter(emp => emp.employee_id !== empId));
+            setViewedEmp(null);
+            toast.success(
+                action === 'approve'
+                    ? 'Approved. The employee now has full access.'
+                    : 'Sent back to the employee with your notes.'
+            );
+            await fetchData();
+            return data;
         } catch (err) {
-            console.error(err);
+            console.error('Onboarding decision failed:', err);
+            toast.error(err.message || 'Could not record the decision.');
         }
     };
-
     const handleLeaveStatus = async (leaveId, status) => {
         try {
             const response = await fetch(`${apiUrl}/admin/leaves/${leaveId}/status`, {
@@ -460,7 +485,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                 body: JSON.stringify({ status })
             });
             if (res.ok) {
-                alert(`Item request ${status.toLowerCase()}ed!`);
+                toast(`Item request ${status.toLowerCase()}ed!`);
                 fetchData();
             }
         } catch (err) {
@@ -469,63 +494,74 @@ const AdminDashboard = ({ activeTab, user }) => {
     };
 
     const handleUpdateEmployee = async (employee_id) => {
+        // Numeric inputs are strings; parseInt('') is NaN, which JSON.stringify
+        // turns into null and the API then discards. Send undefined instead so
+        // the key is omitted entirely rather than silently clearing the field.
+        const num = (v, parser = parseInt) => {
+            const n = parser(v);
+            return Number.isNaN(n) ? undefined : n;
+        };
+
+        const payload = {
+            employment_type: empRoleSetup.employment_type,
+            position: empRoleSetup.position,
+            monthly_salary: num(empRoleSetup.monthly_salary),
+            privilege_leave_rate: num(empRoleSetup.privilege_leave_rate, parseFloat),
+            sick_leave_rate: num(empRoleSetup.sick_leave_rate, parseFloat),
+            casual_leave_rate: num(empRoleSetup.casual_leave_rate, parseFloat),
+            internship_end_date: empRoleSetup.internship_end_date || null,
+            internship_completed: empRoleSetup.internship_completed,
+            pan_no: empRoleSetup.pan_no,
+            pf_no: empRoleSetup.pf_no,
+            bank_name: empRoleSetup.bank_name,
+            bank_account: empRoleSetup.bank_account,
+            in_hand_salary: num(empRoleSetup.in_hand_salary) ?? 0,
+            accessible_companies: empRoleSetup.accessible_companies,
+            tax_deduction_rate: num(empRoleSetup.tax_deduction_rate, parseFloat) ?? 0,
+            pf_deduction_rate: num(empRoleSetup.pf_deduction_rate, parseFloat) ?? 0,
+            reference_image_base64: editUploads.reference_image_base64 || null,
+            passport_photo_base64: editUploads.passport_photo_base64 || null,
+            pan_card_base64: editUploads.pan_card_base64 || null,
+            bank_passbook_base64: editUploads.bank_passbook_base64 || null,
+            education_cert_base64: editUploads.education_cert_base64 || null,
+            inter_cert_base64: editUploads.inter_cert_base64 || null,
+            ssc_cert_base64: editUploads.ssc_cert_base64 || null
+        };
+
         try {
-            const response = await fetch(`${apiUrl}/admin/employee/${employee_id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    employment_type: empRoleSetup.employment_type,
-                    position: empRoleSetup.position,
-                    monthly_salary: parseInt(empRoleSetup.monthly_salary),
-                    privilege_leave_rate: parseFloat(empRoleSetup.privilege_leave_rate),
-                    sick_leave_rate: parseFloat(empRoleSetup.sick_leave_rate),
-                    casual_leave_rate: parseFloat(empRoleSetup.casual_leave_rate),
-                    internship_end_date: empRoleSetup.internship_end_date || null,
-                    internship_completed: empRoleSetup.internship_completed,
-                    pan_no: empRoleSetup.pan_no,
-                    pf_no: empRoleSetup.pf_no,
-                    bank_name: empRoleSetup.bank_name,
-                    bank_account: empRoleSetup.bank_account,
-                    in_hand_salary: parseInt(empRoleSetup.in_hand_salary || 0),
-                    accessible_companies: empRoleSetup.accessible_companies,
-                    tax_deduction_rate: parseFloat(empRoleSetup.tax_deduction_rate || 0),
-                    pf_deduction_rate: parseFloat(empRoleSetup.pf_deduction_rate || 0),
-                    reference_image_base64: editUploads.reference_image_base64 || null,
-                    passport_photo_base64: editUploads.passport_photo_base64 || null,
-                    pan_card_base64: editUploads.pan_card_base64 || null,
-                    bank_passbook_base64: editUploads.bank_passbook_base64 || null,
-                    education_cert_base64: editUploads.education_cert_base64 || null,
-                    inter_cert_base64: editUploads.inter_cert_base64 || null,
-                    ssc_cert_base64: editUploads.ssc_cert_base64 || null
-                })
-            });
-            if (response.ok) {
-                // Now assign role if changed
-                if (isSuperAdmin) {
-                    await fetch(`${apiUrl}/admin/assign-role`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            employee_id: employee_id,
-                            role: empRoleSetup.role
-                        })
-                    });
-                }
-                alert("Employee profile updated successfully!");
-                setEditUploads({
-                    reference_image_base64: '',
-                    passport_photo_base64: '',
-                    pan_card_base64: '',
-                    bank_passbook_base64: '',
-                    education_cert_base64: '',
-                    inter_cert_base64: '',
-                    ssc_cert_base64: ''
+            // apiSend throws on non-2xx AND on a 200 carrying an { error } body,
+            // which is how this API reports business failures.
+            await apiSend(`${apiUrl}/admin/employee/${employee_id}`, 'PATCH', payload);
+
+            if (isSuperAdmin) {
+                await apiSend(`${apiUrl}/admin/assign-role`, 'POST', {
+                    employee_id: employee_id,
+                    role: empRoleSetup.role
                 });
-                fetchData(); // Refresh list
-                setSelectedApprovedEmp(null);
             }
+
+            setEditUploads({
+                reference_image_base64: '',
+                passport_photo_base64: '',
+                pan_card_base64: '',
+                bank_passbook_base64: '',
+                education_cert_base64: '',
+                inter_cert_base64: '',
+                ssc_cert_base64: ''
+            });
+
+            // Reflect the change immediately so the row updates even if the
+            // refetch is slow, then reconcile with the server.
+            setApprovedEmployees(prev => prev.map(emp =>
+                emp.employee_id === employee_id ? { ...emp, ...payload } : emp
+            ));
+
+            await fetchData();
+            setSelectedApprovedEmp(null);
+            toast.success("Employee profile updated successfully!");
         } catch (err) {
-            console.error(err);
+            console.error('Update employee failed:', err);
+            toast.error(err.message || 'Could not update employee.');
         }
     };
 
@@ -566,140 +602,95 @@ const AdminDashboard = ({ activeTab, user }) => {
             const response = await fetch(`${apiUrl}/admin/employee/${employeeId}`, { method: 'DELETE' });
             const data = await response.json().catch(() => ({}));
             if (!response.ok || data.error) {
-                alert(data.error || 'Failed to delete employee');
+                toast.error(data.error || 'Failed to delete employee');
                 return;
             }
             if (selectedApprovedEmp?.employee_id === employeeId) {
                 setSelectedApprovedEmp(null);
             }
             setApprovedEmployees((prev) => prev.filter((emp) => emp.employee_id !== employeeId));
-            alert(data.message || 'Employee deleted successfully');
+            toast.success(data.message || 'Employee deleted successfully');
         } catch (error) {
             console.error(error);
-            alert('Failed to delete employee');
+            toast.error('Failed to delete employee');
         }
     };
 
     const handleAddEmployee = async (e, shouldGenDoc = false) => {
         if (e) e.preventDefault();
+
+        if (!addEmpForm.name?.trim()) return toast.error('Full name is required.');
+        if (!addEmpForm.email?.trim() || !addEmpForm.email.includes('@')) return toast.error('A valid work email is required.');
+        if (!addEmpForm.position?.trim()) return toast.error('Designation / position is required.');
+
+        const isIntern = addEmpForm.employment_type === 'Intern';
+        const numOr = (v, fallback = 0) => {
+            const n = parseFloat(v);
+            return Number.isNaN(n) ? fallback : n;
+        };
+
         setAddEmpLoading(true);
         try {
-            const payload = {
-                name: addEmpForm.name,
-                email: addEmpForm.email || '',
-                password: addEmpForm.password || '',
-                employment_type: addEmpForm.employment_type || 'Full-Time',
-                position: addEmpForm.position || 'Employee',
-                monthly_salary: parseInt(addEmpForm.monthly_salary || 0, 10)
-            };
-
-            const response = await fetch(`${apiUrl}/admin/create-employee`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+            const data = await apiSend(`${apiUrl}/admin/employees/invite`, 'POST', {
+                name: addEmpForm.name.trim(),
+                email: addEmpForm.email.trim().toLowerCase(),
+                position: addEmpForm.position.trim(),
+                employment_type: addEmpForm.employment_type,
+                role: addEmpForm.role,
+                monthly_salary: Math.round(numOr(addEmpForm.monthly_salary)),
+                in_hand_salary: Math.round(numOr(addEmpForm.in_hand_salary)),
+                // Interns accrue comp-off only; force the rates to 0 so the
+                // balance engine cannot grant them PL/SL/CL.
+                privilege_leave_rate: isIntern ? 0 : numOr(addEmpForm.privilege_leave_rate, 1.5),
+                sick_leave_rate: isIntern ? 0 : numOr(addEmpForm.sick_leave_rate, 1.0),
+                casual_leave_rate: isIntern ? 0 : numOr(addEmpForm.casual_leave_rate, 1.0),
+                tax_deduction_rate: numOr(addEmpForm.tax_deduction_rate),
+                pf_deduction_rate: numOr(addEmpForm.pf_deduction_rate),
+                internship_end_date: isIntern ? (addEmpForm.internship_end_date || null) : null,
             });
 
-            if (!response.ok) {
-                const text = await response.text();
-                console.error("Create Employee Failed:", text);
-                alert("Failed to create employee. See console for details.");
-                return;
-            }
-
-            const data = await response.json();
-                if (data.error) {
-                    alert(data.error);
-                } else {
-                    alert(`Employee ${data.employee_id} created successfully!`);
-
-                    // Fetch the newly created employee from both approved and pending lists
-                    try {
-                        const [approvedRes, pendingRes] = await Promise.all([
-                            fetch(buildAdminUrl('/auth/admin/employees')),
-                            fetch(buildAdminUrl('/auth/admin/pending'))
-                        ]);
-
-                        let createdEmp = null;
-
-                        if (approvedRes && approvedRes.ok) {
-                            const empListData = await approvedRes.json();
-                            createdEmp = (empListData.employees || []).find(e => e.employee_id === data.employee_id) || null;
-                        }
-
-                        if (!createdEmp && pendingRes && pendingRes.ok) {
-                            const pendData = await pendingRes.json();
-                            createdEmp = (pendData.employees || []).find(e => e.employee_id === data.employee_id) || null;
-                            if (createdEmp) {
-                                // Ensure the pending list in UI shows the new entry immediately
-                                setPendingEmployees(prev => [createdEmp, ...prev.filter(x => x.employee_id !== createdEmp.employee_id)]);
-                                setViewedEmp(createdEmp);
-                            }
-                        }
-
-                        if (createdEmp && createdEmp.status === 'approved') {
-                            // Prefill edit form state for approved employees
-                            setSelectedApprovedEmp(createdEmp);
-                            setEmpRoleSetup({
-                                employment_type: createdEmp.employment_type || 'Full-Time',
-                                position: createdEmp.position || '',
-                                monthly_salary: createdEmp.monthly_salary || 0,
-                                privilege_leave_rate: createdEmp.leave_rates?.privilege || 1.5,
-                                sick_leave_rate: createdEmp.leave_rates?.sick || 1.0,
-                                casual_leave_rate: createdEmp.leave_rates?.casual || 1.0,
-                                role: createdEmp.role || 'employee',
-                                in_hand_salary: createdEmp.in_hand_salary || createdEmp.monthly_salary || 0,
-                                internship_end_date: createdEmp.internship_end_date || '',
-                                internship_completed: createdEmp.internship_completed || false,
-                                pan_no: createdEmp.pan_no || '',
-                                pf_no: createdEmp.pf_no || '',
-                                bank_name: createdEmp.bank_details?.bank_name || '',
-                                bank_account: createdEmp.bank_details?.account_number || '',
-                                accessible_companies: createdEmp.accessible_companies || (getEmployeeCompanyKey(createdEmp) ? [getEmployeeCompanyKey(createdEmp)] : [])
-                            });
-                        }
-
-                    } catch (err) {
-                        console.error('Failed to fetch created employee:', err);
-                    }
-
-                    setIsAddEmpModalOpen(false);
-
-                if (shouldGenDoc) {
-                    const isIntern = addEmpForm.employment_type === 'Intern';
-                    setDocGenType(isIntern ? 'internship_offer' : 'full_time_offer');
-                    setDocGenEmployee({
-                        ...addEmpForm,
-                        employee_id: data.employee_id,
-                        full_name: addEmpForm.name
-                    });
-                    setDocGenInitialData({
-                        emp_name: addEmpForm.name,
-                        employee_id: data.employee_id,
-                        designation: addEmpForm.position,
-                        doj: new Date().toISOString().split('T')[0],
-                        total_ctc_annual: parseInt(addEmpForm.monthly_salary) * 12,
-                        inhand_amount: parseInt(addEmpForm.monthly_salary)
-                    });
-                    setIsDocGenModalOpen(true);
+            if (data.email_sent) {
+                toast.success(`Invite sent to ${addEmpForm.email}. They'll set their own password.`);
+            } else {
+                // SMTP is optional in this deployment — surface the link so the
+                // admin is never blocked by a mail failure.
+                toast.error('Employee created, but the invite email could not be sent. Link copied below.', { duration: 9000 });
+                if (data.onboarding_link) {
+                    try { await navigator.clipboard.writeText(data.onboarding_link); } catch { /* clipboard may be blocked */ }
+                    toast(`Onboarding link: ${data.onboarding_link}`, { duration: 20000 });
                 }
-
-                setAddEmpForm({
-                    name: '',
-                    email: '',
-                    password: '',
-                    employment_type: 'Full-Time',
-                    position: '',
-                    monthly_salary: 0
-                });
-                fetchData();
             }
+
+            if (shouldGenDoc) {
+                setDocGenType(isIntern ? 'internship_offer' : 'full_time_offer');
+                setDocGenEmployee({ ...addEmpForm, employee_id: data.employee_id, full_name: addEmpForm.name });
+                setDocGenInitialData({
+                    emp_name: addEmpForm.name,
+                    employee_id: data.employee_id,
+                    designation: addEmpForm.position,
+                    doj: new Date().toISOString().split('T')[0],
+                    total_ctc_annual: Math.round(numOr(addEmpForm.monthly_salary)) * 12,
+                    inhand_amount: Math.round(numOr(addEmpForm.in_hand_salary) || numOr(addEmpForm.monthly_salary)),
+                });
+                setIsDocGenModalOpen(true);
+            }
+
+            setIsAddEmpModalOpen(false);
+            setAddEmpForm({
+                name: '', email: '', employment_type: 'Full-Time', position: '',
+                role: 'employee', monthly_salary: 0, in_hand_salary: 0,
+                tax_deduction_rate: 0, pf_deduction_rate: 0,
+                privilege_leave_rate: 1.5, sick_leave_rate: 1.0, casual_leave_rate: 1.0,
+                internship_end_date: ''
+            });
+            await fetchData();
         } catch (err) {
-            alert("Connection error occurred.");
+            console.error('Invite failed:', err);
+            toast.error(err.message || 'Could not send the invite.');
         } finally {
             setAddEmpLoading(false);
         }
     };
-
     const handleUpdateAnnouncement = async (e) => {
         e.preventDefault();
         try {
@@ -709,7 +700,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                 body: JSON.stringify(announcementMsg)
             });
             if (response.ok) {
-                alert("Announcement updated successfully!");
+                toast.success("Announcement updated successfully!");
                 fetchData();
             }
         } catch (err) {
@@ -871,7 +862,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                 })
             });
             if (res.ok) {
-                alert("Offer letter draft generated! Review it below.");
+                toast.success("Offer letter draft generated! Review it below.");
                 setPreviewTimestamp(Date.now());
                 fetchData();
             }
@@ -886,7 +877,7 @@ const AdminDashboard = ({ activeTab, user }) => {
         try {
             const res = await fetch(`${apiUrl}/admin/interns/send-offer-letter/${empId}`, { method: 'POST' });
             if (res.ok) {
-                alert(`Offer letter finalized and sent to ${offerLetterParams.employment_type === 'Intern' ? 'intern' : 'employee'}!`);
+                toast.success(`Offer letter finalized and sent to ${offerLetterParams.employment_type === 'Intern' ? 'intern' : 'employee'}!`);
                 setIsOfferLetterModalOpen(false);
                 fetchData();
             }
@@ -904,7 +895,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                 body: JSON.stringify(relievingLetterParams)
             });
             if (res.ok) {
-                alert("Relieving letter draft generated! Review it below.");
+                toast.success("Relieving letter draft generated! Review it below.");
                 setPreviewTimestamp(Date.now());
                 fetchData();
             }
@@ -919,7 +910,7 @@ const AdminDashboard = ({ activeTab, user }) => {
         try {
             const res = await fetch(`${apiUrl}/admin/employee/finalize-relieving-letter/${empId}`, { method: 'POST' });
             if (res.ok) {
-                alert("Relieving letter finalized and released to employee!");
+                toast.success("Relieving letter finalized and released to employee!");
                 setIsRelievingLetterModalOpen(false);
                 fetchData();
             }
@@ -937,7 +928,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                 body: JSON.stringify(experienceCertificateParams)
             });
             if (res.ok) {
-                alert("Experience certificate draft generated! Review it below.");
+                toast.success("Experience certificate draft generated! Review it below.");
                 setPreviewTimestamp(Date.now());
                 fetchData();
             }
@@ -952,7 +943,7 @@ const AdminDashboard = ({ activeTab, user }) => {
         try {
             const res = await fetch(`${apiUrl}/admin/employee/finalize-experience-certificate/${empId}`, { method: 'POST' });
             if (res.ok) {
-                alert("Experience certificate finalized and released to employee!");
+                toast.success("Experience certificate finalized and released to employee!");
                 setIsRelievingLetterModalOpen(false);
                 fetchData();
             }
@@ -996,7 +987,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                 body: JSON.stringify({ request_id: requestId, status })
             });
             if (res.ok) {
-                alert(`Comp-Off request ${status}`);
+                toast(`Comp-Off request ${status}`);
                 fetchData();
             }
         } catch (err) {
@@ -1014,7 +1005,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                 body: JSON.stringify({ request_id: requestId, status })
             });
             if (res.ok) {
-                alert(`Work request ${status}`);
+                toast(`Work request ${status}`);
                 fetchData();
             }
         } catch (err) {
@@ -1037,7 +1028,7 @@ const AdminDashboard = ({ activeTab, user }) => {
 
             if (!response.ok) {
                 const msg = await response.text();
-                alert("Failed to save holiday: " + msg);
+                toast.error("Failed to save holiday: " + msg);
                 return;
             }
 
@@ -1052,7 +1043,7 @@ const AdminDashboard = ({ activeTab, user }) => {
             fetchData();
         } catch (err) {
             console.error("Error saving holiday: ", err);
-            alert("Connection error.");
+            toast.error("Connection error.");
         }
     };
 
@@ -1068,7 +1059,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                 setNewHoliday({ name: '', date: '', type: 'Public Holiday' });
                 fetchData();
             } else {
-                alert("Failed to delete holiday.");
+                toast.error("Failed to delete holiday.");
             }
         } catch (err) {
             console.error("Error deleting holiday: ", err);
@@ -1106,14 +1097,14 @@ const AdminDashboard = ({ activeTab, user }) => {
                 if (data.html_template || data.placeholders) {
                     setTemplateAnalysis({ ...data, original_type: fileType }); // Store the full analysis object
                 } else if (data.message) {
-                    alert(data.message);
+                    toast.success(data.message);
                     fetchData();
                 } else {
-                    alert('Upload failed: ' + data.error);
+                    toast.error('Upload failed: ' + data.error);
                 }
             } catch (err) {
                 console.error("Upload Error Details:", err);
-                alert(`Upload failed! Could not connect to ${apiUrl}/admin/templates/upload. Please ensure the backend server is running.`);
+                toast.error(`Upload failed! Could not connect to ${apiUrl}/admin/templates/upload. Please ensure the backend server is running.`);
             } finally {
                 setUploadingTemplate(false);
                 // After upload, trigger a re-fetch of templates to show in the list
@@ -1130,7 +1121,7 @@ const AdminDashboard = ({ activeTab, user }) => {
                 method: 'POST'
             });
             if (res.ok) {
-                alert("Salary configuration updated successfully!");
+                toast.success("Salary configuration updated successfully!");
                 fetchData();
             }
         } catch (err) {
@@ -1154,11 +1145,11 @@ const AdminDashboard = ({ activeTab, user }) => {
             } else {
                 const text = await res.text().catch(() => "Unknown error");
                 console.error("Holiday Fetch Failure:", text);
-                alert("Failed to fetch official holidays from AI service. Adding manually is recommended.");
+                toast.error("Failed to fetch official holidays from AI service. Adding manually is recommended.");
             }
         } catch (err) {
             console.error("Fetch Holidays Error:", err);
-            alert("Error connecting to holiday service.");
+            toast.error("Error connecting to holiday service.");
         } finally {
             setIsFetchingHolidays(false);
         }
@@ -1184,17 +1175,17 @@ const AdminDashboard = ({ activeTab, user }) => {
 
             if (res.ok) {
                 const data = await res.json();
-                alert(data.message || "Bulk holidays added successfully!");
+                toast.success(data.message || "Bulk holidays added successfully!");
                 setIsHolidayModalOpen(false);
                 fetchData();
             } else {
                 const text = await res.text();
                 console.error("Bulk Add Failed:", text);
-                alert("Failed to add bulk holidays. See console.");
+                toast.error("Failed to add bulk holidays. See console.");
             }
         } catch (err) {
             console.error("Bulk Add Error:", err);
-            alert("Connection error during bulk add.");
+            toast.error("Connection error during bulk add.");
         }
     };
 
@@ -1809,10 +1800,10 @@ const AdminDashboard = ({ activeTab, user }) => {
                                 {workforceSubTab === 'directory' && (
                                     <div className="card shadow-sm" style={{ background: '#ffffff', border: '1px solid var(--border-color)', borderRadius: '18px', overflow: 'hidden', padding: 0 }}>
                                         <div style={{ overflowX: 'auto' }}>
-                                            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1020px' }}>
                                                 <thead>
                                                     <tr style={{ background: '#fff7f2', borderBottom: '1px solid #fde5d2' }}>
-                                                        {['Employee', 'ID', 'Company', 'Email', 'Type', 'Position', ''].map((heading, i) => (
+                                                        {['Employee', 'ID', 'Company', 'Email', 'Type', 'Position', 'Role', ''].map((heading, i) => (
                                                             <th key={i} style={{ padding: '0.6rem 0.85rem', textAlign: 'left', fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 800 }}>
                                                                 {heading}
                                                             </th>
@@ -1843,6 +1834,16 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                             <td style={{ padding: '0.45rem 0.85rem', color: '#475569', fontSize: '0.82rem' }}>{emp.email}</td>
                                                             <td style={{ padding: '0.45rem 0.85rem', color: '#0f172a', fontWeight: 600, fontSize: '0.82rem' }}>{emp.employment_type || 'Full-Time'}</td>
                                                             <td style={{ padding: '0.45rem 0.85rem', color: '#475569', fontSize: '0.82rem' }}>{emp.position || 'Software Engineer'}</td>
+                                                            <td style={{ padding: '0.45rem 0.85rem' }}>
+                                                                {(() => {
+                                                                    const r = ROLE_BADGE[emp.role] || ROLE_BADGE.employee;
+                                                                    return (
+                                                                        <span style={{ display: 'inline-flex', padding: '0.15rem 0.5rem', borderRadius: '999px', background: r.bg, color: r.fg, fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                                                                            {r.label}
+                                                                        </span>
+                                                                    );
+                                                                })()}
+                                                            </td>
                                                             <td style={{ padding: '0.45rem 0.85rem' }}>
                                                                 <div style={{ display: 'flex', gap: '0.3rem' }}>
                                                                     <button onClick={() => openEmployeeEditor(emp)} title="Edit" style={{ padding: '0.35rem', borderRadius: '8px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#2563eb', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -4242,15 +4243,15 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                     });
                                                     const data = await res.json();
                                                     if (res.ok) {
-                                                        alert(`Template for ${selectedTemplateType} saved successfully!`);
+                                                        toast.success(`Template for ${selectedTemplateType} saved successfully!`);
                                                         setTemplateAnalysis(null);
                                                         fetchData();
                                                     } else {
-                                                        alert('Failed to save template: ' + (data.error || 'Unknown error'));
+                                                        toast.error('Failed to save template: ' + (data.error || 'Unknown error'));
                                                     }
                                                 } catch (err) {
                                                     console.error("Save Error:", err);
-                                                    alert("Failed to connect to server during save.");
+                                                    toast.error("Failed to connect to server during save.");
                                                 }
                                             }}
                                         >
@@ -4439,8 +4440,8 @@ const AdminDashboard = ({ activeTab, user }) => {
                                                     body: JSON.stringify({ employee_id: id, doc_type: 'payslip', roi_data: { emp_name: emp.name, month_year: payslipManagerMonth, gross_salary: emp.monthly_salary || 50000, net_salary: emp.monthly_salary ? emp.monthly_salary - 200 : 49800 } })
                                                 });
                                             }
-                                            alert('Successfully generated and sent payslips!');
-                                        } catch (err) { alert('Failed to send some payslips.'); }
+                                            toast.success('Successfully generated and sent payslips!');
+                                        } catch (err) { toast.error('Failed to send some payslips.'); }
                                         finally { setIsBatchSending(false); setIsPayslipManagerOpen(false); fetchData(); }
                                     }}>
                                         {isBatchSending ? 'Sending...' : 'Generate & Send Selected'}
@@ -4456,16 +4457,71 @@ const AdminDashboard = ({ activeTab, user }) => {
                     {/* MODAL: ADD EMPLOYEE */}
                     {isAddEmpModalOpen && (
                         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000 }}>
-                            <div className="card shadow-2xl" style={{ width: '100%', maxWidth: '600px', background: '#ffffff', borderRadius: '16px', padding: '2.5rem' }}>
-                                <h2 className="card-title">Add New Employee</h2>
-                                <div className="grid-2" style={{ gap: '1.25rem', margin: '2rem 0' }}>
-                                    <div><label style={{ fontSize: '0.8rem' }}>Full Name</label><input className="premium-input" value={addEmpForm.name} onChange={e => setAddEmpForm({ ...addEmpForm, name: e.target.value })} style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px' }} /></div>
-                                    <div><label style={{ fontSize: '0.8rem' }}>Personal Email</label><input className="premium-input" value={addEmpForm.email} onChange={e => setAddEmpForm({ ...addEmpForm, email: e.target.value })} style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px' }} /></div>
-                                    <div><label style={{ fontSize: '0.8rem' }}>Password</label><input type="password" value={addEmpForm.password} onChange={e => setAddEmpForm({ ...addEmpForm, password: e.target.value })} style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px' }} /></div>
+                            <div className="card shadow-2xl" style={{ width: '100%', maxWidth: '720px', maxHeight: '88vh', overflowY: 'auto', background: '#ffffff', borderRadius: '16px', padding: '2.25rem' }}>
+                                <h2 className="card-title" style={{ marginBottom: '0.25rem' }}>Invite New Employee</h2>
+                                <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0 0 1.5rem' }}>
+                                    You set the employment terms below. The employee receives an email link
+                                    to set their own password and fill in their personal details, which then
+                                    come back to you for review.
+                                </p>
+
+                                <div style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.75rem' }}>Identity</div>
+                                <div className="grid-2" style={{ gap: '1rem', marginBottom: '1.5rem' }}>
+                                    <div><label style={addLabelStyle}>Full Name *</label><input value={addEmpForm.name} onChange={e => setAddEmpForm({ ...addEmpForm, name: e.target.value })} style={addInputStyle} /></div>
+                                    <div><label style={addLabelStyle}>Work Email *</label><input value={addEmpForm.email} onChange={e => setAddEmpForm({ ...addEmpForm, email: e.target.value })} placeholder="name@company.com" style={addInputStyle} /></div>
                                 </div>
+
+                                <div style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.75rem' }}>Employment</div>
+                                <div className="grid-2" style={{ gap: '1rem', marginBottom: '1rem' }}>
+                                    <div><label style={addLabelStyle}>Designation / Position *</label><input value={addEmpForm.position} onChange={e => setAddEmpForm({ ...addEmpForm, position: e.target.value })} placeholder="e.g. Frontend Developer" style={addInputStyle} /></div>
+                                    <div>
+                                        <label style={addLabelStyle}>Employment Type</label>
+                                        <select value={addEmpForm.employment_type} onChange={e => setAddEmpForm({ ...addEmpForm, employment_type: e.target.value })} style={addInputStyle}>
+                                            <option>Full-Time</option>
+                                            <option>Intern</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="grid-2" style={{ gap: '1rem', marginBottom: '1.5rem' }}>
+                                    <div>
+                                        <label style={addLabelStyle}>Role</label>
+                                        <select value={addEmpForm.role} onChange={e => setAddEmpForm({ ...addEmpForm, role: e.target.value })} style={addInputStyle}>
+                                            <option value="employee">Employee</option>
+                                            <option value="hr">HR</option>
+                                            <option value="hr_responsible">HR Lead</option>
+                                            {isSuperAdmin && <option value="admin">Admin</option>}
+                                        </select>
+                                    </div>
+                                    {addEmpForm.employment_type === 'Intern' && (
+                                        <div><label style={addLabelStyle}>Internship End Date</label><input type="date" value={addEmpForm.internship_end_date} onChange={e => setAddEmpForm({ ...addEmpForm, internship_end_date: e.target.value })} style={addInputStyle} /></div>
+                                    )}
+                                </div>
+
+                                <div style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.75rem' }}>Compensation</div>
+                                <div className="grid-2" style={{ gap: '1rem', marginBottom: '1rem' }}>
+                                    <div><label style={addLabelStyle}>Monthly Gross (₹)</label><input type="number" value={addEmpForm.monthly_salary} onChange={e => setAddEmpForm({ ...addEmpForm, monthly_salary: e.target.value })} style={addInputStyle} /></div>
+                                    <div><label style={addLabelStyle}>In-hand (₹)</label><input type="number" value={addEmpForm.in_hand_salary} onChange={e => setAddEmpForm({ ...addEmpForm, in_hand_salary: e.target.value })} style={addInputStyle} /></div>
+                                </div>
+                                <div className="grid-2" style={{ gap: '1rem', marginBottom: '1.5rem' }}>
+                                    <div><label style={addLabelStyle}>Tax Deduction (%)</label><input type="number" value={addEmpForm.tax_deduction_rate} onChange={e => setAddEmpForm({ ...addEmpForm, tax_deduction_rate: e.target.value })} style={addInputStyle} /></div>
+                                    <div><label style={addLabelStyle}>PF Deduction (%)</label><input type="number" value={addEmpForm.pf_deduction_rate} onChange={e => setAddEmpForm({ ...addEmpForm, pf_deduction_rate: e.target.value })} style={addInputStyle} /></div>
+                                </div>
+
+                                <div style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.75rem' }}>
+                                    Leave Accrual (days per month)
+                                    {addEmpForm.employment_type === 'Intern' && <span style={{ marginLeft: 8, fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: '#94a3b8' }}>— interns accrue comp-off only</span>}
+                                </div>
+                                <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+                                    <div><label style={addLabelStyle}>Privilege</label><input type="number" step="0.5" disabled={addEmpForm.employment_type === 'Intern'} value={addEmpForm.employment_type === 'Intern' ? 0 : addEmpForm.privilege_leave_rate} onChange={e => setAddEmpForm({ ...addEmpForm, privilege_leave_rate: e.target.value })} style={addInputStyle} /></div>
+                                    <div><label style={addLabelStyle}>Sick</label><input type="number" step="0.5" disabled={addEmpForm.employment_type === 'Intern'} value={addEmpForm.employment_type === 'Intern' ? 0 : addEmpForm.sick_leave_rate} onChange={e => setAddEmpForm({ ...addEmpForm, sick_leave_rate: e.target.value })} style={addInputStyle} /></div>
+                                    <div><label style={addLabelStyle}>Casual</label><input type="number" step="0.5" disabled={addEmpForm.employment_type === 'Intern'} value={addEmpForm.employment_type === 'Intern' ? 0 : addEmpForm.casual_leave_rate} onChange={e => setAddEmpForm({ ...addEmpForm, casual_leave_rate: e.target.value })} style={addInputStyle} /></div>
+                                </div>
+
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                                     <button className="btn btn-secondary" onClick={() => setIsAddEmpModalOpen(false)}>Cancel</button>
-                                    <button className="btn btn-primary" style={{ background: '#ff4500' }} onClick={handleAddEmployee}>Create Employee</button>
+                                    <button className="btn btn-primary" style={{ background: '#ff4500' }} disabled={addEmpLoading} onClick={handleAddEmployee}>
+                                        {addEmpLoading ? 'Sending invite…' : 'Send Invite'}
+                                    </button>
                                 </div>
                             </div>
                         </div>

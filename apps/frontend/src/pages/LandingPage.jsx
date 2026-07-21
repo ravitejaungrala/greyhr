@@ -132,7 +132,11 @@ const LandingPage = ({ onLoginClick }) => {
   };
 
   return (
-    <div className="landing-page" style={{ overflowX: 'hidden' }}>
+    <div className="landing-page" style={{ 
+      overflowX: 'hidden',
+      background: 'radial-gradient(at 10% 10%, rgba(168, 85, 247, 0.08) 0px, transparent 50%), radial-gradient(at 90% 10%, rgba(59, 130, 246, 0.08) 0px, transparent 50%), radial-gradient(at 50% 80%, rgba(249, 115, 22, 0.06) 0px, transparent 50%), linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+      minHeight: '100vh'
+    }}>
       {/* Inline keyframes + responsive rules for hero */}
       <style>{`
         @keyframes nz-mesh-shift {
@@ -161,11 +165,11 @@ const LandingPage = ({ onLoginClick }) => {
       {/* ============== NAVBAR (always visible) ============== */}
       <nav style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
-        background: 'rgba(255, 255, 255, 0.94)',
-        backdropFilter: 'blur(16px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(16px) saturate(180%)',
-        borderBottom: '1px solid #e5e7eb',
-        boxShadow: '0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 4px 20px -8px rgba(15, 23, 42, 0.06)',
+        background: 'rgba(255, 255, 255, 0.45)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.4)',
+        boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.04)',
       }}>
         <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0.85rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
@@ -277,9 +281,11 @@ const LandingPage = ({ onLoginClick }) => {
             <div style={{
               position: 'absolute', top: '20px', right: '0',
               width: '300px',
-              background: '#ffffff', borderRadius: '16px',
-              border: '1px solid #e5e7eb',
-              boxShadow: '0 24px 48px -16px rgba(15, 23, 42, 0.20), 0 8px 18px -6px rgba(234, 88, 12, 0.12)',
+              background: 'rgba(255, 255, 255, 0.5)', borderRadius: '16px',
+              border: '1px solid rgba(255, 255, 255, 0.4)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              boxShadow: '0 24px 48px -16px rgba(15, 23, 42, 0.10), 0 8px 18px -6px rgba(234, 88, 12, 0.05)',
               padding: '1.1rem 1.25rem',
               animation: 'nz-float-1 6s ease-in-out infinite',
               zIndex: 3,
@@ -310,9 +316,11 @@ const LandingPage = ({ onLoginClick }) => {
             <div style={{
               position: 'absolute', top: '180px', left: '0',
               width: '270px',
-              background: '#ffffff', borderRadius: '16px',
-              border: '1px solid #e5e7eb',
-              boxShadow: '0 24px 48px -16px rgba(15, 23, 42, 0.20)',
+              background: 'rgba(255, 255, 255, 0.5)', borderRadius: '16px',
+              border: '1px solid rgba(255, 255, 255, 0.4)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              boxShadow: '0 24px 48px -16px rgba(15, 23, 42, 0.10)',
               padding: '1rem 1.15rem',
               animation: 'nz-float-2 7s ease-in-out infinite 0.5s',
               zIndex: 4,
@@ -346,14 +354,16 @@ const LandingPage = ({ onLoginClick }) => {
             <div style={{
               position: 'absolute', bottom: '20px', right: '20px',
               width: '290px',
-              background: 'linear-gradient(135deg, #0b0b0f 0%, #1f2937 100%)',
+              background: 'rgba(15, 23, 42, 0.75)',
               borderRadius: '16px',
-              boxShadow: '0 24px 48px -14px rgba(0, 0, 0, 0.40)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              boxShadow: '0 24px 48px -14px rgba(0, 0, 0, 0.25)',
               padding: '1.1rem 1.15rem',
               color: '#ffffff',
               animation: 'nz-float-3 6.5s ease-in-out infinite 1s',
               zIndex: 5,
-              border: '1px solid rgba(255, 140, 0, 0.20)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.85rem', paddingBottom: '0.65rem', borderBottom: '1px solid rgba(255, 255, 255, 0.10)' }}>
                 <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'linear-gradient(135deg, #ff4500, #ea580c)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -374,9 +384,11 @@ const LandingPage = ({ onLoginClick }) => {
             <div style={{
               position: 'absolute', top: '0', left: '40px',
               width: '230px',
-              background: '#ffffff', borderRadius: '14px',
-              border: '1px solid #e5e7eb',
-              boxShadow: '0 18px 36px -14px rgba(15, 23, 42, 0.18)',
+              background: 'rgba(255, 255, 255, 0.5)', borderRadius: '14px',
+              border: '1px solid rgba(255, 255, 255, 0.4)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              boxShadow: '0 18px 36px -14px rgba(15, 23, 42, 0.10)',
               padding: '0.85rem 1rem',
               animation: 'nz-float-4 7.5s ease-in-out infinite 0.8s',
               zIndex: 2,
@@ -404,9 +416,12 @@ const LandingPage = ({ onLoginClick }) => {
             <div style={{
               position: 'absolute', bottom: '180px', left: '0',
               width: '180px',
-              background: 'linear-gradient(135deg, #ff4500 0%, #ea580c 100%)',
+              background: 'rgba(234, 88, 12, 0.8)',
               borderRadius: '14px',
-              boxShadow: '0 18px 36px -10px rgba(255, 69, 0, 0.45)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              boxShadow: '0 18px 36px -10px rgba(234, 88, 12, 0.25)',
               padding: '0.95rem 1.1rem',
               color: '#ffffff',
               animation: 'nz-float-1 8s ease-in-out infinite 1.5s',
@@ -423,7 +438,7 @@ const LandingPage = ({ onLoginClick }) => {
       </section>
 
       {/* ============== TRUSTED BY (logo strip) ============== */}
-      <section style={{ padding: '2.25rem 1.5rem', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', background: '#ffffff' }}>
+      <section style={{ padding: '2.25rem 1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.4)', borderBottom: '1px solid rgba(255, 255, 255, 0.4)', background: 'rgba(255, 255, 255, 0.3)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
         <div style={{ maxWidth: '1240px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', fontSize: '0.74rem', fontWeight: 800, color: '#475569', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '1.5rem' }}>
             Trusted by 500+ HR teams across India
@@ -456,7 +471,7 @@ const LandingPage = ({ onLoginClick }) => {
       </section>
 
       {/* ============== STATS BAR ============== */}
-      <section style={{ background: 'linear-gradient(135deg, #0b0b0f 0%, #1f2937 100%)', padding: '3.5rem 1.5rem', position: 'relative', overflow: 'hidden' }}>
+      <section style={{ background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderTop: '1px solid rgba(255, 255, 255, 0.1)', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', padding: '3.5rem 1.5rem', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, rgba(255, 69, 0, 0.14), transparent 60%)', pointerEvents: 'none' }} />
         <div style={{ position: 'relative', maxWidth: '1100px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.5rem', textAlign: 'center' }}>
           {stats.map((s, i) => (
@@ -486,10 +501,12 @@ const LandingPage = ({ onLoginClick }) => {
           {modules.map((m, i) => (
             <div key={i} style={{
               position: 'relative', padding: '1.6rem',
-              background: m.highlight ? 'linear-gradient(135deg, #fff7f1 0%, #ffe9d6 100%)' : '#ffffff',
-              border: `1px solid ${m.highlight ? 'rgba(255, 140, 0, 0.30)' : '#e5e7eb'}`,
+              background: m.highlight ? 'rgba(255, 247, 241, 0.55)' : 'rgba(255, 255, 255, 0.45)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: `1px solid ${m.highlight ? 'rgba(255, 140, 0, 0.40)' : 'rgba(255, 255, 255, 0.45)'}`,
               borderRadius: '18px',
-              boxShadow: m.highlight ? '0 18px 36px -12px rgba(255, 69, 0, 0.20)' : '0 4px 10px -2px rgba(15, 23, 42, 0.05)',
+              boxShadow: m.highlight ? '0 18px 36px -12px rgba(255, 69, 0, 0.10)' : '0 8px 32px 0 rgba(31, 38, 135, 0.04)',
               transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
               overflow: 'hidden',
             }}
@@ -524,7 +541,7 @@ const LandingPage = ({ onLoginClick }) => {
       </section>
 
       {/* ============== AI DOCUMENT STUDIO ============== */}
-      <section id="document-studio" style={{ background: 'linear-gradient(180deg, #fff7f1 0%, #fffaf6 100%)', padding: '5rem 1.5rem' }}>
+      <section id="document-studio" style={{ padding: '5rem 1.5rem', background: 'transparent' }}>
         <div style={{ maxWidth: '1240px', margin: '0 auto' }}>
           <div style={headerWrap}>
             <div style={eyebrow}><Bot size={14} /> Flagship Feature</div>
@@ -543,14 +560,16 @@ const LandingPage = ({ onLoginClick }) => {
                   <div key={i} style={{
                     display: 'flex', alignItems: 'center', gap: '1rem',
                     padding: '1rem 1.15rem',
-                    background: '#ffffff',
-                    border: '1px solid #e5e7eb',
+                    background: 'rgba(255, 255, 255, 0.45)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255, 255, 255, 0.4)',
                     borderRadius: '14px',
-                    boxShadow: '0 2px 6px rgba(15, 23, 42, 0.04)',
+                    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.04)',
                     transition: 'all 0.25s ease',
                   }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = '#ff8c00'; e.currentTarget.style.transform = 'translateX(4px)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.transform = 'translateX(0)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.4)'; e.currentTarget.style.transform = 'translateX(0)'; }}
                   >
                     <div style={{
                       width: '42px', height: '42px', borderRadius: '11px',
@@ -572,9 +591,11 @@ const LandingPage = ({ onLoginClick }) => {
             {/* RIGHT: mock document preview */}
             <div style={{ position: 'relative' }}>
               <div style={{
-                background: '#ffffff', borderRadius: '20px',
-                border: '1px solid #e5e7eb',
-                boxShadow: '0 30px 60px -20px rgba(234, 88, 12, 0.20), 0 18px 40px -12px rgba(15, 23, 42, 0.12)',
+                background: 'rgba(255, 255, 255, 0.55)', borderRadius: '20px',
+                border: '1px solid rgba(255, 255, 255, 0.4)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                boxShadow: '0 30px 60px -20px rgba(234, 88, 12, 0.10), 0 18px 40px -12px rgba(15, 23, 42, 0.06)',
                 overflow: 'hidden',
                 position: 'relative',
               }}>
@@ -637,9 +658,11 @@ const LandingPage = ({ onLoginClick }) => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
           {/* Admin */}
           <div style={{
-            background: '#ffffff', borderRadius: '20px',
-            border: '1px solid #e5e7eb', padding: '2rem',
-            boxShadow: '0 8px 18px -6px rgba(15, 23, 42, 0.08)',
+            background: 'rgba(255, 255, 255, 0.45)', borderRadius: '20px',
+            border: '1px solid rgba(255, 255, 255, 0.4)', padding: '2rem',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.04)',
             position: 'relative', overflow: 'hidden',
           }}>
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, #ff4500, #ea580c)' }} />
@@ -666,11 +689,13 @@ const LandingPage = ({ onLoginClick }) => {
 
           {/* Employee */}
           <div style={{
-            background: 'linear-gradient(135deg, #fff7f1 0%, #ffe9d6 100%)',
+            background: 'rgba(255, 247, 241, 0.55)',
             borderRadius: '20px',
-            border: '1px solid rgba(255, 140, 0, 0.25)',
+            border: '1px solid rgba(255, 140, 0, 0.35)',
             padding: '2rem',
-            boxShadow: '0 18px 36px -12px rgba(255, 69, 0, 0.20)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            boxShadow: '0 18px 36px -12px rgba(255, 69, 0, 0.10)',
             position: 'relative', overflow: 'hidden',
           }}>
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, #ff8c00, #ff4500)' }} />
@@ -699,7 +724,7 @@ const LandingPage = ({ onLoginClick }) => {
       </section>
 
       {/* ============== HOW IT WORKS ============== */}
-      <section id="how-it-works" style={{ background: 'linear-gradient(180deg, #ffffff 0%, #fffaf6 100%)', padding: '5rem 1.5rem' }}>
+      <section id="how-it-works" style={{ padding: '5rem 1.5rem', background: 'transparent' }}>
         <div style={{ maxWidth: '1240px', margin: '0 auto' }}>
           <div style={headerWrap}>
             <div style={eyebrow}><Rocket size={14} /> How It Works</div>
@@ -713,9 +738,11 @@ const LandingPage = ({ onLoginClick }) => {
             {steps.map((s, i) => (
               <div key={i} style={{
                 position: 'relative', padding: '1.85rem 1.6rem',
-                background: '#ffffff', borderRadius: '18px',
-                border: '1px solid #e5e7eb',
-                boxShadow: '0 8px 18px -6px rgba(15, 23, 42, 0.06)',
+                background: 'rgba(255, 255, 255, 0.45)', borderRadius: '18px',
+                border: '1px solid rgba(255, 255, 255, 0.4)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.04)',
               }}>
                 <div style={{
                   position: 'absolute', top: '-18px', left: '1.6rem',
@@ -744,7 +771,10 @@ const LandingPage = ({ onLoginClick }) => {
       {/* ============== AI INTELLIGENCE ============== */}
       <section style={sectionPad}>
         <div style={{
-          background: 'linear-gradient(135deg, #0b0b0f 0%, #1f2937 100%)',
+          background: 'rgba(15, 23, 42, 0.75)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
           borderRadius: '28px', padding: '3.5rem 2.5rem',
           color: '#ffffff', position: 'relative', overflow: 'hidden',
         }}>
@@ -848,14 +878,16 @@ const LandingPage = ({ onLoginClick }) => {
           {securityPoints.map((s, i) => (
             <div key={i} style={{
               padding: '1.6rem',
-              background: '#ffffff',
-              border: '1px solid #e5e7eb',
+              background: 'rgba(255, 255, 255, 0.45)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255, 255, 255, 0.4)',
               borderRadius: '16px',
-              boxShadow: '0 4px 10px -2px rgba(15, 23, 42, 0.05)',
+              boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.04)',
               transition: 'all 0.3s ease',
             }}
               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.borderColor = 'rgba(255, 140, 0, 0.25)'; e.currentTarget.style.boxShadow = '0 14px 28px -10px rgba(15, 23, 42, 0.10)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.boxShadow = '0 4px 10px -2px rgba(15, 23, 42, 0.05)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.4)'; e.currentTarget.style.boxShadow = '0 8px 32px 0 rgba(31, 38, 135, 0.04)'; }}
             >
               <div style={{
                 width: '44px', height: '44px', borderRadius: '12px',
@@ -873,7 +905,7 @@ const LandingPage = ({ onLoginClick }) => {
       </section>
 
       {/* ============== TESTIMONIALS ============== */}
-      <section style={{ background: 'linear-gradient(180deg, #fffaf6 0%, #fff7f1 100%)', padding: '5rem 1.5rem' }}>
+      <section style={{ padding: '5rem 1.5rem', background: 'transparent' }}>
         <div style={{ maxWidth: '1240px', margin: '0 auto' }}>
           <div style={headerWrap}>
             <div style={eyebrow}><Star size={14} /> Loved by HR Teams</div>
@@ -885,10 +917,12 @@ const LandingPage = ({ onLoginClick }) => {
             {testimonials.map((t, i) => (
               <div key={i} style={{
                 padding: '1.85rem',
-                background: '#ffffff',
-                border: '1px solid #e5e7eb',
+                background: 'rgba(255, 255, 255, 0.45)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255, 255, 255, 0.4)',
                 borderRadius: '18px',
-                boxShadow: '0 8px 20px -6px rgba(15, 23, 42, 0.08)',
+                boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.04)',
                 position: 'relative',
               }}>
                 <div style={{ display: 'flex', gap: '2px', marginBottom: '0.85rem' }}>
@@ -928,10 +962,12 @@ const LandingPage = ({ onLoginClick }) => {
             const isOpen = openFaq === i;
             return (
               <div key={i} style={{
-                background: '#ffffff',
-                border: `1px solid ${isOpen ? 'rgba(255, 140, 0, 0.30)' : '#e5e7eb'}`,
+                background: 'rgba(255, 255, 255, 0.45)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: `1px solid ${isOpen ? 'rgba(255, 140, 0, 0.40)' : 'rgba(255, 255, 255, 0.45)'}`,
                 borderRadius: '14px',
-                boxShadow: isOpen ? '0 10px 24px -10px rgba(255, 69, 0, 0.18)' : '0 2px 4px rgba(15, 23, 42, 0.04)',
+                boxShadow: isOpen ? '0 10px 24px -10px rgba(255, 69, 0, 0.10)' : '0 8px 32px 0 rgba(31, 38, 135, 0.04)',
                 transition: 'all 0.25s ease',
                 overflow: 'hidden',
               }}>
@@ -970,16 +1006,18 @@ const LandingPage = ({ onLoginClick }) => {
         </div>
       </section>
 
-      {/* ============== FINAL CTA ============== */}
       <section style={{ padding: '5rem 1.5rem' }}>
         <div style={{
           maxWidth: '980px', margin: '0 auto',
-          background: 'linear-gradient(135deg, #ff4500 0%, #ff8c00 50%, #ea580c 100%)',
+          background: 'rgba(234, 88, 12, 0.85)',
           borderRadius: '28px',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
           padding: 'clamp(2.5rem, 5vw, 4rem) clamp(1.5rem, 4vw, 3rem)',
           textAlign: 'center', color: '#ffffff',
           position: 'relative', overflow: 'hidden',
-          boxShadow: '0 30px 60px -20px rgba(255, 69, 0, 0.40)',
+          boxShadow: '0 30px 60px -20px rgba(234, 88, 12, 0.30)',
         }}>
           <div style={{ position: 'absolute', top: '-80px', right: '-80px', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(255, 255, 255, 0.18), transparent 70%)', filter: 'blur(20px)' }} />
           <div style={{ position: 'absolute', bottom: '-100px', left: '-100px', width: '350px', height: '350px', background: 'radial-gradient(circle, rgba(255, 255, 255, 0.12), transparent 70%)', filter: 'blur(30px)' }} />

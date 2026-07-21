@@ -6,6 +6,7 @@ import {
     Banknote, Mail, GraduationCap, Building2, ScrollText
 } from 'lucide-react';
 import './HistoricalDocGenerator.css';
+import toast from '../lib/toast';
 
 const HistoricalDocGenerator = ({ apiUrl }) => {
     const [documentTypes, setDocumentTypes] = useState([]);
@@ -102,11 +103,11 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                 setPreviewBase64(`data:text/html;charset=utf-8;base64,${data.html_base64}`);
                 setCurrentStep(4);
             } else {
-                alert(data.error || 'Preview generation failed');
+                toast.error(data.error || 'Preview generation failed');
             }
         } catch (error) {
             console.error('Preview failed:', error);
-            alert('Failed to generate preview');
+            toast.error('Failed to generate preview');
         } finally {
             setIsPreviewing(false);
         }
@@ -130,11 +131,11 @@ const HistoricalDocGenerator = ({ apiUrl }) => {
                 fetchHistoricalDocs();
                 setCurrentStep(6); // Success Step
             } else {
-                alert(data.error || 'Document generation failed');
+                toast.error(data.error || 'Document generation failed');
             }
         } catch (error) {
             console.error('Generation failed:', error);
-            alert('Failed to generate document');
+            toast.error('Failed to generate document');
         } finally {
             setIsGenerating(false);
         }
