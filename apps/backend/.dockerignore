@@ -1,0 +1,58 @@
+# Keep the Lambda image small and free of anything sensitive.
+# Without this, `COPY . ${LAMBDA_TASK_ROOT}` ships the entire backend folder.
+
+# Secrets — must never enter the image
+.env
+.env.*
+!.env.example
+
+# Local Chroma persistence (committed by accident, several MB)
+chroma_local_db/
+
+# Generated output — regenerated at runtime, not needed in the image
+generated_docs/
+s3_backup/
+scratch/
+*.pdf
+
+# Stray artifact from a path-handling bug in the backup script
+D:/
+
+# One-off debug and maintenance scripts — not part of the running service
+debug_*.py
+check_*.py
+exhaustive_debug.py
+audit_sync.py
+vector_audit.py
+test_sync.py
+sync_fix.py
+lets.py
+push_templates.py
+upload_templates.py
+read_s3_template.py
+save_s3_template.py
+inspect_s3_template.py
+
+# Operational scripts run from a laptop, never inside Lambda
+scripts/
+
+# Notes and dumps
+*.txt
+!requirements.txt
+*.log
+
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Version control
+.git/
+.gitignore
