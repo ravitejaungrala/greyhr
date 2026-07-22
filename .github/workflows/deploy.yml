@@ -12,7 +12,7 @@ on:
 env:
   AWS_REGION: ap-south-1
   ECR_REPOSITORY: hrms-dhanadurga
-  LAMBDA_FUNCTION: dhanadurga-hrms
+  LAMBDA_FUNCTION: hrms-dhanadurga
 
 # Both branches deploy the same function, so never let two runs overwrite each
 # other mid-deploy. A newer run waits for the one in flight to finish.
