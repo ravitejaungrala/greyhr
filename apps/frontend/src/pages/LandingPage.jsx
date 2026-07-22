@@ -8,6 +8,14 @@ import {
   Building2, PieChart, Bell, Layout, Activity, Mail, Phone, MapPin
 } from 'lucide-react';
 
+// Your scheduling link — replace with the real Calendly (or Google Calendar
+// appointment) URL. Everything below reads from this one constant.
+const SCHEDULE_CALL_URL = 'https://calendly.com/neuzenai/30min';
+
+const openScheduleCall = () => {
+  window.open(SCHEDULE_CALL_URL, '_blank', 'noopener,noreferrer');
+};
+
 const LandingPage = ({ onLoginClick }) => {
   const [openFaq, setOpenFaq] = useState(0);
 
@@ -199,8 +207,8 @@ const LandingPage = ({ onLoginClick }) => {
             <button onClick={onLoginClick} style={{ ...secondaryBtn, padding: '0.55rem 1.05rem', fontSize: '0.88rem' }}>
               Sign In
             </button>
-            <button onClick={onLoginClick} style={{ ...primaryBtn, padding: '0.6rem 1.25rem', fontSize: '0.88rem' }}>
-              Request Demo <ArrowRight size={15} />
+            <button onClick={openScheduleCall} style={{ ...primaryBtn, padding: '0.6rem 1.25rem', fontSize: '0.88rem' }}>
+              <Calendar size={15} /> Schedule a Call
             </button>
           </div>
         </div>
@@ -260,8 +268,8 @@ const LandingPage = ({ onLoginClick }) => {
             </p>
 
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.85rem' }}>
-              <button onClick={onLoginClick} style={primaryBtn}>
-                Request a Demo <ArrowRight size={18} />
+              <button onClick={openScheduleCall} style={primaryBtn}>
+                <Calendar size={18} /> Schedule a Call
               </button>
               <button onClick={() => document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' })} style={secondaryBtn}>
                 See How It Works
@@ -1047,7 +1055,7 @@ const LandingPage = ({ onLoginClick }) => {
                 Get Started Free <ArrowRight size={18} />
               </button>
               <button
-                onClick={onLoginClick}
+                onClick={openScheduleCall}
                 style={{
                   padding: '1rem 2rem',
                   background: 'rgba(255, 255, 255, 0.10)',
@@ -1055,9 +1063,12 @@ const LandingPage = ({ onLoginClick }) => {
                   border: '1.5px solid rgba(255, 255, 255, 0.40)', borderRadius: '12px',
                   fontSize: '1rem', fontWeight: 700, cursor: 'pointer',
                   backdropFilter: 'blur(8px)',
+                  display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
                 }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.18)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.10)'}
               >
-                Talk to Sales
+                <Calendar size={18} /> Schedule a Call
               </button>
             </div>
           </div>
