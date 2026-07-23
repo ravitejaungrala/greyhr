@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, Bot, BrainCircuit, X, Send } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { API_URL } from '../config';
 
 const ChatbotBubble = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -42,7 +43,7 @@ const ChatbotBubble = () => {
         setLoading(true);
 
         try {
-            const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+            const apiUrl = API_URL;
             
             // Route to correct endpoint based on role
             const endpoint = isAdmin ? '/admin/copilot' : '/copilot/ask';

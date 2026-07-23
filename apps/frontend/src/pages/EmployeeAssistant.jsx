@@ -3,6 +3,7 @@ import { Send, User, Bot, Loader2, BrainCircuit, Sparkles, Zap, Palmtree, Clipbo
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { API_URL } from '../config';
 
 const EmployeeAssistant = ({ user }) => {
     const [messages, setMessages] = useState([
@@ -44,7 +45,7 @@ How can I power your workday today?` }
         setIsLoading(true);
 
         try {
-            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+            const API_BASE_URL = API_URL;
             const response = await axios.post(`${API_BASE_URL}/employee/chat`, {
                 employee_id: user.employee_id,
                 query: finalQuery

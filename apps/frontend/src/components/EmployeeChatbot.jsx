@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X, Send, User, Bot, Loader2 } from 'lucide-react';
 import axios from 'axios';
+import { API_URL } from '../config';
 
 const EmployeeChatbot = ({ user }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -28,7 +29,7 @@ const EmployeeChatbot = ({ user }) => {
         setIsLoading(true);
 
         try {
-            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+            const API_BASE_URL = API_URL;
             const response = await axios.post(`${API_BASE_URL}/employee/chat`, {
                 employee_id: user.employee_id,
                 query: userMessage
